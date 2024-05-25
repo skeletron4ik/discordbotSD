@@ -12,6 +12,7 @@ cluster = MongoClient(
 )
 collusers = cluster.server.users
 collservers = cluster.server.servers
+collbans = cluster.server.bans
 
 
 class WarnsCog(commands.Cog):
@@ -37,11 +38,12 @@ class WarnsCog(commands.Cog):
 
     @tasks.loop(seconds=30)  # Проверка каждые 30 секунд
     async def check_warns(self):
+        print('Я в чек варнс')
         # Получение текущего времени
         current_timestamp = int(datetime.now().timestamp())
 
         # Поиск пользователей с истекшим временем предупреждения
-        expired_warns = collusers.find({"причинаs.timestamp": {"$lte": current_timestamp}})
+        expired_warns = collusers.find({"reasons.timestamp": {"$lte": current_timestamp}})
 
         for user in expired_warns:
             guild_id = user["guild_id"]
@@ -61,7 +63,7 @@ class WarnsCog(commands.Cog):
 
                     embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
                                           description="**Модерация**",
-                                          color=0x002aff)
+                                          color=0xffff00)
                     embed.add_field(name="Снятие предупреждения", value="Срок вашего предупреждения истёк! ",
                                     inline=False)
                     embed.set_footer(text="Больше не нарушайте!")
@@ -71,14 +73,11 @@ class WarnsCog(commands.Cog):
                         await member.send(embed=embed)
 
     def get_rule_info(self, причина):
-        print('im in get_rule_info')
         if причина in self.rules:
             reason = self.rules[str(причина)]
-            print(reason)
             return reason
         else:
             reason = причина
-            print('Я не зашел в условие.')
             return reason
 
     @check_warns.before_loop
@@ -86,7 +85,8 @@ class WarnsCog(commands.Cog):
         await self.bot.wait_until_ready()  # Ожидание готовности бота перед запуском цикла
 
     @commands.slash_command(name="warn", description="Выдает предупреждение.")
-    async def warn(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, количество: int, причина="Причина не указана."):
+    async def warn(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, количество: int,
+                   причина="Причина не указана."):
         if inter.response.is_done():
             return
 
@@ -96,11 +96,11 @@ class WarnsCog(commands.Cog):
             return
         reason = self.get_rule_info(причина)
 
-        if количество < 1: # Проверка на долбоеба
+        if количество < 1:  # Проверка на долбоеба
             exceptWarn = disnake.Embed()
             exceptWarn.add_field(name='**Произошла ошибка**', value='количество меньше чем 1', inline=True)
             exceptWarn.add_field(name='**Возможные пути решения**',
-                                 value='В поле ```количество``` указать количество больше 1')
+                                 value='В параметр `количество` указать количество больше 1')
             exceptWarn.set_footer(text="Проверка на долбоеба сработала.")
             await inter.send(embed=exceptWarn, ephemeral=True)
             return
@@ -138,12 +138,12 @@ class WarnsCog(commands.Cog):
         warns_count = collusers.find_one({"id": участник.id})["warns"]
         server_value = collservers.find_one({"_id": inter.guild.id})["case"]
 
-        embedGive = disnake.Embed(title='Предупреждение выдано', color=0xae00ff)
+        embedGive = disnake.Embed(title='Предупреждение выдано', color=0xffff00)
         embedGive.add_field(name='**Участники интеракции:**',
                             value=f'Выдал: {inter.author.name} ({inter.author.mention})\nВыдано: {участник.name} ({участник.mention})',
                             inline=False)
         embedGive.add_field(name='**Подробная информация**',
-                            value=f'Количество предупреждений у {участник.name} ({участник.mention}): {warns_count}\nВыдано предупреждений: {количество}\nСлучай: #{server_value}',
+                            value=f'Количество предупреждений у {участник.name} ({участник.mention}): {warns_count}\nВыдано предупреждений: {количество}\nСлучай: #{server_value}\nПричина: {reason}',
                             inline=False)
 
         await inter.send(embed=embedGive)  # Отправляем embed из переменной embedGive
@@ -151,8 +151,9 @@ class WarnsCog(commands.Cog):
         channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
 
         embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
-                              description="**Модерация**", color=0xfbff00)
-        embed.add_field(name="", value=f"Участник {участник.name} ({участник.mention}) получил предупреждение", inline=False)
+                              description="**Модерация**", color=0xffff00)
+        embed.add_field(name="", value=f"Участник {участник.name} ({участник.mention}) получил предупреждение",
+                        inline=False)
         embed.add_field(name="Модератор:", value=f"{inter.author.name} ({inter.author.mention})", inline=True)
         embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
         embed.add_field(name="Длительность:", value=f"{HasRole} (<t:{timestamp}:R>)", inline=True)
@@ -162,26 +163,23 @@ class WarnsCog(commands.Cog):
         await channel.send(embed=embed)
 
         embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
-                              description="**Модерация**", color=0x001eff)
+                              description="**Модерация**", color=0xffff00)
         embed.set_author(name="Внимание!",
                          icon_url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
-        embed.add_field(name="", value=f"Вы получили предупреждение #{warns_count} на сервере {inter.guild.name}", inline=False)
+        embed.add_field(name="", value=f"Вы получили предупреждение #{warns_count} на сервере {inter.guild.name}",
+                        inline=False)
         embed.add_field(name="Модератор:", value=f"{inter.author.mention}", inline=False)
         embed.add_field(name="Длительность:", value=f"{HasRole} <t:{timestamp}:R>", inline=False)
         embed.add_field(name='Выдано предупреждений:', value=количество, inline=True)
         embed.add_field(name='Количество предупреждений:', value=warns_count, inline=True)
-        print(причина)
         embed.add_field(name="Причина:", value=f"{reason} ", inline=False)
         embed.set_footer(
             text="Пожалуйста, будьте внимательны! Последующие предупреждения могут привести к более строгим наказаниям.")
         message = await участник.send(embed=embed)
 
-
-
-
         def embed(dur):
             embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
-                                  description="**Модерация**", color=0xae00ff)
+                                  description="**Модерация**", color=0xffff00)
             embed.set_author(name="Вы были замьючены",
                              icon_url="https://upload.wikimedia.org/wikipedia/commons/d/df/Ukraine_road_sign_3.21.gif")
             embed.add_field(name="", value=f"Вы получили предупреждение #{warns_count} на сервере {inter.guild.name}",
@@ -254,12 +252,75 @@ class WarnsCog(commands.Cog):
             embed = embed(dur)
             await message.edit(embed=embed)
             return
+
         elif warns_count >= 10:
             role = inter.guild.get_role(1229075137374978119)
             channel = inter.guild.get_channel(1042818334644768871)
+            timestamp_ban = int(datetime.now().timestamp() + 2592000)
+            collbans.update_one({'id': участник.id, 'guild_id': inter.guild.id}, {"$set": {'Timestamp': timestamp_ban, 'ban': 'True', "reason": '10 предупреждений'}})
             await участник.add_roles(role)
-            await участник.send(f'Вы были заблокированы на сервере навсегда! Поскольку у Вас десять предупреждений. Для подачи апелляции создайте тикет в {channel.mention}.')
+            embed = disnake.Embed(title="ShadowDragons",
+                                  url="https://upload.wikimedia.org/wikipedia/commons/d/df/Ukraine_road_sign_3.21.gif",
+                                  description="Модерация", color=0xff0200)
+            embed.set_author(name="Вы были заблокированы!")
+            embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/d/df/Ukraine_road_sign_3.21.gif")
+            embed.add_field(name="Причина:", value="Ваше количество предупреждений превышает: {к-во предов}",
+                            inline=False)
+            embed.add_field(name="Истекает через:", value=f"30 дней ({timestamp})",
+                            inline=True)
+            embed.set_footer(text="Пожалуйста, больше не нарушайте!")
+            await участник.send(embed=embed)
+
             return
+
+    @commands.slash_command(name='unwarn', description='Позволяет снять предупреждение с игрока')
+    async def unwarn(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member,
+                     предупреждение: int):
+        try:
+            await inter.response.defer()
+        except:
+            return
+
+        if collusers.count_documents({"id": участник.id, "guild_id": inter.guild.id,
+                                      f'reasons.{предупреждение - 1}': {"$exists": True}}) == 0:
+            embed = disnake.Embed()
+            embed.add_field(name="**Произошла ошибка:**",
+                            value=f'Предупреждения под номером {предупреждение} не существует.', inline=True)
+            embed.add_field(name="**Возможные пути решения:**",
+                            value=f'В параметр `предупреждение` передать существующее предупреждение', inline=True)
+            await inter.send(embed=embed, ephemeral=True)
+            return
+        else:
+            try:
+                collusers.update_one(
+                    {"id": участник.id, "guild_id": inter.guild.id},
+                    {"$pull": {"reasons": {"$elemMatch": {"$eq": f'reasons[{предупреждение - 1}]'}}}})
+                print()
+            except:
+                await inter.send('Произошла непредвиденная ошибка.')
+
+            embed = disnake.Embed()
+            embed.add_field(name='**Предупреждение успешно снято**',
+                            value=f'Вы успешно сняли предупреждение #{предупреждение} с {участник.mention}')
+            embed.add_field(name='**Подробная информация**',
+                            value=f'Модератор: {inter.author.name} ({inter.author.mention})\nУчастник: {участник.name} ({участник.mention})')
+            await inter.send(embed=embed)
+            embed = disnake.Embed()
+
+            embed.add_field(name='**Снятие предупреждения**',
+                            value=f'{участник.mention}, с Вас сняли предупреждение #{предупреждение}.', inline=True)
+            embed.add_field(name='**Подробная информация**',
+                            value=f'Модератор: {inter.author.name} ({inter.author.mention})\nУчастник: {участник.name} ({участник.mention})')
+            await участник.send(embed=embed)
+
+            embedLog = disnake.Embed()
+            embedLog.add_field(name='**Предупреждение снято**',
+                               value=f'Модератор: {inter.author.mention} снял предупреждение #{предупреждение} с {участник.mention}',
+                               inline=True)
+            embed.add_field(name="**Подробная информация:**",
+                            value=f'Модератор: {inter.author.name} ({inter.author.mention})\nУчастник: {участник.name} ({участник.mention})',
+                            inline=False)
+
 
 def setup(bot):
     bot.add_cog(WarnsCog(bot))

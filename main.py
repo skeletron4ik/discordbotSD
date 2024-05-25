@@ -12,6 +12,8 @@ cluster = MongoClient(
 collusers = cluster.server.users
 collservers = cluster.server.servers
 
+collbans = cluster.server.bans
+
 
 @bot.event
 async def on_ready():
@@ -24,6 +26,13 @@ async def on_ready():
                 "warns": 0,
                 "reasons": []
             }
+            ban_values = {
+                "id": member.id,
+                "guild_id": guild.id,
+                "ban": 'False',
+                'Timestamp': 0,
+                "reason": 'None'
+            }
             server_values = {
                 "_id": guild.id,
                 "case": 0
@@ -31,9 +40,11 @@ async def on_ready():
 
             if collusers.count_documents({"id": member.id, "guild_id": guild.id}) == 0:
                 collusers.insert_one(values)
-
             if collservers.count_documents({"_id": guild.id}) == 0:
                 collservers.insert_one(server_values)
+            if collbans.count_documents({"id": member.id, "guild_id": guild.id}) == 0:
+                collbans.insert_one(ban_values)
+
 
 
 @bot.event
@@ -44,9 +55,18 @@ async def on_member_join(member):
         "warns": 0,
         "reasons": []
     }
+    ban_values = {
+        "id": member.id,
+        "guild_id": member.guild.id,
+        "ban": 'False',
+        'Timestamp': 0,
+        "reasons": 'None'
+    }
 
     if collusers.count_documents({"id": member.id, "guild_id": member.guild.id}) == 0:
         collusers.insert_one(values)
+    if collbans.count_documents({"id": member.id, "guild_id": member.guild.id}) == 0:
+        collbans.insert_one(ban_values)
 
 
 @bot.event
