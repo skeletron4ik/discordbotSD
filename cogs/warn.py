@@ -38,7 +38,6 @@ class WarnsCog(commands.Cog):
 
     @tasks.loop(seconds=30)  # Проверка каждые 30 секунд
     async def check_warns(self):
-        print('Я в чек варнс')
         # Получение текущего времени
         current_timestamp = int(datetime.now().timestamp())
 
@@ -138,15 +137,16 @@ class WarnsCog(commands.Cog):
         warns_count = collusers.find_one({"id": участник.id})["warns"]
         server_value = collservers.find_one({"_id": inter.guild.id})["case"]
 
-        embedGive = disnake.Embed(title='Предупреждение выдано', color=0xffff00)
-        embedGive.add_field(name='**Участники интеракции:**',
-                            value=f'Выдал: {inter.author.name} ({inter.author.mention})\nВыдано: {участник.name} ({участник.mention})',
-                            inline=False)
-        embedGive.add_field(name='**Подробная информация**',
-                            value=f'Количество предупреждений у {участник.name} ({участник.mention}): {warns_count}\nВыдано предупреждений: {количество}\nСлучай: #{server_value}\nПричина: {reason}',
-                            inline=False)
-
-        await inter.send(embed=embedGive)  # Отправляем embed из переменной embedGive
+        embed = disnake.Embed(title="ShadowDragons",
+                              url="https://upload.wikimedia.org/wikipedia/commons/d/df/Ukraine_road_sign_3.21.gif",
+                              description="Модерация", color=0xffff00)
+        embed.set_author(name="Участник получил предупреждение(-я)!")
+        embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
+        embed.add_field(name=f"Случай: #{server_value}",
+                        value=f"Модератор {inter.author.mention} выдал ``{количество}`` предупреждение(-й/-я) нарушителю {участник.mention} по причине **{reason}**,\n которые истекают через ``{HasRole}`` (<t:{timestamp}:R>)",
+                        inline=True)
+        embed.set_footer(text=f"ID участника: {участник.id} \' • \' {current_datetime}")
+        await inter.send(embed=embed)
 
         channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
 
@@ -154,18 +154,18 @@ class WarnsCog(commands.Cog):
                               description="**Модерация**", color=0xffff00)
         embed.add_field(name="", value=f"Участник {участник.name} ({участник.mention}) получил предупреждение",
                         inline=False)
-        embed.add_field(name="Модератор:", value=f"{inter.author.name} ({inter.author.mention})", inline=True)
+        embed.add_field(name="Модератор:", value=f"**{inter.author.name}** ({inter.author.mention})", inline=True)
         embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
         embed.add_field(name="Длительность:", value=f"{HasRole} (<t:{timestamp}:R>)", inline=True)
         embed.add_field(name="Количество предупреждений:", value=f"{warns_count}", inline=True)
         embed.add_field(name="Причина:", value=f"{reason} (случай #{server_value})", inline=True)
-        embed.set_footer(text=f"ID участника: {участник.id} • {current_datetime}")
+        embed.set_footer(text=f"ID участника: {участник.id} \' • \' {current_datetime}")
         await channel.send(embed=embed)
 
         embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
                               description="**Модерация**", color=0xffff00)
-        embed.set_author(name="Внимание!",
-                         icon_url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
+        embed.set_author(name=f"Вы получили предупреждение!")
+        embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
         embed.add_field(name="", value=f"Вы получили предупреждение #{warns_count} на сервере {inter.guild.name}",
                         inline=False)
         embed.add_field(name="Модератор:", value=f"{inter.author.mention}", inline=False)

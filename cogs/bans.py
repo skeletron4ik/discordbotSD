@@ -19,7 +19,7 @@ class BansCog(commands.Cog):
         self.bot = bot
         self.check_ban.start()  # Запуск циклической задачи при инициализации
 
-    @tasks.loop(seconds=15)  # Проверка каждые 30 секунд
+    @tasks.loop(seconds=70)  # Проверка каждые 15 секунд
     async def check_ban(self):
         current_timestamp = int(datetime.now().timestamp())
         expired_roles = collbans.find({"Timestamp": {"$lte": current_timestamp}})
@@ -70,11 +70,13 @@ class BansCog(commands.Cog):
 
             unit = time_str[-1]
 
-            if unit == 'd':
+            if unit == 'д' or unit =='d':
                 return value * 24 * 60 * 60  # Конвертируем дни в секунды
-            elif unit == 'h':
+            elif unit == 'ч' or unit =='h':
                 return value * 60 * 60  # Конвертируем часы в секунды
-            elif unit == 's':
+            elif unit == 'м' or unit == 'm':
+                return value * 60  # Конвертируем минуты в секунды
+            elif unit == 'с' or unit =='s':
                 return value  # Секунды остаются без изменений
             else:
                 raise ValueError("fxck")
@@ -106,15 +108,44 @@ class BansCog(commands.Cog):
 
         await участник.add_roles(role, reason=причина)
 
-        embed = disnake.Embed(
-         title="Бан",
-         description=f"{участник.mention} был забанен.",
-         color=disnake.Color.red()
-        )
+        embed = disnake.Embed(title="ShadowDragons",
+                              url="https://discord.com/invite/KE3psXf",
+                              description="**Модерация**", color=0xff0000)
+        embed.set_author(name=f"Участник был заблокирован!")
+        embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/d/df/Ukraine_road_sign_3.21.gif")
+        embed.add_field(name="Нарушитель:", value=f"{участник.mention}", inline=True)
+        embed.add_field(name="Модератор:", value=f"{inter.author.mention}", inline=True)
         embed.add_field(name="Причина:", value=причина, inline=False)
-        embed.add_field(name="Истечет через:", value=f'<t:{current_timestamp}:R>', inline=False)
-
+        embed.add_field(name="Истекает через:", value=f"<t:{current_timestamp}:R>", inline=False)
+        embed.set_footer(text=f"ID участника: {участник.id} ' • ' {current_datetime}")
         await inter.send(embed=embed)
+
+        embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
+                              description="**Модерация**", color=0xff0000)
+        embed.set_author(name=f"Вы были заблокированы!")
+        embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/d/df/Ukraine_road_sign_3.21.gif")
+        embed.add_field(name="", value=f"Вы были забанены на сервере {inter.guild.name}!",
+                        inline=False)
+        embed.add_field(name="Модератор:", value=f"{inter.author.mention}", inline=False)
+        embed.add_field(name="Причина:", value=причина, inline=False)
+        embed.add_field(name="Истекает через:", value=f"<t:{current_timestamp}:R>", inline=False)
+        embed.set_footer(
+            text="Пожалуйста, будьте внимательны!")
+        message = await участник.send(embed=embed)
+
+        channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
+
+        embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
+                              description="**Модерация**", color=0xff0000)
+        embed.add_field(name="", value=f"Участник {участник.name} ({участник.mention}) был забанен!",
+                        inline=False)
+        embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/d/df/Ukraine_road_sign_3.21.gif")
+        embed.add_field(name="Модератор:", value=f"*{inter.author.name}* ({inter.author.mention})", inline=True)
+        embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
+        embed.add_field(name="Время:", value=f"{длительность} (<t:{current_timestamp}:R>)", inline=True)
+        embed.add_field(name="Причина:", value=причина, inline=True)
+        embed.set_footer(text=f"ID участника: {участник.id} \' • \' {current_datetime}")
+        await channel.send(embed=embed)
 
 
 def setup(bot):
