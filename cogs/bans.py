@@ -59,7 +59,7 @@ class BansCog(commands.Cog):
 
 
     @commands.slash_command(name="ban", description="Блокирует доступ к серверу")
-    async def ban(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, длительность: str,
+    async def ban(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member, длительность: str,
                   причина="Причина не указана."):
 
         def convert_to_seconds(time_str):
@@ -147,7 +147,33 @@ class BansCog(commands.Cog):
         embed.set_footer(text=f"ID участника: {участник.id} \' • \' {current_datetime}")
         await channel.send(embed=embed)
 
+    @commands.slash_command(name='unban', description='Позволяет снять блокировку с пользователя.')
+    async def unban(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member):
+        try:
+            await inter.response.defer()
+        except:
+            print('inter response в unban не вызван')
+        if collbans.find_one({'id': участник.id, 'guild_id': inter.guild.id})['ban'] == False:
+            embed = disnake.Embed(color=0xff0000)
+            embed.add_field(name=f'Участник **{участник.name}** не заблокирован',
+                            value=f'Участник сервера **{участник.name} не находится в блокировке')
+            await inter.send(embed=embed, ephemeral=True)
+            return
+
+        query = {'id': участник.id, 'guild_id': inter.guild.id}
+        task = {'$set': {'ban': False, 'Timestamp': 0, 'reason': None}}
+        collbans.update_one(query, task)
+        await участник.remove_roles(inter.guild.get_role(1229075137374978119))
+        embed = disnake.Embed(color=0xff0000)
+        embed.add_field(name='Блокировка снята',
+                        value=f'Модератор: **{inter.author.name}** ({inter.author.mention})\n'
+                              f'Участник: **{участник.name}** ({участник.mention})',
+                        inline=True)
+        embed.set_footer(text=f'Модератор: {inter.author.id}', icon_url=inter.author.avatar.url)
+        await inter.guild.get_channel(944562833901899827).send(embed=embed)
+        await inter.send(embed=embed)
+
 
 def setup(bot):
     bot.add_cog(BansCog(bot))
-    print("ready")
+    print("BansCog is ready")

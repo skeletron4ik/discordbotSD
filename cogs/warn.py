@@ -84,7 +84,7 @@ class WarnsCog(commands.Cog):
         await self.bot.wait_until_ready()  # Ожидание готовности бота перед запуском цикла
 
     @commands.slash_command(name="warn", description="Выдает предупреждение.")
-    async def warn(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, количество: int,
+    async def warn(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member, количество: int,
                    причина="Причина не указана."):
         if inter.response.is_done():
             return
@@ -265,9 +265,9 @@ class WarnsCog(commands.Cog):
                                   description="Модерация", color=0xff0200)
             embed.set_author(name="Вы были заблокированы!")
             embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/d/df/Ukraine_road_sign_3.21.gif")
-            embed.add_field(name="Причина:", value="Ваше количество предупреждений превышает: {к-во предов}",
+            embed.add_field(name="Причина:", value="Ваше количество предупреждений превышает: 10",
                             inline=False)
-            embed.add_field(name="Истекает через:", value=f"30 дней ({timestamp})",
+            embed.add_field(name="Истекает через:", value=f"30 дней (<t:{timestamp_ban}:R)",
                             inline=True)
             embed.set_footer(text="Пожалуйста, больше не нарушайте!")
             await участник.send(embed=embed)
@@ -275,7 +275,7 @@ class WarnsCog(commands.Cog):
             return
 
     @commands.slash_command(name='unwarn', description='Позволяет снять предупреждение с игрока')
-    async def unwarn(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member,
+    async def unwarn(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member,
                      предупреждение: int):
         inter.response.defer()
         try:
@@ -323,8 +323,11 @@ class WarnsCog(commands.Cog):
                             inline=False)
 
     @commands.slash_command(name='warns', description='Показывает количество текущих предупреждений участника.')
-    async def warns(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
-        inter.response.defer()
+    async def warns(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member = None):
+        try:
+            await inter.response.defer()
+        except:
+            print('defer doesnt started')
 
         usr = collusers.find_one({'id': inter.author.id, 'guild_id': inter.guild.id})
         if участник is not None:
@@ -351,4 +354,4 @@ class WarnsCog(commands.Cog):
 
 def setup(bot):
     bot.add_cog(WarnsCog(bot))
-    print("ready")
+    print("WarnsCog is ready")
