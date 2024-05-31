@@ -6,14 +6,13 @@ import os
 import asyncio
 import time
 
+
 bot = commands.Bot(command_prefix="!", intents=disnake.Intents.all(), reload=True)
 cluster = MongoClient(
     "mongodb+srv://Skeletron:1337@cluster0.knkajvi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 collusers = cluster.server.users
 collservers = cluster.server.servers
-
 collbans = cluster.server.bans
-
 
 @bot.event
 async def on_ready():
