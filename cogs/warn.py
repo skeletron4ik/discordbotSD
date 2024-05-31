@@ -285,7 +285,7 @@ class WarnsCog(commands.Cog):
 
         if collusers.count_documents({"id": участник.id, "guild_id": inter.guild.id,
                                       f'reasons.{предупреждение - 1}': {"$exists": True}}) == 0:
-            embed = disnake.Embed()
+            embed = disnake.Embed(color=0x7341BB)
             embed.add_field(name="**Произошла ошибка:**",
                             value=f'Предупреждения под номером {предупреждение} не существует.', inline=True)
             embed.add_field(name="**Возможные пути решения:**",
@@ -300,7 +300,7 @@ class WarnsCog(commands.Cog):
                 {'$pull': {"reasons": None}})
             collusers.update_one({"id": участник.id, "guild_id": inter.guild.id}, {'$inc': {'warns': -1}})
 
-            embed = disnake.Embed()
+            embed = disnake.Embed(color=0x7341BB)
             embed.add_field(name='**Предупреждение успешно снято**',
                             value=f'Вы успешно сняли предупреждение #{предупреждение} с {участник.mention}')
             embed.add_field(name='**Подробная информация**',
@@ -340,11 +340,11 @@ class WarnsCog(commands.Cog):
         warns_count = user_data['warns']
         amount = 0
         if warns_count < 1:
-            embed = disnake.Embed()
+            embed = disnake.Embed(color=0x7341BB)
             embed.add_field(name=f'Предупреждения участника **{участник.name}**', value=f'Предупреждения у **{участник.name}** отсутствуют', inline=False)
             await inter.send(embed=embed)
             return
-        embed = disnake.Embed()
+        embed = disnake.Embed(color=0x7341BB)
         embed.add_field(name=f'Предупреждения **{участник.name}:**', value=f'Количество предупреждений у **{участник.name}**: {warns_count}', inline=False)
         for value in usr['reasons']:
             amount = amount + 1
