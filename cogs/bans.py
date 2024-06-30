@@ -1,6 +1,7 @@
 import time
 from asyncio import tasks
 import disnake
+from disnake import Interaction, OptionType, Option
 from disnake.ext import commands, tasks
 from datetime import datetime, timedelta
 from pymongo import MongoClient
@@ -38,8 +39,9 @@ class BansCog(commands.Cog):
                             title="ShadowDragons",
                             url="https://discord.com/invite/KE3psXf",
                             description="**Модерация**",
-                            color=0xffff00
+                            color=0x00ff40
                         )
+                        embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
                         embed.add_field(
                             name="Вы были разблокированы:",
                             value="Срок Вашего бана истёк!",
@@ -60,65 +62,64 @@ class BansCog(commands.Cog):
 
     @commands.slash_command(name="ban", description="Блокирует доступ к серверу")
     async def ban(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member, длительность: str,
-                  причина="Причина не указана."):
-
-        def convert_to_seconds(time_str):
-            try:
-                value = int(time_str[:-1])  # Получаем числовое значение без последнего символа
-            except ValueError:
-                raise ValueError("fxck")
-
-            unit = time_str[-1]
-
-            if unit == 'д' or unit =='d':
-                return value * 24 * 60 * 60  # Конвертируем дни в секунды
-            elif unit == 'ч' or unit =='h':
-                return value * 60 * 60  # Конвертируем часы в секунды
-            elif unit == 'м' or unit == 'm':
-                return value * 60  # Конвертируем минуты в секунды
-            elif unit == 'с' or unit =='s':
-                return value  # Секунды остаются без изменений
-            else:
-                raise ValueError("fxck")
-
-        if inter.response.is_done():
-            return
-        try:
+                  причина="Не указана"):
+        if inter.type == disnake.InteractionType.application_command:
             await inter.response.defer()
-        except disnake.NotFound:
-            return
-        value = convert_to_seconds(длительность)
-        if value == 'fxck':
-            await inter.send('Произошла ошибка в конвертации.', ephemeral=True)
-            return
-        role = inter.guild.get_role(1229075137374978119)
-        channel = inter.guild.get_channel(1042818334644768871)
-        current_timestamp = int(datetime.now().timestamp() + value)
-        cur = int(datetime.now().timestamp())
+            def convert_to_seconds(time_str):
+                try:
+                    value = int(time_str[:-1])  # Получаем числовое значение без последнего символа
+                except ValueError:
+                    raise ValueError("fxck")
 
-        print(f'{cur} | {current_timestamp} | {value}')
+                unit = time_str[-1]
 
-        query = {'id': участник.id, 'guild_id': inter.guild.id}
-        update = {'$set': {'ban': 'True', 'Timestamp': current_timestamp, 'reason': причина}} # Что обновляем метод $set т.е. устанавливаем значение
+                if unit == 'д' or unit =='d':
+                    return value * 24 * 60 * 60  # Конвертируем дни в секунды
+                elif unit == 'ч' or unit =='h':
+                    return value * 60 * 60  # Конвертируем часы в секунды
+                elif unit == 'м' or unit == 'm':
+                    return value * 60  # Конвертируем минуты в секунды
+                elif unit == 'с' or unit =='s':
+                    return value  # Секунды остаются без изменений
+                else:
+                    raise ValueError("fxck")
 
-        collbans.update_one(query, update)
+            value = convert_to_seconds(длительность)
+            if value == 'fxck':
+                await inter.send('Произошла ошибка в конвертации.', ephemeral=True)
+                return
+            role = inter.guild.get_role(1229075137374978119)
+            channel = inter.guild.get_channel(1042818334644768871)
+            current_timestamp = int(datetime.now().timestamp() + value)
+            cur = int(datetime.now().timestamp())
 
-        if участник.voice is not None and участник.voice.channel is not None:
-            await участник.move_to(None)
+            print(f'{cur} | {current_timestamp} | {value}')
 
-        await участник.add_roles(role, reason=причина)
+            query = {'id': участник.id, 'guild_id': inter.guild.id}
+            update = {'$set': {'ban': 'True', 'Timestamp': current_timestamp, 'reason': причина}} # Что обновляем метод $set т.е. устанавливаем значение
 
-        embed = disnake.Embed(title="ShadowDragons",
-                              url="https://discord.com/invite/KE3psXf",
-                              description="**Модерация**", color=0xff0000)
-        embed.set_author(name=f"Участник был заблокирован!")
-        embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/d/df/Ukraine_road_sign_3.21.gif")
-        embed.add_field(name="Нарушитель:", value=f"{участник.mention}", inline=True)
-        embed.add_field(name="Модератор:", value=f"{inter.author.mention}", inline=True)
-        embed.add_field(name="Причина:", value=причина, inline=False)
-        embed.add_field(name="Истекает через:", value=f"<t:{current_timestamp}:R>", inline=False)
-        embed.set_footer(text=f"ID участника: {участник.id} ' • ' {current_datetime}")
-        await inter.send(embed=embed)
+            collbans.update_one(query, update)
+
+            if участник.voice is not None and участник.voice.channel is not None:
+                await участник.move_to(None)
+
+            await участник.add_roles(role, reason=причина)
+            embed = disnake.Embed(
+                description=f"Участник {участник.mention} был забанен на {длительность}\n Причина: **{причина}**.",
+                colour=0xff0000,
+                timestamp=datetime.now())
+
+            embed.set_author(name=f"{inter.author.name}",
+                             icon_url=f"{inter.author.avatar}")
+
+            embed.set_thumbnail(
+                url="https://media1.giphy.com/media/tMf6IV7q9m3pbKPybv/giphy.gif?cid=6c09b952x9el5v0keemitb9f7pe09b04fetyq2ft84dhizs1&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=s")
+
+            embed.set_footer(text="Бан")
+            await inter.edit_original_message(embed=embed)
+        else:
+            await inter.response.send_message('Интеракция не поддерживается!')
+
 
         embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
                               description="**Модерация**", color=0xff0000)
@@ -136,42 +137,80 @@ class BansCog(commands.Cog):
         channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
 
         embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
-                              description="**Модерация**", color=0xff0000)
+                              description="**Модерация**", color=0xff0000, timestamp=datetime.now())
         embed.add_field(name="", value=f"Участник {участник.name} ({участник.mention}) был забанен!",
                         inline=False)
         embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/d/df/Ukraine_road_sign_3.21.gif")
         embed.add_field(name="Модератор:", value=f"*{inter.author.name}* ({inter.author.mention})", inline=True)
+        embed.add_field(name="Участник:", value=f"*{участник}* ({участник.mention})", inline=True)
         embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
         embed.add_field(name="Время:", value=f"{длительность} (<t:{current_timestamp}:R>)", inline=True)
         embed.add_field(name="Причина:", value=причина, inline=True)
-        embed.set_footer(text=f"ID участника: {участник.id} \' • \' {current_datetime}")
+        embed.set_footer(text=f"ID участника: {участник.id}")
         await channel.send(embed=embed)
 
     @commands.slash_command(name='unban', description='Позволяет снять блокировку с пользователя.')
     async def unban(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member):
-        try:
+        if inter.type == disnake.InteractionType.application_command:
             await inter.response.defer()
-        except:
-            print('inter response в unban не вызван')
-        if collbans.find_one({'id': участник.id, 'guild_id': inter.guild.id})['ban'] == False:
-            embed = disnake.Embed(color=0xff0000)
-            embed.add_field(name=f'Участник **{участник.name}** не заблокирован',
-                            value=f'Участник сервера **{участник.name} не находится в блокировке')
-            await inter.send(embed=embed, ephemeral=True)
-            return
+            if collbans.find_one({'id': участник.id, 'guild_id': inter.guild.id})['ban'] == 'False':
+                embed = disnake.Embed(color=0xff0000)
+                embed.add_field(name=f'Участник **{участник.name}** не заблокирован',
+                                value=f'Участник сервера **{участник.name} не находится в блокировке')
+                await inter.send(embed=embed, ephemeral=True)
+                return
 
-        query = {'id': участник.id, 'guild_id': inter.guild.id}
-        task = {'$set': {'ban': False, 'Timestamp': 0, 'reason': None}}
-        collbans.update_one(query, task)
-        await участник.remove_roles(inter.guild.get_role(1229075137374978119))
-        embed = disnake.Embed(color=0xff0000)
-        embed.add_field(name='Блокировка снята',
-                        value=f'Модератор: **{inter.author.name}** ({inter.author.mention})\n'
-                              f'Участник: **{участник.name}** ({участник.mention})',
-                        inline=True)
-        embed.set_footer(text=f'Модератор: {inter.author.id}', icon_url=inter.author.avatar.url)
-        await inter.guild.get_channel(944562833901899827).send(embed=embed)
-        await inter.send(embed=embed)
+
+            query = {'id': участник.id, 'guild_id': inter.guild.id}
+            task = {'$set': {'ban': False, 'Timestamp': 0, 'reason': None}}
+            collbans.update_one(query, task)
+            await участник.remove_roles(inter.guild.get_role(1229075137374978119))
+            embed = disnake.Embed(title="ShadowDragons",
+                                  url="https://discord.com/invite/KE3psXf",
+                                  description="**Модерация**",
+                                  colour=0x00ff40,
+                                  timestamp=datetime.now())
+
+            embed.set_author(name="Блокировка успешно снята!",
+                             icon_url="https://www.emojiall.com/images/240/telegram/2705.gif")
+
+            embed.add_field(name="Снятие блокировки:",
+                            value=f"{inter.author.mention}, Вы успешно сняли блокировку с участника {участник.name}, на сервере {inter.guild.name}.",
+                            inline=False)
+
+            embed.set_footer(text="Интересно, это была ошибка?")
+
+            await inter.send(embed=embed, ephemeral=True)
+
+            embed = disnake.Embed(title="ShadowDragons",
+                                  url="https://discord.com/invite/KE3psXf",
+                                  description="**Модерация**",
+                                  colour=0x00ff40,
+                                  timestamp=datetime.now())
+
+            embed.set_author(name="Вы были разбанены!",
+                             icon_url="https://www.emojiall.com/images/240/telegram/2705.gif")
+
+            embed.add_field(name="Снятие блокировки:",
+                            value=f"Блокировка на сервере {inter.guild.name} была снята Модератором: {inter.author.name} ({inter.author.mention})!",
+                            inline=False)
+
+            embed.set_footer(text="Приносим извинения за предоствленые неудобства!")
+
+            await участник.send(embed=embed)
+
+            channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
+
+            embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
+                                  description="**Модерация**", color=0x00ff40, timestamp=datetime.now())
+            embed.add_field(name="", value=f"Участник {участник.name} ({участник.mention}) был разбанен!",
+                            inline=False)
+            embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
+            embed.add_field(name="Модератор:", value=f"*{inter.author.name}* ({inter.author.mention})", inline=True)
+            embed.add_field(name="Участник:", value=f"*{участник}* ({участник.mention})", inline=True)
+            embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
+            embed.set_footer(text=f"ID участника: {участник.id}")
+            await channel.send(embed=embed)
 
 
 def setup(bot):

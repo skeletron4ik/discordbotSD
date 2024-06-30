@@ -19,12 +19,13 @@ class InfoCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.slash_command(name='', description='Выводит нужную информацию об участнике')
+    @commands.slash_command(name='user', description='Выводит нужную информацию об участнике')
     async def user(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
         embed = disnake.Embed(color=0x8116ED)
         if участник is None:
             warns_count = collusers.find_one({'id': inter.author.id, 'guild_id': inter.guild.id})['warns']
             ban = collbans.find_one({'id': inter.author.id, 'guild_id': inter.guild.id})['ban']
+            case = collservers.find_one({'_id': inter.guild.id})['case']
             if ban == 'True':
                 ban = 'Да.'
             else:
@@ -44,6 +45,7 @@ class InfoCog(commands.Cog):
             return
         warns_count = collusers.find_one({'id': участник.id, 'guild_id': inter.guild.id})['warns']
         ban = collbans.find_one({'id': участник.id, 'guild_id': inter.guild.id})['ban']
+        case = collservers.find_one({'_id': inter.guild.id})['case']
         if ban == 'True':
             ban = 'Да.'
         else:
