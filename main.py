@@ -8,6 +8,7 @@ import time
 
 
 bot = commands.Bot(command_prefix="!", intents=disnake.Intents.all(), reload=True)
+bot.member_cache_flags = disnake.MemberCacheFlags.all()
 cluster = MongoClient(
     "mongodb+srv://Skeletron:1337@cluster0.knkajvi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 collusers = cluster.server.users
