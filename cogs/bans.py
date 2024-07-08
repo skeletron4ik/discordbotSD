@@ -143,7 +143,7 @@ class BansCog(commands.Cog):
     @commands.slash_command(name="ban", description="Блокирует доступ к серверу")
     async def ban(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member, длительность: str, причина="Не указана"):
         if inter.type == disnake.InteractionType.application_command:
-            await inter.response.defer()
+
             причина = self.get_rule_info(причина)
 
             try:
@@ -153,7 +153,7 @@ class BansCog(commands.Cog):
                 embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
                 embed.add_field(name=f'Ошибка',
                                 value=f'Ошибка: {e}\n Длительность указывается в:\n ``д/d-дни, ч/h-часы, м/m-минуты, с/s-секунды``')
-                embed.set_thumbnail(url="https://i.imgur.com/o95uhru.gif")
+                embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
                 embed.set_footer(text='Ошибка')
                 await inter.response.send_message(embed=embed, ephemeral=True)
                 return
@@ -189,7 +189,7 @@ class BansCog(commands.Cog):
 
         embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
                               description="", color=0xff0000, timestamp=datetime.now())
-        embed.set_author(name="Вы были заблокированы!", icon_url=inter.guild.icon_url)
+        embed.set_author(name="Вы были заблокированы!", icon_url=inter.guild.icon.url)
         embed.set_thumbnail(url="https://media1.giphy.com/media/tMf6IV7q9m3pbKPybv/giphy.gif?cid=6c09b952x9el5v0keemitb9f7pe09b04fetyq2ft84dhizs1&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=s")
         embed.add_field(name="", value=f"Вы были забанены на сервере **{inter.guild.name}**!",
                         inline=False)
@@ -222,7 +222,7 @@ class BansCog(commands.Cog):
             embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
             embed.add_field(name=f'Ошибка',
                             value=f'Участник сервера **{участник.mention}** не находится в блокировке.')
-            embed.set_thumbnail(url="https://i.imgur.com/o95uhru.gif")
+            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
             embed.set_footer(text="Ошибка")
             await inter.response.send_message(embed=embed, ephemeral=True)
             return
@@ -252,7 +252,7 @@ class BansCog(commands.Cog):
                               timestamp=datetime.now())
 
         embed.set_author(name="Вы были разбанены!",
-                         icon_url=inter.guild.icon_url)
+                         icon_url=inter.guild.icon.url)
 
         embed.add_field(name="",
                         value=f"Блокировка на сервере **{inter.guild.name}** была снята\n **Модератором**: {inter.author.mention}!",

@@ -19,9 +19,13 @@ class InfoCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.slash_command(name='user', description='Выводит нужную информацию об участнике')
+    @commands.slash_command(name='userinfo', description='Выводит нужную информацию об участнике')
     async def user(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
-        embed = disnake.Embed(color=0x8116ED)
+        embed = disnake.Embed(title=f"Информация об участнике **{участник.name}**:", url="",
+                              description="", color=0x00b7ff, timestamp=datetime.now())
+        embed.set_author(name=f"{участник.name}",
+                         icon_url=f"{участник.avatar}")
+        embed.set_thumbnail(url="https://media0.giphy.com/media/epyCv3K3uvRXw4LaPY/giphy.gif")
         if участник is None:
             warns_count = collusers.find_one({'id': inter.author.id, 'guild_id': inter.guild.id})['warns']
             ban = collbans.find_one({'id': inter.author.id, 'guild_id': inter.guild.id})['ban']
@@ -36,29 +40,28 @@ class InfoCog(commands.Cog):
             else:
                 mute = 'Нет.'
 
-            embed.add_field(name=f'**Участник {inter.author.name}**', value=f'Идентификатор: {inter.author.id}\n'
-                                                                            f'Количество предупреждений: {warns_count}\n'
-                                                                            f'Находится ли участник в бане?: {ban}\n'
-                                                                            f'Находится ли участник в муте?: {mute}',
-                            inline=False)
+            embed.add_field(name=f'', value=f'Идентификатор: {inter.author.id}')
+            embed.add_field(name=f'', value=f'Количество предупреждений: {warns_count}', inline=False)
+            embed.add_field(name=f'', value=f'Находится ли участник в бане?: {ban}', inline=False)
+            embed.add_field(name=f'', value=f'Находится ли участник в муте?: {mute}', inline=False)
+
             await inter.response.send_message(embed=embed, ephemeral=True)
             return
         warns_count = collusers.find_one({'id': участник.id, 'guild_id': inter.guild.id})['warns']
         ban = collbans.find_one({'id': участник.id, 'guild_id': inter.guild.id})['ban']
         case = collservers.find_one({'_id': inter.guild.id})['case']
         if ban == 'True':
-            ban = 'Да.'
+            ban = 'Да'
         else:
-            ban = 'Нет.'
+            ban = 'Нет'
         if участник.current_timeout is not None:
-            mute = 'Да.'
+            mute = 'Да'
         else:
-            mute = 'Нет.'
-        embed.add_field(name=f'**Участник {участник.name}**', value=f'Идентификатор: {участник.id}\n'
-                                                                    f'Количество предупреждений: {warns_count}\n'
-                                                                    f'Находится ли участник в бане?: {ban}\n'
-                                                                    f'Находится ли участник в муте?: {mute}',
-                        inline=False)
+            mute = 'Нет'
+        embed.add_field(name=f'', value=f'**Идентификатор:** ``{inter.author.id}``')
+        embed.add_field(name=f'', value=f'**Количество предупреждений:** ``{warns_count}``', inline=False)
+        embed.add_field(name=f'', value=f'**Находится ли участник в бане?:** ``{ban}``', inline=False)
+        embed.add_field(name=f'', value=f'**Находится ли участник в муте?:** ``{mute}``', inline=False)
         await inter.response.send_message(embed=embed, ephemeral=True)
         return
 

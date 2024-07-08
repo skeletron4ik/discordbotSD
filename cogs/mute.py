@@ -132,7 +132,7 @@ class MuteCog(commands.Cog):
                             inline=False)
             embed.add_field(name="Модератор:", value=f"{inter.author.mention}", inline=False)
             embed.add_field(name="Причина:", value=причина, inline=False)
-            embed.add_field(name="Истекает через:", value=f"<t:{current_timestamp}:R>", inline=False)
+            embed.add_field(name="Истекает через:", value=f"{formatted_duration} (<t:{current_timestamp}:R>)", inline=False)
             embed.add_field(name="Подать апелляцию:", value=f"<#1044571685900259389>", inline=False)
             embed.set_footer(text="Пожалуйста, будьте внимательны!")
             await участник.send(embed=embed)
