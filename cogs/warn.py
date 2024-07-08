@@ -67,11 +67,11 @@ class WarnsCog(commands.Cog):
                         description="",
                         color=0x00ff40
                     )
-                    embed.set_author(name='С Вас сняли предупреждение(-я)!', icon_url='')
+                    embed.set_author(name=f'С Вас сняли предупреждение!', icon_url='')
                     embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
                     embed.add_field(
                         name="",
-                        value="Срок Вашего предупреждения(-й) истёк!",
+                        value=f"Срок Вашего предупреждения истёк!",
                         inline=False
                     )
                     embed.set_footer(text="Больше не нарушайте!")
@@ -83,11 +83,11 @@ class WarnsCog(commands.Cog):
                     channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
 
 
-                    embed = disnake.Embed(title="Предупреждение участника было снято!",
+                    embed = disnake.Embed(title="",
                                           description=f"Срок предупреждения участника **{member.name}** ({member.mention}) истек!",
                                           colour=0x00ff40,
                                           timestamp=datetime.now())
-                    embed.set_author(name='Предупреждение истекло', icon_url=guild.icon.url)
+                    embed.set_author(name='', icon_url='')
                     embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
                     embed.set_footer(text="Снятие предупреждения")
                     await channel.send(embed=embed)
@@ -246,106 +246,151 @@ class WarnsCog(commands.Cog):
 
         embed = disnake.Embed(title="", url="",
                               description="", color=0xffff00, timestamp=datetime.now())
-        embed.add_field(name="", value=f"Участник **{участник.name}** ({участник.mention}) получил предупреждение",
+        embed.add_field(name="", value=f"Участник **{участник.name}** ({участник.mention}) получил ``{количество}`` {warning_word}",
                         inline=False)
         embed.add_field(name="Модератор:", value=f"**{inter.author.name}** ({inter.author.mention})", inline=True)
         embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
         embed.add_field(name="Длительность:", value=f"{HasRole} (<t:{timestamp}:R>)", inline=True)
-        embed.add_field(name="Количество предупреждений:", value=f"{warns_count}", inline=True)
-        embed.add_field(name="Причина:", value=f"{reason} (случай #{server_value})", inline=True)
+        embed.add_field(name="Выдано предупреждений:", value=f"{количество}", inline=True)
+        embed.add_field(name="Всего предупреждений:", value=f"{warns_count}", inline=True)
+        embed.add_field(name="Причина:", value=f"{reason} (случай #{server_value})", inline=False)
         embed.set_footer(text=f"ID участника: {участник.id}")
         await channel.send(embed=embed)
 
         embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
                               description="", color=0xffff00)
-        embed.set_author(name=f"Вы получили предупреждение!")
+        embed.set_author(name=f"Вы получили предупреждение!", icon_url=inter.guild.icon.url)
         embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
         embed.add_field(name="",
                         value=f"Вы получили {warning_word} ``#{warns_count}`` на сервере **{inter.guild.name}**",
                         inline=False)
         embed.add_field(name="Модератор:", value=f"{inter.author.mention}", inline=False)
-        embed.add_field(name="Длительность:", value=f"{HasRole} <t:{timestamp}:R>", inline=False)
-        embed.add_field(name='Выдано предупреждений:', value=количество, inline=True)
-        embed.add_field(name='Количество предупреждений:', value=warns_count, inline=True)
         embed.add_field(name="Причина:", value=f"{reason} ", inline=False)
+        embed.add_field(name="Истекает через:", value=f"``{HasRole}`` (<t:{timestamp}:R>)", inline=False)
+        embed.add_field(name='Выдано предупреждений:', value=количество, inline=True)
+        embed.add_field(name='Всего предупреждений:', value=warns_count, inline=True)
+        embed.add_field(name="Подать апелляцию:", value=f"<#1044571685900259389>", inline=False)
         embed.set_footer(
             text="Пожалуйста, будьте внимательны! Последующие предупреждения могут привести к более строгим наказаниям.")
         message = await участник.send(embed=embed)
 
-        def embed(dur):
+        def create_embed(dur, timestamp_mute):
             embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
-                                  description="", color=0xffff00)
-            embed.set_author(name="Вы были замьючены",
-                             icon_url="https://upload.wikimedia.org/wikipedia/commons/d/df/Ukraine_road_sign_3.21.gif")
-            embed.add_field(name="", value=f"Вы получили {warning_word} #{warns_count} на сервере {inter.guild.name}",
+                                  description="", color=0xff8800)
+            embed.set_author(name=f"Вы получили {warning_word} и были замучены",
+                             icon_url=inter.guild.icon.url)
+            embed.set_thumbnail(url="https://media4.giphy.com/media/4A2MFWNlGaGUJcyhlE/giphy.gif")
+            embed.add_field(name="",
+                            value=f"Вы получили {warning_word} ``#{warns_count}`` и были замучены на сервере {inter.guild.name}",
                             inline=False)
             embed.add_field(name="Модератор:", value=f"{inter.author.mention}", inline=False)
-            embed.add_field(name="Длительность:", value=f"{HasRole} <t:{timestamp}:R>", inline=False)
-            embed.add_field(name='Выдано предупреждений:', value=количество, inline=True)
-            embed.add_field(name='Количество предупреждений:', value=warns_count, inline=True)
+            embed.add_field(name=f"Длительность {warning_word}:", value=f"{HasRole} (<t:{timestamp}:R>)", inline=True)
+            embed.add_field(name="Длительность мута:", value=f'{dur} (<t:{timestamp_mute}:R>)', inline=True)
             embed.add_field(name="Причина:", value=f"{reason} ", inline=False)
+            embed.add_field(name='Выдано предупреждений:', value=количество, inline=True)
+            embed.add_field(name='Всего предупреждений:', value=warns_count, inline=True)
             embed.add_field(name="Вам запрещено писать в текстовые каналы и подключаться к голосовым каналам:",
-                            value=f"Поскольку количество предупреждений: {warns_count}", inline=True)
-            embed.add_field(name="Длительность:", value=dur, inline=True)
+                            value=f"Поскольку количество предупреждений превышает: ``{warns_count}``", inline=False)
+            embed.add_field(name="Подать апелляцию:", value=f"<#1044571685900259389>", inline=False)
+
             embed.set_footer(
                 text="Пожалуйста, будьте внимательны! Последующие предупреждения могут привести к более строгим наказаниям.")
             return embed
+        def create_embed_log(dur, timestamp_mute):
+            embed = disnake.Embed(title="", url="",
+                                  description="", color=0xff8800, timestamp=datetime.now())
+            embed.add_field(name="", value=f"Участник {участник.name} ({участник.mention}) был замучен!",
+                            inline=False)
+            embed.set_thumbnail(
+                url="https://media4.giphy.com/media/4A2MFWNlGaGUJcyhlE/giphy.gif")
+            embed.add_field(name="Модератор:", value=f"*{inter.author.name}* ({inter.author.mention})", inline=True)
+            embed.add_field(name="Участник:", value=f"*{участник}* ({участник.mention})", inline=True)
+            embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
+            embed.add_field(name="Время:", value=f"{dur} (<t:{timestamp_mute}:R>)", inline=True)
+            embed.add_field(name="Причина:", value=f"Поскольку количество предупреждений превышает {warns_count}", inline=True)
+            embed.set_footer(text=f"ID участника: {участник.id}")
+            return embed
 
+        channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
         if warns_count == 2:
             dur = '3 часа'
+            timestamp_mute = int(datetime.now().timestamp() + 10800)
             duration = timedelta(hours=3)
             await участник.timeout(duration=duration)
-            embed = embed(dur)
+            embed = create_embed(dur, timestamp_mute)
             await message.edit(embed=embed)
+            embed = create_embed_log(dur, timestamp_mute)
+            await channel.send(embed=embed)
             return
         elif warns_count == 3:
             dur = '6 часов'
+            timestamp_mute = int(datetime.now().timestamp() + 21600)
             duration = timedelta(hours=6)
             await участник.timeout(duration=duration)
-            embed = embed(dur)
+            embed = create_embed(dur, timestamp_mute)
             await message.edit(embed=embed)
+            embed = create_embed_log(dur, timestamp_mute)
+            await channel.send(embed=embed)
             return
         elif warns_count == 4:
             dur = '12 часов'
+            timestamp_mute = int(datetime.now().timestamp() + 43200)
             duration = timedelta(hours=12)
             await участник.timeout(duration=duration)
-            embed = embed(dur)
+            embed = create_embed(dur, timestamp_mute)
             await message.edit(embed=embed)
+            embed = create_embed_log(dur, timestamp_mute)
+            await channel.send(embed=embed)
             return
         elif warns_count == 5:
             dur = '1 день'
+            timestamp_mute = int(datetime.now().timestamp() + 86400)
             duration = timedelta(days=1)
             await участник.timeout(duration=duration)
-            embed = embed(dur)
+            embed = create_embed(dur, timestamp_mute)
             await message.edit(embed=embed)
+            embed = create_embed_log(dur, timestamp_mute)
+            await channel.send(embed=embed)
             return
         elif warns_count == 6:
             dur = '2 дня'
+            timestamp_mute = int(datetime.now().timestamp() + 172800)
             duration = timedelta(days=2)
             await участник.timeout(duration=duration)
-            embed = embed(dur)
+            embed = create_embed(dur, timestamp_mute)
             await message.edit(embed=embed)
+            embed = create_embed_log(dur, timestamp_mute)
+            await channel.send(embed=embed)
             return
         elif warns_count == 7:
             dur = '3 дня'
+            timestamp_mute = int(datetime.now().timestamp() + 259200)
             duration = timedelta(days=3)
             await участник.timeout(duration=duration)
-            embed = embed(dur)
+            embed = create_embed(dur, timestamp_mute)
             await message.edit(embed=embed)
+            embed = create_embed_log(dur, timestamp_mute)
+            await channel.send(embed=embed)
             return
         elif warns_count == 8:
             dur = '5 дней'
+            timestamp_mute = int(datetime.now().timestamp() + 432000)
             duration = timedelta(days=5)
             await участник.timeout(duration=duration)
-            embed = embed(dur)
+            embed = create_embed(dur, timestamp_mute)
             await message.edit(embed=embed)
+            embed = create_embed_log(dur, timestamp_mute)
+            await channel.send(embed=embed)
             return
         elif warns_count == 9:
             dur = '7 дней'
+            timestamp_mute = int(datetime.now().timestamp() + 604800)
             duration = timedelta(days=7)
             await участник.timeout(duration=duration)
-            embed = embed(dur)
+            embed = create_embed(dur, timestamp_mute)
             await message.edit(embed=embed)
+            embed = create_embed_log(dur, timestamp_mute)
+            await channel.send(embed=embed)
             return
 
         elif warns_count >= 10:
@@ -360,9 +405,12 @@ class WarnsCog(commands.Cog):
                                   description="", color=0xff0200)
             embed.set_author(name="Вы были заблокированы!")
             embed.set_thumbnail(url="https://i.imgur.com/o95uhru.gif")
-            embed.add_field(name="Причина:", value="Ваше количество предупреждений превышает: ``10``",
+            embed.add_field(name="", value=f"Вы были забанены на сервере **{inter.guild.name}**!",
                             inline=False)
-            embed.add_field(name="Истекает через:", value=f"30 дней (<t:{timestamp_ban}:R>)",
+            embed.add_field(name="Причина:",
+                            value=f"Ваше количество предупреждений превышает: **10** (``{warns_count}``)",
+                            inline=False)
+            embed.add_field(name="Истекает через:", value=f"``30 дней`` (<t:{timestamp_ban}:R>)",
                             inline=True)
             embed.set_footer(text="Пожалуйста, больше не нарушайте!")
             await участник.send(embed=embed)
