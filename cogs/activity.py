@@ -23,8 +23,9 @@ class ActivityCog(commands.Cog):
             guild = self.bot.get_guild(489867322039992320)
             channel = self.bot.get_channel(944562833901899827)
             tstamp = int(datetime.now().timestamp())
-            embed = disnake.Embed(color=0x8A2BE2)
+            embed = disnake.Embed(color=0xd800f5)
             embed.set_author(name='Самый активный', icon_url=guild.icon.url)
+            embed.set_thumbnail(url="https://i.imgur.com/64ibjZo.gif")
             embed.add_field(name='Участник:', value=f'{user.mention}', inline=True)
             embed.add_field(name='Количество сообщений:', value=f'{messages}', inline=True)
             embed.add_field(name='', value=f'<t:{tstamp - 3600}:t> - <t:{tstamp}:t>', inline=False)
@@ -35,8 +36,9 @@ class ActivityCog(commands.Cog):
         top_user = max(self.message_count, key=self.message_count.get)  # по ключу в словаре ищем чела
         messages = self.message_count[top_user]
         user = self.bot.get_user(top_user)
-        embed = disnake.Embed(color=0x8A2BE2)
+        embed = disnake.Embed(color=0xd800f5)
         embed.set_author(name='Самый активный', icon_url=ctx.guild.icon.url)
+        embed.set_thumbnail(url="https://i.imgur.com/64ibjZo.gif")
         embed.add_field(name='Участник:', value=f'{user.mention}', inline=True)
         embed.add_field(name='Количество сообщений:', value=f'{messages}', inline=True)
         await ctx.send(embed=embed)
