@@ -120,7 +120,7 @@ class MuteCog(commands.Cog):
                 url="https://media4.giphy.com/media/4A2MFWNlGaGUJcyhlE/giphy.gif")
 
             embed.set_footer(text="Мут")
-            await inter.edit_original_message(embed=embed)
+            await inter.edit_original_response(embed=embed)
 
             embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
                                   description="", color=0xff8800, timestamp=datetime.now())

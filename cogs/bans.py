@@ -143,7 +143,7 @@ class BansCog(commands.Cog):
     @commands.slash_command(name="ban", description="Блокирует доступ к серверу")
     async def ban(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member, длительность: str, причина="Не указана"):
         if inter.type == disnake.InteractionType.application_command:
-
+            await inter.response.defer()
             причина = self.get_rule_info(причина)
 
             try:
@@ -183,7 +183,7 @@ class BansCog(commands.Cog):
                 url="https://media1.giphy.com/media/tMf6IV7q9m3pbKPybv/giphy.gif?cid=6c09b952x9el5v0keemitb9f7pe09b04fetyq2ft84dhizs1&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=s")
 
             embed.set_footer(text="Бан")
-            await inter.response.send_message(embed=embed)
+            await inter.edit_original_response(embed=embed)
         else:
             await inter.response.send_message('Интеракция не поддерживается!')
 
@@ -217,6 +217,7 @@ class BansCog(commands.Cog):
 
     @commands.slash_command(name='unban', description='Позволяет снять блокировку с пользователя.')
     async def unban(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member):
+        await inter.response.defer()
         bans = collbans.find_one({'id': участник.id, 'guild_id': inter.guild.id})['ban']
         if bans == 'False':
             embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
@@ -243,7 +244,7 @@ class BansCog(commands.Cog):
             url="https://www.emojiall.com/images/240/telegram/2705.gif")
 
         embed.set_footer(text="Разбан")
-        await inter.response.send_message(embed=embed)
+        await inter.edit_original_response(embed=embed)
 
         embed = disnake.Embed(title="ShadowDragons",
                               url="https://discord.com/invite/KE3psXf",

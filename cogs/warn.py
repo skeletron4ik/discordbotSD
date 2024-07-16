@@ -115,7 +115,7 @@ class WarnsCog(commands.Cog):
     @commands.slash_command(name="warn", description="Выдает предупреждение(-я).")
     async def warn(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member, количество: int,
                    причина="Не указана", длительность: str = None):
-
+        await inter.response.defer()
         reason = self.get_rule_info(причина)
 
         if количество < 1:  # Проверка на невалидное количество
@@ -248,7 +248,7 @@ class WarnsCog(commands.Cog):
         embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
 
         embed.set_footer(text="Предупреждение")
-        await inter.response.send_message(embed=embed)
+        await inter.edit_original_response(embed=embed)
 
         channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
 
@@ -430,6 +430,7 @@ class WarnsCog(commands.Cog):
     async def unwarn(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member,
                      предупреждение: int):
         if inter.type == disnake.InteractionType.application_command:
+            await inter.response.defer()
             if collusers.count_documents({"id": участник.id, "guild_id": inter.guild.id,
                                           f'reasons.{предупреждение - 1}': {"$exists": True}}) == 0:
 
@@ -438,7 +439,7 @@ class WarnsCog(commands.Cog):
                 embed.add_field(name="Попробуйте:", value=f'В параметр `предупреждение` передать существующее предупреждение.', inline=False)
                 embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
                 embed.set_footer(text="Ошибка")
-                await inter.response.send_message(embed=embed, ephemeral=True)
+                await inter.edit_original_response(embed=embed, ephemeral=True)
                 return
             else:
                 collusers.update_one(
@@ -483,7 +484,7 @@ class WarnsCog(commands.Cog):
 
     @commands.slash_command(name='warns', description='Показывает количество текущих предупреждений участника.')
     async def warns(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member = None):
-
+        inter.response.defer()
         usr = collusers.find_one({'id': inter.author.id, 'guild_id': inter.guild.id})
         if участник is not None:
             usr = collusers.find_one({'id': участник.id, 'guild_id': inter.guild.id})
@@ -501,7 +502,7 @@ class WarnsCog(commands.Cog):
                              icon_url=f"{участник.avatar}")
             embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
             embed.add_field(name=f'', value=f'Предупреждения у участника {участник.mention} отсутствуют.', inline=False)
-            await inter.response.send_message(embed=embed, ephemeral=True)
+            await inter.edit_original_response(embed=embed, ephemeral=True)
             return
         embed = disnake.Embed(title=f"Предупреждения участника **{участник.name}**:", url="",
                               description="", color=0xffff00, timestamp=datetime.now())
@@ -512,7 +513,7 @@ class WarnsCog(commands.Cog):
         for value in usr['reasons']:
             amount = amount + 1
             embed.add_field(name=f"Предупреждение ``#{amount}``:", value=f'Причина: {value['reason']}', inline=False)
-        await inter.response.send_message(embed=embed, ephemeral=True)
+        await inter.edit_original_response(embed=embed, ephemeral=True)
 
 
 def setup(bot):
