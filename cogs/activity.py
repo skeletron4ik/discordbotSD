@@ -37,19 +37,23 @@ class ActivityCog(commands.Cog):
 
     @commands.slash_command(name='topuser', description='Показывает самого активного участника за час.')
     async def topuser(self, inter: disnake.ApplicationCommandInteraction):
-        await inter.response.defer()
-        top_user = max(self.message_count, key=self.message_count.get)  # по ключу в словаре ищем чела
-        messages = self.message_count[top_user]
-        if top_user == 'Никто':
-            user = 'Никто'
-        user = self.bot.get_user(top_user)
-        user = user.mention
-        embed = disnake.Embed(color=0xd800f5)
-        embed.set_author(name='Самый активный', icon_url=inter.guild.icon.url)
-        embed.set_thumbnail(url="https://i.imgur.com/64ibjZo.gif")
-        embed.add_field(name='Участник:', value=f'{user}', inline=True)
-        embed.add_field(name='Количество сообщений:', value=f'{messages}', inline=True)
-        await inter.edit_original_response(embed=embed)
+        if inter.type == disnake.InteractionType.application_command:
+            await inter.response.defer()
+            top_user = max(self.message_count, key=self.message_count.get)  # по ключу в словаре ищем чела
+            messages = self.message_count[top_user]
+            if top_user == 'Никто':
+                user = 'Никто'
+            user = self.bot.get_user(top_user)
+            user = user.mention
+            embed = disnake.Embed(color=0xd800f5)
+            embed.set_author(name='Самый активный', icon_url=inter.guild.icon.url)
+            embed.set_thumbnail(url="https://i.imgur.com/64ibjZo.gif")
+            embed.add_field(name='Участник:', value=f'{user}', inline=True)
+            embed.add_field(name='Количество сообщений:', value=f'{messages}', inline=True)
+            try:
+                await inter.edit_original_response(embed=embed, ephemeral=True)
+            except:
+                await inter.response.send_message(embed=embed, ephemeral=True)
 
 
     @commands.Cog.listener()

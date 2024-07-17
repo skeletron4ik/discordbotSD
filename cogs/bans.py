@@ -183,9 +183,10 @@ class BansCog(commands.Cog):
                 url="https://media1.giphy.com/media/tMf6IV7q9m3pbKPybv/giphy.gif?cid=6c09b952x9el5v0keemitb9f7pe09b04fetyq2ft84dhizs1&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=s")
 
             embed.set_footer(text="Бан")
-            await inter.edit_original_response(embed=embed)
-        else:
-            await inter.response.send_message('Интеракция не поддерживается!')
+            try:
+                await inter.edit_original_response(embed=embed)
+            except:
+                await inter.response.send_message(embed=embed)
 
         embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
                               description="", color=0xff0000, timestamp=datetime.now())
