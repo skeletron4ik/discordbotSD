@@ -218,16 +218,20 @@ class BansCog(commands.Cog):
 
     @commands.slash_command(name='unban', description='Позволяет снять блокировку с пользователя.')
     async def unban(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member):
-        await inter.response.defer()
-        bans = collbans.find_one({'id': участник.id, 'guild_id': inter.guild.id})['ban']
-        if bans == 'False':
-            embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
-            embed.add_field(name=f'Ошибка',
-                            value=f'Участник сервера **{участник.mention}** не находится в блокировке.')
-            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-            embed.set_footer(text="Ошибка")
-            await inter.response.send_message(embed=embed, ephemeral=True)
-            return
+        if inter.type == disnake.InteractionType.application_command:
+            await inter.response.defer()
+            bans = collbans.find_one({'id': участник.id, 'guild_id': inter.guild.id})['ban']
+            if bans == 'False':
+                embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+                embed.add_field(name=f'Ошибка',
+                                value=f'Участник сервера **{участник.mention}** не находится в блокировке.')
+                embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+                embed.set_footer(text="Ошибка")
+                try:
+                        await inter.edit_original_response(embed=embed)
+                except:
+                    await inter.response.send_message(embed=embed, ephemeral=True)
+                return
 
         query = {'id': участник.id, 'guild_id': inter.guild.id}
         task = {'$set': {'ban': False, 'Timestamp': 0, 'reason': None}}

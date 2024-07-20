@@ -38,7 +38,11 @@ class ActivityCog(commands.Cog):
     @commands.slash_command(name='topuser', description='Показывает самого активного участника за час.')
     async def topuser(self, inter: disnake.ApplicationCommandInteraction):
         if inter.type == disnake.InteractionType.application_command:
-            await inter.response.defer()
+            try:
+                await inter.response.defer()
+            except:
+                return
+
             top_user = max(self.message_count, key=self.message_count.get)  # по ключу в словаре ищем чела
             messages = self.message_count[top_user]
             if top_user == 'Никто':
@@ -51,10 +55,11 @@ class ActivityCog(commands.Cog):
             embed.add_field(name='Участник:', value=f'{user}', inline=True)
             embed.add_field(name='Количество сообщений:', value=f'{messages}', inline=True)
             try:
-                await inter.edit_original_response(embed=embed, ephemeral=True)
+                await inter.edit_original_response(embed=embed)
             except:
                 await inter.response.send_message(embed=embed, ephemeral=True)
-
+        else:
+            await inter.send('error')
 
     @commands.Cog.listener()
     async def on_message(self, message):

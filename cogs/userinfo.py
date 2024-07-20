@@ -22,7 +22,10 @@ class InfoCog(commands.Cog):
     @commands.slash_command(name='userinfo', description='Выводит нужную информацию об участнике')
     async def user(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
         if inter.type == disnake.InteractionType.application_command:
-            await inter.response.defer()
+            try:
+                await inter.response.defer()
+            except:
+                return
         embed = disnake.Embed(title=f"Информация об участнике **{участник.name}**:", url="",
                               description="", color=0x00b7ff, timestamp=datetime.now())
         embed.set_author(name=f"{участник.name}",
@@ -48,10 +51,12 @@ class InfoCog(commands.Cog):
             embed.add_field(name=f'', value=f'Находится ли участник в муте?: {mute}', inline=False)
 
             try:
-                await inter.edit_original_response(embed=embed, ephemeral=True)
+                await inter.edit_original_response(embed=embed)
             except:
                 await inter.response.send_message(embed=embed, ephemeral=True)
             return
+        else:
+            await inter.send('error')
         warns_count = collusers.find_one({'id': участник.id, 'guild_id': inter.guild.id})['warns']
         ban = collbans.find_one({'id': участник.id, 'guild_id': inter.guild.id})['ban']
         case = collservers.find_one({'_id': inter.guild.id})['case']
@@ -68,7 +73,7 @@ class InfoCog(commands.Cog):
         embed.add_field(name=f'', value=f'**Находится ли участник в бане?:** ``{ban}``', inline=False)
         embed.add_field(name=f'', value=f'**Находится ли участник в муте?:** ``{mute}``', inline=False)
         try:
-            await inter.edit_original_response(embed=embed, ephemeral=True)
+            await inter.edit_original_response(embed=embed)
         except:
             await inter.response.send_message(embed=embed, ephemeral=True)
         return
