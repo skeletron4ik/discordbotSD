@@ -26,10 +26,10 @@ class InfoCog(commands.Cog):
                 await inter.response.defer()
             except:
                 return
-        embed = disnake.Embed(title=f"Информация об участнике **{участник.name}**:", url="",
+        embed = disnake.Embed(title=f"Информация об участнике **{inter.author.name}**:", url="",
                               description="", color=0x00b7ff, timestamp=datetime.now())
-        embed.set_author(name=f"{участник.name}",
-                         icon_url=f"{участник.avatar}")
+        embed.set_author(name=f"{inter.author.name}",
+                         icon_url=f"{inter.author.avatar}")
         embed.set_thumbnail(url="https://media0.giphy.com/media/epyCv3K3uvRXw4LaPY/giphy.gif")
         if участник is None:
             warns_count = collusers.find_one({'id': inter.author.id, 'guild_id': inter.guild.id})['warns']

@@ -116,7 +116,10 @@ class WarnsCog(commands.Cog):
     async def warn(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member, количество: int,
                    причина="Не указана", длительность: str = None):
         if inter.type == disnake.InteractionType.application_command:
-            await inter.response.defer()
+            try:
+                await inter.response.defer(ephemeral=True)
+            except:
+                return
             reason = self.get_rule_info(причина)
 
             if количество < 1:  # Проверка на невалидное количество
@@ -203,8 +206,10 @@ class WarnsCog(commands.Cog):
                     timestamp = int(datetime.now().timestamp() + convert_to_seconds(длительность))
                     HasRole = format_duration(длительность)
                 except ValueError as e:
-                    await inter.response.send_message(f"Ошибка: {e}", ephemeral=True)
-                    return
+                    try:
+                        await inter.edit_original_response(f"Ошибка в конвертации.")
+                    except:
+                        await inter.response.send_message(f"Ошибка в конвертации.", ephemeral=True)
             else:
                 if role in участник.roles or rolediamond in участник.roles:
                     timestamp = int(datetime.now().timestamp() + 1728000)
@@ -213,7 +218,6 @@ class WarnsCog(commands.Cog):
                     timestamp = int(datetime.now().timestamp() + 2592000)
                     HasRole = '30 дней'
 
-            print(timestamp)
             warn_info = {
                 "reason": reason,
                 "timestamp": timestamp
@@ -513,7 +517,10 @@ class WarnsCog(commands.Cog):
                                  icon_url=f"{участник.avatar}")
                 embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
                 embed.add_field(name=f'', value=f'Предупреждения у участника {участник.mention} отсутствуют.', inline=False)
-                await inter.edit_original_response(embed=embed, ephemeral=True)
+                try:
+                    await inter.edit_original_response(embed=embed)
+                except:
+                    await inter.response.send_message(embed=embed, ephemeral=True)
                 return
             embed = disnake.Embed(title=f"Предупреждения участника **{участник.name}**:", url="",
                                   description="", color=0xffff00, timestamp=datetime.now())

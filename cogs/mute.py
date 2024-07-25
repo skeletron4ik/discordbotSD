@@ -100,7 +100,7 @@ class MuteCog(commands.Cog):
                 formatted_duration = self.format_duration(время)
                 seconds = self.convert_to_seconds(время)
             except ValueError as e:
-                await inter.send(f"Ошибка: {e}")
+                await inter.send(f"Ошибка в конвертации.")
                 return
 
             duration = timedelta(seconds=seconds)
