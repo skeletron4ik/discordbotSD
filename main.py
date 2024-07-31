@@ -14,6 +14,7 @@ cluster = MongoClient(
 collusers = cluster.server.users
 collservers = cluster.server.servers
 collbans = cluster.server.bans
+colltemp_roles = cluster.server.temp_roles
 
 class RulesClass:
     def __init__(self, bot):
@@ -58,6 +59,12 @@ async def on_ready():
                 "_id": guild.id,
                 "case": 0
             }
+            temp_role_values = {
+                "id": member.id,
+                "guild_id": guild.id,
+                "number_of_roles": 0,
+                "role_id": []
+            }
 
             if collusers.count_documents({"id": member.id, "guild_id": guild.id}) == 0:
                 collusers.insert_one(values)
@@ -65,7 +72,8 @@ async def on_ready():
                 collservers.insert_one(server_values)
             if collbans.count_documents({"id": member.id, "guild_id": guild.id}) == 0:
                 collbans.insert_one(ban_values)
-
+            if colltemp_roles.count_documents({"id": member.id, "guild_id": guild.id}) == 0:
+                colltemp_roles.insert_one(temp_role_values)
 
 
 @bot.event
@@ -83,11 +91,19 @@ async def on_member_join(member):
         'Timestamp': 0,
         "reasons": 'None'
     }
+    temp_role_values = {
+        "id": member.id,
+        "guild_id": member.guild.id,
+        "number_of_roles": 0,
+        "role_id": []
+    }
 
     if collusers.count_documents({"id": member.id, "guild_id": member.guild.id}) == 0:
         collusers.insert_one(values)
     if collbans.count_documents({"id": member.id, "guild_id": member.guild.id}) == 0:
         collbans.insert_one(ban_values)
+    if colltemp_roles.count_documents({"id": member.id, "guild_id": member.guild.id}) == 0:
+        colltemp_roles.insert_one(temp_role_values)
 
 
 @bot.event

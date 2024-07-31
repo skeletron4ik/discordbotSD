@@ -9,7 +9,7 @@ cluster = MongoClient(
 collusers = cluster.server.users
 collservers = cluster.server.servers
 collbans = cluster.server.bans
-
+colltemp_roles = cluster.server.temp_roles
 class BansCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot

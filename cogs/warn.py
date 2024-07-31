@@ -13,7 +13,7 @@ cluster = MongoClient(
 collusers = cluster.server.users
 collservers = cluster.server.servers
 collbans = cluster.server.bans
-
+colltemp_roles = cluster.server.temp_roles
 
 class WarnsCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -131,6 +131,20 @@ class WarnsCog(commands.Cog):
                 embed.set_footer(text="Ошибка")
                 await inter.response.send_message(embed=embed, ephemeral=True)
 
+            # ID ролей, которые имеют иммунитет к предупреждениям
+            immune_roles = [702593498901381184,  # Модератор
+                            580790278697254913,  # Гл. Модератор
+                            518505773022838797]  # Администратор
+            admin_role = inter.guild.get_role(518505773022838797)
+
+            # Проверка, если участник имеет иммунитетную роль и автор не администратор
+            if any(role.id in immune_roles for role in участник.roles) and admin_role not in inter.author.roles:
+                embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+                embed.add_field(name=f'Ошибка', value=f'Вы не можете выдать предупреждение этому участнику.')
+                embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+                embed.set_footer(text="Ошибка")
+                await inter.followup.send(embed=embed, ephemeral=True)
+                return
 
             def get_warning_word(count):
                 if count % 10 == 1 and count % 100 != 11:
@@ -200,6 +214,7 @@ class WarnsCog(commands.Cog):
 
             role = inter.guild.get_role(757930494301044737)
             rolediamond = inter.guild.get_role(1044314368717897868)
+            moderator_role = inter.guild.get_role(702593498901381184)
 
             if длительность:
                 try:
@@ -246,12 +261,9 @@ class WarnsCog(commands.Cog):
                 colour=0xffff00,
                 timestamp=datetime.now()
             )
-
             embed.set_author(name=f"{inter.author.name}",
                              icon_url=f"{inter.author.avatar}")
-
             embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
-
             embed.set_footer(text="Предупреждение")
             try:
                 await inter.edit_original_response(embed=embed)
@@ -309,7 +321,6 @@ class WarnsCog(commands.Cog):
             embed.add_field(name="Вам запрещено писать в текстовые каналы и подключаться к голосовым каналам:",
                             value=f"Поскольку количество предупреждений превышает: ``{warns_count}``", inline=False)
             embed.add_field(name="Подать апелляцию:", value=f"<#1044571685900259389>", inline=False)
-
             embed.set_footer(
                 text="Пожалуйста, будьте внимательны! Последующие предупреждения могут привести к более строгим наказаниям.")
             return embed
@@ -328,111 +339,125 @@ class WarnsCog(commands.Cog):
             embed.set_footer(text=f"ID участника: {участник.id}")
             return embed
 
-        channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
-        if warns_count == 2:
-            dur = '3 часа'
-            timestamp_mute = int(datetime.now().timestamp() + 10800)
-            duration = timedelta(hours=3)
-            await участник.timeout(duration=duration)
-            embed = create_embed(dur, timestamp_mute)
-            await message.edit(embed=embed)
-            embed = create_embed_log(dur, timestamp_mute)
-            await channel.send(embed=embed)
-            return
-        elif warns_count == 3:
-            dur = '6 часов'
-            timestamp_mute = int(datetime.now().timestamp() + 21600)
-            duration = timedelta(hours=6)
-            await участник.timeout(duration=duration)
-            embed = create_embed(dur, timestamp_mute)
-            await message.edit(embed=embed)
-            embed = create_embed_log(dur, timestamp_mute)
-            await channel.send(embed=embed)
-            return
-        elif warns_count == 4:
-            dur = '12 часов'
-            timestamp_mute = int(datetime.now().timestamp() + 43200)
-            duration = timedelta(hours=12)
-            await участник.timeout(duration=duration)
-            embed = create_embed(dur, timestamp_mute)
-            await message.edit(embed=embed)
-            embed = create_embed_log(dur, timestamp_mute)
-            await channel.send(embed=embed)
-            return
-        elif warns_count == 5:
-            dur = '1 день'
-            timestamp_mute = int(datetime.now().timestamp() + 86400)
-            duration = timedelta(days=1)
-            await участник.timeout(duration=duration)
-            embed = create_embed(dur, timestamp_mute)
-            await message.edit(embed=embed)
-            embed = create_embed_log(dur, timestamp_mute)
-            await channel.send(embed=embed)
-            return
-        elif warns_count == 6:
-            dur = '2 дня'
-            timestamp_mute = int(datetime.now().timestamp() + 172800)
-            duration = timedelta(days=2)
-            await участник.timeout(duration=duration)
-            embed = create_embed(dur, timestamp_mute)
-            await message.edit(embed=embed)
-            embed = create_embed_log(dur, timestamp_mute)
-            await channel.send(embed=embed)
-            return
-        elif warns_count == 7:
-            dur = '3 дня'
-            timestamp_mute = int(datetime.now().timestamp() + 259200)
-            duration = timedelta(days=3)
-            await участник.timeout(duration=duration)
-            embed = create_embed(dur, timestamp_mute)
-            await message.edit(embed=embed)
-            embed = create_embed_log(dur, timestamp_mute)
-            await channel.send(embed=embed)
-            return
-        elif warns_count == 8:
-            dur = '5 дней'
-            timestamp_mute = int(datetime.now().timestamp() + 432000)
-            duration = timedelta(days=5)
-            await участник.timeout(duration=duration)
-            embed = create_embed(dur, timestamp_mute)
-            await message.edit(embed=embed)
-            embed = create_embed_log(dur, timestamp_mute)
-            await channel.send(embed=embed)
-            return
-        elif warns_count == 9:
-            dur = '7 дней'
-            timestamp_mute = int(datetime.now().timestamp() + 604800)
-            duration = timedelta(days=7)
-            await участник.timeout(duration=duration)
-            embed = create_embed(dur, timestamp_mute)
-            await message.edit(embed=embed)
-            embed = create_embed_log(dur, timestamp_mute)
-            await channel.send(embed=embed)
-            return
+        if moderator_role in участник.roles:
+            if warns_count >= 5:
+                await участник.remove_roles(moderator_role)
+                embed = disnake.Embed(
+                    description=f"У участника {участник.mention} было снято право модератора из-за получения {warns_count} предупреждений.",
+                    colour=0xff0000,
+                    timestamp=datetime.now()
+                )
+                embed.set_author(name=f"{inter.author.name}",
+                                 icon_url=f"{inter.author.avatar}")
+                embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+                embed.set_footer(text="Права модератора сняты")
+                await channel.send(embed=embed)
+        else:
+            channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
+            if warns_count == 2:
+                dur = '3 часа'
+                timestamp_mute = int(datetime.now().timestamp() + 10800)
+                duration = timedelta(hours=3)
+                await участник.timeout(duration=duration)
+                embed = create_embed(dur, timestamp_mute)
+                await message.edit(embed=embed)
+                embed = create_embed_log(dur, timestamp_mute)
+                await channel.send(embed=embed)
+                return
+            elif warns_count == 3:
+                dur = '6 часов'
+                timestamp_mute = int(datetime.now().timestamp() + 21600)
+                duration = timedelta(hours=6)
+                await участник.timeout(duration=duration)
+                embed = create_embed(dur, timestamp_mute)
+                await message.edit(embed=embed)
+                embed = create_embed_log(dur, timestamp_mute)
+                await channel.send(embed=embed)
+                return
+            elif warns_count == 4:
+                dur = '12 часов'
+                timestamp_mute = int(datetime.now().timestamp() + 43200)
+                duration = timedelta(hours=12)
+                await участник.timeout(duration=duration)
+                embed = create_embed(dur, timestamp_mute)
+                await message.edit(embed=embed)
+                embed = create_embed_log(dur, timestamp_mute)
+                await channel.send(embed=embed)
+                return
+            elif warns_count == 5:
+                dur = '1 день'
+                timestamp_mute = int(datetime.now().timestamp() + 86400)
+                duration = timedelta(days=1)
+                await участник.timeout(duration=duration)
+                embed = create_embed(dur, timestamp_mute)
+                await message.edit(embed=embed)
+                embed = create_embed_log(dur, timestamp_mute)
+                await channel.send(embed=embed)
+                return
+            elif warns_count == 6:
+                dur = '2 дня'
+                timestamp_mute = int(datetime.now().timestamp() + 172800)
+                duration = timedelta(days=2)
+                await участник.timeout(duration=duration)
+                embed = create_embed(dur, timestamp_mute)
+                await message.edit(embed=embed)
+                embed = create_embed_log(dur, timestamp_mute)
+                await channel.send(embed=embed)
+                return
+            elif warns_count == 7:
+                dur = '3 дня'
+                timestamp_mute = int(datetime.now().timestamp() + 259200)
+                duration = timedelta(days=3)
+                await участник.timeout(duration=duration)
+                embed = create_embed(dur, timestamp_mute)
+                await message.edit(embed=embed)
+                embed = create_embed_log(dur, timestamp_mute)
+                await channel.send(embed=embed)
+                return
+            elif warns_count == 8:
+                dur = '5 дней'
+                timestamp_mute = int(datetime.now().timestamp() + 432000)
+                duration = timedelta(days=5)
+                await участник.timeout(duration=duration)
+                embed = create_embed(dur, timestamp_mute)
+                await message.edit(embed=embed)
+                embed = create_embed_log(dur, timestamp_mute)
+                await channel.send(embed=embed)
+                return
+            elif warns_count == 9:
+                dur = '7 дней'
+                timestamp_mute = int(datetime.now().timestamp() + 604800)
+                duration = timedelta(days=7)
+                await участник.timeout(duration=duration)
+                embed = create_embed(dur, timestamp_mute)
+                await message.edit(embed=embed)
+                embed = create_embed_log(dur, timestamp_mute)
+                await channel.send(embed=embed)
+                return
 
-        elif warns_count >= 10:
-            role = inter.guild.get_role(1229075137374978119)
-            channel = inter.guild.get_channel(1042818334644768871)
-            timestamp_ban = int(datetime.now().timestamp() + 2592000)
-            collbans.update_one({'id': участник.id, 'guild_id': inter.guild.id},
-                                {"$set": {'Timestamp': timestamp_ban, 'ban': 'True', "reason": '10 предупреждений'}})
-            await участник.add_roles(role)
-            embed = disnake.Embed(title="ShadowDragons",
-                                  url="https://upload.wikimedia.org/wikipedia/commons/d/df/Ukraine_road_sign_3.21.gif",
-                                  description="", color=0xff0200)
-            embed.set_author(name="Вы были заблокированы!", icon_url=inter.guild.icon.url)
-            embed.set_thumbnail(url="https://i.imgur.com/o95uhru.gif")
-            embed.add_field(name="", value=f"Вы были забанены на сервере **{inter.guild.name}**!",
-                            inline=False)
-            embed.add_field(name="Причина:",
-                            value=f"Ваше количество предупреждений превышает: **10** (``{warns_count}``)",
-                            inline=False)
-            embed.add_field(name="Истекает через:", value=f"``30 дней`` (<t:{timestamp_ban}:R>)",
-                            inline=True)
-            embed.set_footer(text="Пожалуйста, больше не нарушайте!")
-            await участник.send(embed=embed)
+            elif warns_count >= 10:
+                role = inter.guild.get_role(1229075137374978119)
+                channel = inter.guild.get_channel(1042818334644768871)
+                timestamp_ban = int(datetime.now().timestamp() + 2592000)
+                collbans.update_one({'id': участник.id, 'guild_id': inter.guild.id},
+                                    {"$set": {'Timestamp': timestamp_ban, 'ban': 'True', "reason": '10 предупреждений'}})
+                await участник.add_roles(role)
+                embed = disnake.Embed(title="ShadowDragons",
+                                      url="https://upload.wikimedia.org/wikipedia/commons/d/df/Ukraine_road_sign_3.21.gif",
+                                      description="", color=0xff0200)
+                embed.set_author(name="Вы были заблокированы!", icon_url=inter.guild.icon.url)
+                embed.set_thumbnail(url="https://i.imgur.com/o95uhru.gif")
+                embed.add_field(name="", value=f"Вы были забанены на сервере **{inter.guild.name}**!",
+                                inline=False)
+                embed.add_field(name="Причина:",
+                                value=f"Ваше количество предупреждений превышает: **10** (``{warns_count}``)",
+                                inline=False)
+                embed.add_field(name="Истекает через:", value=f"``30 дней`` (<t:{timestamp_ban}:R>)",
+                                inline=True)
+                embed.set_footer(text="Пожалуйста, больше не нарушайте!")
+                await участник.send(embed=embed)
 
-            return
+                return
 
     @commands.slash_command(name='unwarn', description='Позволяет снять предупреждение с игрока')
     async def unwarn(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member,
@@ -534,7 +559,7 @@ class WarnsCog(commands.Cog):
             try:
                 await inter.edit_original_response(embed=embed, ephemeral=True)
             except:
-                await inter.response.send_message(embed=embed, ephemeral=True)
+                await inter.followup.send(embed=embed, ephemeral=True)
 
 
 def setup(bot):
