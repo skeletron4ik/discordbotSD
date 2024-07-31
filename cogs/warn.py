@@ -117,7 +117,7 @@ class WarnsCog(commands.Cog):
                    причина="Не указана", длительность: str = None):
         if inter.type == disnake.InteractionType.application_command:
             try:
-                await inter.response.defer(ephemeral=True)
+                await inter.response.defer()
             except:
                 return
             reason = self.get_rule_info(причина)
@@ -463,7 +463,7 @@ class WarnsCog(commands.Cog):
     async def unwarn(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member,
                      предупреждение: int):
         if inter.type == disnake.InteractionType.application_command:
-            await inter.response.defer()
+            await inter.response.defer(ephemeral=True)
             if collusers.count_documents({"id": участник.id, "guild_id": inter.guild.id,
                                           f'reasons.{предупреждение - 1}': {"$exists": True}}) == 0:
 
@@ -524,7 +524,10 @@ class WarnsCog(commands.Cog):
     @commands.slash_command(name='warns', description='Показывает количество текущих предупреждений участника.')
     async def warns(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member = None):
         if inter.type == disnake.InteractionType.application_command:
-            await inter.response.defer()
+            try:
+                await inter.response.defer(ephemeral=True)
+            except:
+                return
             usr = collusers.find_one({'id': inter.author.id, 'guild_id': inter.guild.id})
             if участник is not None:
                 usr = collusers.find_one({'id': участник.id, 'guild_id': inter.guild.id})
@@ -557,7 +560,7 @@ class WarnsCog(commands.Cog):
                 amount = amount + 1
                 embed.add_field(name=f"Предупреждение ``#{amount}``:", value=f'Причина: {value['reason']}', inline=False)
             try:
-                await inter.edit_original_response(embed=embed, ephemeral=True)
+                await inter.edit_original_response(embed=embed)
             except:
                 await inter.followup.send(embed=embed, ephemeral=True)
 

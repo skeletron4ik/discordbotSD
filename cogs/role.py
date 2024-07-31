@@ -84,7 +84,7 @@ class Role(commands.Cog):
 
     @tasks.loop(seconds=210)  # Проверка каждые 3.5 минуты
     async def check_temp_roles(self):
-        current_time = datetime.utcnow()
+        current_time = int(datetime.now().timestamp())
         expired_roles = colltemp_roles.find({"role_id.expires_at": {"$lte": current_time}})
 
         for user in expired_roles:
@@ -128,215 +128,227 @@ class Role(commands.Cog):
     @commands.slash_command(name="role-give", description="Выдает роль участнику")
     async def rolegive(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member,
                        роль: disnake.Role, время: str = None):
-        if роль.id in self.restricted_roles and not self.is_admin_or_mod(inter.user):
-            embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
-            embed.add_field(name=f'Ошибка', value=f'У Вас недостаточно прав для выдачи роли {роль.name}.')
-            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-            embed.set_footer(text="Ошибка")
-            await inter.response.send_message(embed=embed, ephemeral=True)
-            return
+        if inter.type == disnake.InteractionType.application_command:
+            await inter.response.defer(ephemeral=True)
 
-        if роль in участник.roles:
-            embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
-            embed.add_field(name=f'Ошибка', value=f'У участника {участник.display_name} уже есть роль {роль.name}.')
-            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-            embed.set_footer(text="Ошибка")
-            await inter.response.send_message(embed=embed, ephemeral=True)
-            return
+            if роль.id in self.restricted_roles and not self.is_admin_or_mod(inter.user):
+                embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+                embed.add_field(name=f'Ошибка', value=f'У Вас недостаточно прав для выдачи роли {роль.name}.')
+                embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+                embed.set_footer(text="Ошибка")
+                await inter.edit_original_response(embed=embed)
+                return
 
-        try:
-            await участник.add_roles(роль)
-            if время:
-                duration = self.convert_to_seconds(время)
-                expiry = datetime.utcnow() + timedelta(seconds=duration)
-                colltemp_roles.update_one(
-                    {"id": участник.id, "guild_id": inter.guild.id},
-                    {
-                        "$push": {"role_id": {"role_id": роль.id, "expires_at": expiry}},
-                        "$inc": {"number_of_roles": 1}
-                    },
-                    upsert=True
-                )
-                formatted_duration = self.format_duration(время)
-                embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
-                embed.add_field(name="Роль выдана", value=f"Роль {роль.name} выдана {участник.display_name} на {formatted_duration}.")
+            if роль in участник.roles:
+                embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+                embed.add_field(name=f'Ошибка', value=f'У участника {участник.display_name} уже есть роль {роль.name}.')
+                embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+                embed.set_footer(text="Ошибка")
+                await inter.edit_original_response(embed=embed)
+                return
+
+            try:
+                await участник.add_roles(роль)
+                if время:
+                    duration = self.convert_to_seconds(время)
+                    expiry = datetime.now() + timedelta(seconds=duration)
+                    expiry = int(expiry.timestamp())
+                    colltemp_roles.update_one(
+                        {"id": участник.id, "guild_id": inter.guild.id},
+                        {
+                            "$push": {"role_id": {"role_id": роль.id, "expires_at": expiry}},
+                            "$inc": {"number_of_roles": 1}
+                        },
+                        upsert=True
+                    )
+                    formatted_duration = self.format_duration(время)
+                    embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
+                    embed.add_field(name="Роль выдана", value=f"Роль {роль.name} выдана {участник.display_name} и закончится <t:{expiry}:R>.")
+                    embed.set_thumbnail(url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
+                    await inter.edit_original_response(embed=embed)
+                else:
+                    embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
+                    embed.add_field(name="Роль выдана", value=f"Роль {роль.name} выдана {участник.display_name} на неограниченное время.")
+                    embed.set_thumbnail(url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
+                    await inter.edit_original_response(embed=embed)
+
+                if роль.id == self.moderator_role_id:
+                    embed = disnake.Embed(title="Shadow Dragons",
+                                          url="https://discord.com/invite/KE3psXf",
+                                          colour=0x005ef5,
+                                          timestamp=datetime.now())
+                    embed.set_author(name="Вы были назначены Модератором!",
+                                     icon_url=inter.guild.icon.url)
+                    embed.add_field(name="Мои поздравления!",
+                                    value=f"Вы были назначены **Модератором** сервера ``{inter.guild.name}``!",
+                                    inline=False)
+                    embed.add_field(name="Информация:",
+                                    value="Вся нужная информация находится в закрепленном сообщении канала\n <#1150520720569401374>.",
+                                    inline=False)
+                    embed.add_field(name="FAQ - часто задаваемые вопросы:",
+                                    value="https://docs.google.com/document/d/1ViJJCVQxL4EYLAcMjkdm5odiWan29STs\n||Для доступа нужно заходить с почты, которую Вы указывали.||",
+                                    inline=False)
+                    embed.add_field(name="Система предупреждений персонала:",
+                                    value="https://docs.google.com/spreadsheets/d/1coh1PzPXptGZzZY874Nylh4iZ2ftJyA0F-CA2dEFiNY/edit?gid=0#gid=0",
+                                    inline=False)
+                    immunity_end_time = datetime.now() + timedelta(days=7)
+                    timestamp = int(immunity_end_time.timestamp())
+                    embed.add_field(name="Испытательный срок:",
+                                    value="Сейчас на Вас действует иммунитет в течении 7 дней, во время которого Вы не получите предупреждение за ошибки.\n"
+                                          "||К этому не относятся: перебаны, перемуты, покрывательство, выход за рамки нормального поведения и другая чушь.||\n\n"
+                                          f"Иммунитет истекает: <t:{timestamp}:R>",
+                                    inline=False)
+                    embed.add_field(name="Еmail:",
+                                    value="Пожалуйста, укажите свой Email по кнопке ниже.\n Это требуется для того, чтобы получить доступ к файлу FAQ.\n"
+                                          "||Ваш Email будет виден только Администрации | В случае неработоспособности кнопки, свяжитесь с Администрацией напрямую.||",
+                                    inline=False)
+                    embed.set_thumbnail(url="https://i.imgur.com/bugnSyX.gif")
+                    embed.set_footer(text=f"Вас назначил: {inter.author.display_name}",
+                                     icon_url=inter.author.avatar.url)
+                    class EmailModal(disnake.ui.Modal):
+                        def __init__(self, bot, участник):
+                            self.bot = bot
+                            self.участник = участник
+                            components = [
+                                disnake.ui.TextInput(
+                                    label="Email",
+                                    custom_id="email",
+                                    style=disnake.TextInputStyle.short,
+                                    placeholder="example@example.com",
+                                    required=True,
+                                    min_length=10,
+                                    max_length=50,
+                                )
+                            ]
+                            super().__init__(title="Указать Email", components=components)
+
+                        async def callback(self, interaction: disnake.ModalInteraction):
+                            email = interaction.text_values["email"]
+                            await interaction.response.send_message('Загрузка..')
+                            if '@' in str(email):
+                                button = EmailButton
+                                channel = self.bot.get_channel(944562833901899827)
+                                embed1 = disnake.Embed(title="Новый Email",
+                                                      description=f"Email {self.участник.display_name}: {email}",
+                                                      color=0x00d5ff,
+                                                      timestamp=datetime.now())
+                                await channel.send(embed=embed1)
+                                await interaction.edit_original_response("Email успешно указан!")
+                                button.disabled = True
+                            else:
+                                await interaction.edit_original_response('Некорректная почта')
+
+                    class EmailButton(disnake.ui.Button):
+                        def __init__(self, bot, участник):
+                            super().__init__(label="Указать Email", style=disnake.ButtonStyle.success,
+                                             custom_id="email_button")
+                            self.bot = bot
+                            self.участник = участник
+
+                        async def callback(self, interaction: disnake.MessageInteraction):
+                            await interaction.response.send_modal(EmailModal(self.bot, self.участник))
+
+                    view = disnake.ui.View(timeout=None)
+                    view.add_item(EmailButton(self.bot, участник))
+
+                    try:
+                        await участник.send(embed=embed, view=view)
+                    except disnake.Forbidden:
+                        embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+                        embed.add_field(name="Ошибка", value=f"{участник.mention}, не удалось отправить вам ЛС. Пожалуйста, проверьте настройки конфиденциальности.")
+                        await inter.send(embed=embed)
+
+                # Log embed
+                channel = await self.bot.fetch_channel(944562833901899827)
+                embed = disnake.Embed(title="", url="", description="", color=0x00d5ff, timestamp=datetime.utcnow())
+                embed.add_field(name="",
+                                value=f"Участник **{участник.name}** ({участник.mention}) получил роль ``{роль.name}``",
+                                inline=False)
                 embed.set_thumbnail(url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
-                await inter.response.send_message(embed=embed, ephemeral=True)
-            else:
-                embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
-                embed.add_field(name="Роль выдана", value=f"Роль {роль.name} выдана {участник.display_name} на неограниченное время.")
-                embed.set_thumbnail(url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
-                await inter.response.send_message(embed=embed, ephemeral=True)
-
-            if роль.id == self.moderator_role_id:
-                embed = disnake.Embed(title="Shadow Dragons",
-                                      url="https://discord.com/invite/KE3psXf",
-                                      colour=0x005ef5,
-                                      timestamp=datetime.now())
-                embed.set_author(name="Вы были назначены Модератором!",
-                                 icon_url=inter.guild.icon.url)
-                embed.add_field(name="Мои поздравления!",
-                                value=f"Вы были назначены **Модератором** сервера ``{inter.guild.name}``!",
-                                inline=False)
-                embed.add_field(name="Информация:",
-                                value="Вся нужная информация находится в закрепленном сообщении канала\n <#1150520720569401374>.",
-                                inline=False)
-                embed.add_field(name="FAQ - часто задаваемые вопросы:",
-                                value="https://docs.google.com/document/d/1ViJJCVQxL4EYLAcMjkdm5odiWan29STs\n||Для доступа нужно заходить с почты, которую Вы указывали.||",
-                                inline=False)
-                embed.add_field(name="Система предупреждений персонала:",
-                                value="https://docs.google.com/spreadsheets/d/1coh1PzPXptGZzZY874Nylh4iZ2ftJyA0F-CA2dEFiNY/edit?gid=0#gid=0",
-                                inline=False)
-                immunity_end_time = datetime.now() + timedelta(days=7)
-                timestamp = int(immunity_end_time.timestamp())
-                embed.add_field(name="Испытательный срок:",
-                                value="Сейчас на Вас действует иммунитет в течении 7 дней, во время которого Вы не получите предупреждение за ошибки.\n"
-                                      "||К этому не относятся: перебаны, перемуты, покрывательство, выход за рамки нормального поведения и другая чушь.||\n\n"
-                                      f"Иммунитет истекает: <t:{timestamp}:R>",
-                                inline=False)
-                embed.add_field(name="Еmail:",
-                                value="Пожалуйста, укажите свой Email по кнопке ниже.\n Это требуется для того, чтобы получить доступ к файлу FAQ.\n"
-                                      "||Ваш Email будет виден только Администрации | В случае неработоспособности кнопки, свяжитесь с Администрацией напрямую.||",
-                                inline=False)
-                embed.set_thumbnail(url="https://i.imgur.com/bugnSyX.gif")
-                embed.set_footer(text=f"Вас назначил: {inter.author.display_name}",
-                                 icon_url=inter.author.avatar.url)
-                class EmailModal(disnake.ui.Modal):
-                    def __init__(self, bot, участник):
-                        self.bot = bot
-                        self.участник = участник
-                        components = [
-                            disnake.ui.TextInput(
-                                label="Email",
-                                custom_id="email",
-                                style=disnake.TextInputStyle.short,
-                                placeholder="example@example.com",
-                                required=True,
-                                min_length=10,
-                                max_length=50,
-                            )
-                        ]
-                        super().__init__(title="Указать Email", components=components)
-
-                    async def callback(self, interaction: disnake.ModalInteraction):
-                        email = interaction.text_values["email"]
-                        channel = self.bot.get_channel(944562833901899827)
-                        embed = disnake.Embed(title="Новый Email",
-                                              description=f"Email {self.участник.display_name}: {email}",
-                                              color=0x00d5ff,
-                                              timestamp=datetime.now())
-                        await channel.send(embed=embed)
-                        await interaction.response.send_message("Email успешно указан!", ephemeral=True)
-
-                class EmailButton(disnake.ui.Button):
-                    def __init__(self, bot, участник):
-                        super().__init__(label="Указать Email", style=disnake.ButtonStyle.success,
-                                         custom_id="email_button")
-                        self.bot = bot
-                        self.участник = участник
-
-                    async def callback(self, interaction: disnake.MessageInteraction):
-                        await interaction.response.send_modal(EmailModal(self.bot, self.участник))
-
-                view = disnake.ui.View()
-                view.add_item(EmailButton(self.bot, участник))
-
-                try:
-                    await участник.send(embed=embed, view=view)
-                except disnake.Forbidden:
-                    embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
-                    embed.add_field(name="Ошибка", value=f"{участник.mention}, не удалось отправить вам ЛС. Пожалуйста, проверьте настройки конфиденциальности.")
-                    await inter.followup.send(embed=embed, ephemeral=True)
-
-            # Log embed
-            channel = await self.bot.fetch_channel(944562833901899827)
-            embed = disnake.Embed(title="", url="", description="", color=0x00d5ff, timestamp=datetime.utcnow())
-            embed.add_field(name="",
-                            value=f"Участник **{участник.name}** ({участник.mention}) получил роль ``{роль.name}``",
-                            inline=False)
-            embed.set_thumbnail(url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
-            embed.add_field(name="Модератор:", value=f"**{inter.author.name}** ({inter.author.mention})", inline=True)
-            embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
-            embed.add_field(name="Длительность:",
-                            value=f"{formatted_duration} (<t:{int(expiry.timestamp())}:R>)" if время else "Неограниченное",
-                            inline=True)
-            embed.set_footer(text=f"ID участника: {участник.id}")
-            await channel.send(embed=embed)
+                embed.add_field(name="Модератор:", value=f"**{inter.author.name}** ({inter.author.mention})", inline=True)
+                embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
+                embed.add_field(name="Длительность:",
+                                value=f"{formatted_duration} (<t:{expiry}:R>)" if время else "Неограниченное",
+                                inline=True)
+                embed.set_footer(text=f"ID участника: {участник.id}")
+                await channel.send(embed=embed)
 
 
-        except disnake.Forbidden:
-            embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
-            embed.add_field(name=f'Ошибка', value=f'У меня недостаточно прав для выдачи роли {роль.name}.')
-            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-            embed.set_footer(text="Ошибка")
-            await inter.response.send_message(embed=embed, ephemeral=True)
+            except disnake.Forbidden:
+                embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+                embed.add_field(name=f'Ошибка', value=f'У меня недостаточно прав для выдачи роли {роль.name}.')
+                embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+                embed.set_footer(text="Ошибка")
+                await inter.edit_original_response(embed=embed)
 
-        except disnake.HTTPException as e:
-            embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
-            embed.add_field(name=f'Ошибка', value=f'Не удалось выдать роль из-за ошибки: {e}')
-            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-            embed.set_footer(text="Ошибка")
-            await inter.response.send_message(embed=embed, ephemeral=True)
+            except disnake.HTTPException as e:
+                embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+                embed.add_field(name=f'Ошибка', value=f'Не удалось выдать роль из-за ошибки: {e}')
+                embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+                embed.set_footer(text="Ошибка")
+                await inter.edit_original_response(embed=embed)
 
     @commands.slash_command(name="role-remove", description="Удаляет роль у участника")
     async def roleremove(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member,
                          роль: disnake.Role):
-        if роль.id in self.restricted_roles and not self.is_admin_or_mod(inter.user):
-            embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
-            embed.add_field(name=f'Ошибка', value=f'У Вас недостаточно прав для удаления роли {роль.name}.')
-            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-            embed.set_footer(text="Ошибка")
-            await inter.response.send_message(embed=embed, ephemeral=True)
-            return
+        if inter.type == disnake.InteractionType.application_command:
+            await inter.response.defer(ephemeral=True)
+            if роль.id in self.restricted_roles and not self.is_admin_or_mod(inter.user):
+                embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+                embed.add_field(name=f'Ошибка', value=f'У Вас недостаточно прав для удаления роли {роль.name}.')
+                embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+                embed.set_footer(text="Ошибка")
+                await inter.edit_original_response(embed=embed)
+                return
 
-        if роль not in участник.roles:
-            embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
-            embed.add_field(name=f'Ошибка', value=f'У участника {участник.display_name} нет роли {роль.name}.')
-            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-            embed.set_footer(text="Ошибка")
-            await inter.response.send_message(embed=embed, ephemeral=True)
-            return
+            if роль not in участник.roles:
+                embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+                embed.add_field(name=f'Ошибка', value=f'У участника {участник.display_name} нет роли {роль.name}.')
+                embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+                embed.set_footer(text="Ошибка")
+                await inter.edit_original_response(embed=embed)
+                return
 
-        try:
-            await участник.remove_roles(роль)
-            colltemp_roles.update_one(
-                {"id": участник.id, "guild_id": inter.guild.id},
-                {"$pull": {"role_id": {"role_id": роль.id}}},
-            )
-            colltemp_roles.update_one(
-                {"id": участник.id, "guild_id": inter.guild.id},
-                {"$inc": {"number_of_roles": -1}}
-            )
-            embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
-            embed.add_field(name="Роль удалена", value=f"Роль {роль.name} была успешно удалена у участника {участник.display_name}.")
-            embed.set_thumbnail(url="https://media2.giphy.com/media/LOWmk9Vsl3LN3vXhET/giphy.gif")
-            await inter.response.send_message(embed=embed, ephemeral=True)
+            try:
+                await участник.remove_roles(роль)
+                colltemp_roles.update_one(
+                    {"id": участник.id, "guild_id": inter.guild.id},
+                    {"$pull": {"role_id": {"role_id": роль.id}}},
+                )
+                colltemp_roles.update_one(
+                    {"id": участник.id, "guild_id": inter.guild.id},
+                    {"$inc": {"number_of_roles": -1}}
+                )
+                embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
+                embed.add_field(name="Роль удалена", value=f"Роль {роль.name} была успешно удалена у участника {участник.display_name}.")
+                embed.set_thumbnail(url="https://media2.giphy.com/media/LOWmk9Vsl3LN3vXhET/giphy.gif")
+                await inter.edit_original_response(embed=embed)
 
-            # Log embed
-            channel = await self.bot.fetch_channel(944562833901899827)
-            embed = disnake.Embed(title="", url="", description="", color=0x00d5ff, timestamp=datetime.utcnow())
-            embed.add_field(name="",
-                            value=f"Участник **{участник.name}** ({участник.mention}) потерял роль ``{роль.name}``",
-                            inline=False)
-            embed.set_thumbnail(url="https://media2.giphy.com/media/LOWmk9Vsl3LN3vXhET/giphy.gif")
-            embed.add_field(name="Модератор:", value=f"**{inter.author.name}** ({inter.author.mention})", inline=True)
-            embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
-            embed.set_footer(text=f"ID участника: {участник.id}")
-            await channel.send(embed=embed)
+                # Log embed
+                channel = await self.bot.fetch_channel(944562833901899827)
+                embed = disnake.Embed(title="", url="", description="", color=0x00d5ff, timestamp=datetime.utcnow())
+                embed.add_field(name="",
+                                value=f"Участник **{участник.name}** ({участник.mention}) потерял роль ``{роль.name}``",
+                                inline=False)
+                embed.set_thumbnail(url="https://media2.giphy.com/media/LOWmk9Vsl3LN3vXhET/giphy.gif")
+                embed.add_field(name="Модератор:", value=f"**{inter.author.name}** ({inter.author.mention})", inline=True)
+                embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
+                embed.set_footer(text=f"ID участника: {участник.id}")
+                await channel.send(embed=embed)
 
-        except disnake.Forbidden:
-            embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
-            embed.add_field(name=f'Ошибка', value=f'У меня недостаточно прав для удаления роли {роль.name}.')
-            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-            embed.set_footer(text="Ошибка")
-            await inter.response.send_message(embed=embed, ephemeral=True)
+            except disnake.Forbidden:
+                embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+                embed.add_field(name=f'Ошибка', value=f'У меня недостаточно прав для удаления роли {роль.name}.')
+                embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+                embed.set_footer(text="Ошибка")
+                await inter.edit_original_response(embed=embed)
 
-        except disnake.HTTPException as e:
-            embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
-            embed.add_field(name=f'Ошибка', value=f'Не удалось удалить роль из-за ошибки: {e}')
-            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-            embed.set_footer(text="Ошибка")
-            await inter.response.send_message(embed=embed, ephemeral=True)
+            except disnake.HTTPException as e:
+                embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+                embed.add_field(name=f'Ошибка', value=f'Не удалось удалить роль из-за ошибки: {e}')
+                embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+                embed.set_footer(text="Ошибка")
+                await inter.edit_original_response(embed=embed)
 
 def setup(bot):
     bot.add_cog(Role(bot))
