@@ -10,8 +10,6 @@ cluster = MongoClient(
 )
 collusers = cluster.server.users
 collservers = cluster.server.servers
-collbans = cluster.server.bans
-colltemp_roles = cluster.server.temp_roles
 
 class Role(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -85,24 +83,24 @@ class Role(commands.Cog):
     @tasks.loop(seconds=210)  # Проверка каждые 3.5 минуты
     async def check_temp_roles(self):
         current_time = int(datetime.now().timestamp())
-        expired_roles = colltemp_roles.find({"role_id.expires_at": {"$lte": current_time}})
+        expired_roles = collusers.find({"role_ids.expires_at": {"$lte": current_time}})
 
         for user in expired_roles:
             guild_id = user["guild_id"]
             guild = self.bot.get_guild(guild_id) or await self.bot.fetch_guild(guild_id)
 
-            for role_info in user["role_id"]:
+            for role_info in user["role_ids"]:
                 if role_info["expires_at"] <= current_time:
                     member = guild.get_member(user["id"]) or await guild.fetch_member(user["id"])
-                    role = guild.get_role(role_info["role_id"])
+                    role = guild.get_role(role_info["role_ids"])
 
                     if member and role:
                         await member.remove_roles(role)
-                        colltemp_roles.update_one(
+                        collusers.update_one(
                             {"id": user["id"], "guild_id": user["guild_id"]},
-                            {"$pull": {"role_id": {"role_id": role_info["role_id"]}}},
+                            {"$pull": {"role_ids": {"role_ids": role_info["role_ids"]}}},
                         )
-                        colltemp_roles.update_one(
+                        collusers.update_one(
                             {"id": user["id"], "guild_id": user["guild_id"]},
                             {"$inc": {"number_of_roles": -1}}
                         )
@@ -153,10 +151,10 @@ class Role(commands.Cog):
                     duration = self.convert_to_seconds(время)
                     expiry = datetime.now() + timedelta(seconds=duration)
                     expiry = int(expiry.timestamp())
-                    colltemp_roles.update_one(
+                    collusers.update_one(
                         {"id": участник.id, "guild_id": inter.guild.id},
                         {
-                            "$push": {"role_id": {"role_id": роль.id, "expires_at": expiry}},
+                            "$push": {"role_ids": {"role_ids": роль.id, "expires_at": expiry}},
                             "$inc": {"number_of_roles": 1}
                         },
                         upsert=True
@@ -311,11 +309,11 @@ class Role(commands.Cog):
 
             try:
                 await участник.remove_roles(роль)
-                colltemp_roles.update_one(
+                collusers.update_one(
                     {"id": участник.id, "guild_id": inter.guild.id},
-                    {"$pull": {"role_id": {"role_id": роль.id}}},
+                    {"$pull": {"role_ids": {"role_ids": роль.id}}},
                 )
-                colltemp_roles.update_one(
+                collusers.update_one(
                     {"id": участник.id, "guild_id": inter.guild.id},
                     {"$inc": {"number_of_roles": -1}}
                 )

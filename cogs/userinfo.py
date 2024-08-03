@@ -24,59 +24,57 @@ class InfoCog(commands.Cog):
         if inter.type == disnake.InteractionType.application_command:
             try:
                 await inter.response.defer()
-            except:
+            except Exception as e:
+                print(f"Error deferring response: {e}")
                 return
-        embed = disnake.Embed(title=f"Информация об участнике **{inter.author.name}**:", url="",
-                              description="", color=0x00b7ff, timestamp=datetime.now())
-        embed.set_author(name=f"{inter.author.name}",
-                         icon_url=f"{inter.author.avatar}")
-        embed.set_thumbnail(url="https://media0.giphy.com/media/epyCv3K3uvRXw4LaPY/giphy.gif")
+
         if участник is None:
-            warns_count = collusers.find_one({'id': inter.author.id, 'guild_id': inter.guild.id})['warns']
-            ban = collbans.find_one({'id': inter.author.id, 'guild_id': inter.guild.id})['ban']
-            case = collservers.find_one({'_id': inter.guild.id})['case']
-            if ban == 'True':
-                ban = 'Да.'
-            else:
-                ban = 'Нет.'
+            участник = inter.author
 
-            if inter.author.current_timeout is not None:
-                mute = 'Да.'
-            else:
-                mute = 'Нет.'
+        embed = disnake.Embed(title=f"Информация об участнике ``{участник.name}``:", url="",
+                              description="", color=0x00b7ff, timestamp=datetime.now())
+        embed.set_author(name=f"{участник.display_name}",
+                         icon_url=f"{участник.avatar}")
+        embed.set_thumbnail(url="https://media0.giphy.com/media/epyCv3K3uvRXw4LaPY/giphy.gif")
 
-            embed.add_field(name=f'', value=f'Идентификатор: {inter.author.id}')
-            embed.add_field(name=f'', value=f'Количество предупреждений: {warns_count}', inline=False)
-            embed.add_field(name=f'', value=f'Находится ли участник в бане?: {ban}', inline=False)
-            embed.add_field(name=f'', value=f'Находится ли участник в муте?: {mute}', inline=False)
-
+        def get_user_info(member):
             try:
-                await inter.edit_original_response(embed=embed)
-            except:
-                await inter.response.send_message(embed=embed, ephemeral=True)
-            return
-        else:
-            await inter.send('error')
-        warns_count = collusers.find_one({'id': участник.id, 'guild_id': inter.guild.id})['warns']
-        ban = collbans.find_one({'id': участник.id, 'guild_id': inter.guild.id})['ban']
-        case = collservers.find_one({'_id': inter.guild.id})['case']
-        if ban == 'True':
-            ban = 'Да'
-        else:
-            ban = 'Нет'
-        if участник.current_timeout is not None:
-            mute = 'Да'
-        else:
-            mute = 'Нет'
-        embed.add_field(name=f'', value=f'**Идентификатор:** ``{inter.author.id}``')
-        embed.add_field(name=f'', value=f'**Количество предупреждений:** ``{warns_count}``', inline=False)
-        embed.add_field(name=f'', value=f'**Находится ли участник в бане?:** ``{ban}``', inline=False)
-        embed.add_field(name=f'', value=f'**Находится ли участник в муте?:** ``{mute}``', inline=False)
+                user_data = collusers.find_one({'id': member.id, 'guild_id': inter.guild.id})
+                warns_count = user_data.get('warns', 0)
+                ban = user_data.get('ban', 'False')
+                ban = 'Заблокирован' if ban == 'True' else 'Не заблокирован'
+                mute = 'Замучен' if member.current_timeout else 'Не замучен'
+                highest_role = sorted(member.roles, key=lambda r: r.position, reverse=True)[0]
+                registration_time = member.created_at.strftime('%d-%m-%Y в %H:%M:%S')
+                join_time = member.joined_at.strftime('%d-%m-%Y в %H:%M:%S')
+                number_of_roles = user_data.get('number_of_roles')
+
+                return warns_count, ban, mute, highest_role, registration_time, join_time, number_of_roles
+            except Exception as e:
+                print(f"Error getting user info: {e}")
+                return (0, 'Неизвестно', 'Неизвестно', None, 'Неизвестно', 'Неизвестно', 0)
+
+        warns_count, ban, mute, highest_role, registration_time, join_time, number_of_roles = get_user_info(участник)
+
         try:
+            embed.add_field(name=f'',
+                            value=f'**Основная роль:** {highest_role.mention if highest_role else "``Неизвестно``"}',
+                            inline=False)
+            embed.add_field(name=f'', value=f'**Идентификатор:** ``{участник.id}``')
+            embed.add_field(name=f'', value=f'**Дата регистрации:** ``{registration_time}``', inline=False)
+            embed.add_field(name=f'', value=f'**Присоединился:** ``{join_time}``', inline=False)
+            embed.add_field(name=f'', value=f'-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-', inline=False)
+            embed.add_field(name=f'', value=f'**Предупреждений:** ``{warns_count}``', inline=True)
+            embed.add_field(name=f'', value=f'**Временных ролей:** ``{number_of_roles}``', inline=True)
+            embed.add_field(name=f'', value=f'', inline=False)
+            embed.add_field(name=f'', value=f'**Бан:** ``{ban}``', inline=True)
+            embed.add_field(name=f'', value=f'**Мут:** ``{mute}``', inline=True)
+
+
             await inter.edit_original_response(embed=embed)
-        except:
+        except Exception as e:
+            print(f"Error editing response: {e}")
             await inter.response.send_message(embed=embed, ephemeral=True)
-        return
 
 
 def setup(bot):

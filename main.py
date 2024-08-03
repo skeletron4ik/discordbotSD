@@ -13,8 +13,6 @@ cluster = MongoClient(
     "mongodb+srv://Skeletron:1337@cluster0.knkajvi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 collusers = cluster.server.users
 collservers = cluster.server.servers
-collbans = cluster.server.bans
-colltemp_roles = cluster.server.temp_roles
 
 class RulesClass:
     def __init__(self, bot):
@@ -46,35 +44,22 @@ async def on_ready():
                 "id": member.id,
                 "guild_id": guild.id,
                 "warns": 0,
-                "reasons": []
-            }
-            ban_values = {
-                "id": member.id,
-                "guild_id": guild.id,
+                "reasons": [],
                 "ban": 'False',
-                'Timestamp': 0,
-                "reason": 'None'
+                "ban_timestamp": 0,
+                "ban_reason": None,
+                "number_of_roles": 0,
+                "role_ids": []
             }
             server_values = {
                 "_id": guild.id,
                 "case": 0
-            }
-            temp_role_values = {
-                "id": member.id,
-                "guild_id": guild.id,
-                "number_of_roles": 0,
-                "role_id": []
             }
 
             if collusers.count_documents({"id": member.id, "guild_id": guild.id}) == 0:
                 collusers.insert_one(values)
             if collservers.count_documents({"_id": guild.id}) == 0:
                 collservers.insert_one(server_values)
-            if collbans.count_documents({"id": member.id, "guild_id": guild.id}) == 0:
-                collbans.insert_one(ban_values)
-            if colltemp_roles.count_documents({"id": member.id, "guild_id": guild.id}) == 0:
-                colltemp_roles.insert_one(temp_role_values)
-
 
 @bot.event
 async def on_member_join(member):
@@ -82,29 +67,16 @@ async def on_member_join(member):
         "id": member.id,
         "guild_id": member.guild.id,
         "warns": 0,
-        "reasons": []
-    }
-    ban_values = {
-        "id": member.id,
-        "guild_id": member.guild.id,
+        "reasons": [],
         "ban": 'False',
-        'Timestamp': 0,
-        "reasons": 'None'
-    }
-    temp_role_values = {
-        "id": member.id,
-        "guild_id": member.guild.id,
+        "ban_timestamp": 0,
+        "ban_reason": None,
         "number_of_roles": 0,
-        "role_id": []
+        "role_ids": []
     }
 
     if collusers.count_documents({"id": member.id, "guild_id": member.guild.id}) == 0:
         collusers.insert_one(values)
-    if collbans.count_documents({"id": member.id, "guild_id": member.guild.id}) == 0:
-        collbans.insert_one(ban_values)
-    if colltemp_roles.count_documents({"id": member.id, "guild_id": member.guild.id}) == 0:
-        colltemp_roles.insert_one(temp_role_values)
-
 
 @bot.event
 async def on_guild_join(guild):
@@ -115,7 +87,6 @@ async def on_guild_join(guild):
 
     if collservers.count_documents({"_id": guild.id}) == 0:
         collservers.insert_one(server_values)
-
 
 # Загружаем расширения из папки "cogs"
 for file in os.listdir("./cogs"):

@@ -8,8 +8,7 @@ cluster = MongoClient(
 )
 collusers = cluster.server.users
 collservers = cluster.server.servers
-collbans = cluster.server.bans
-colltemp_roles = cluster.server.temp_roles
+
 class BansCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -18,20 +17,20 @@ class BansCog(commands.Cog):
     @tasks.loop(seconds=210)
     async def check_ban(self):
         current_timestamp = int(datetime.now().timestamp())
-        expired_roles = collbans.find({"Timestamp": {"$lte": current_timestamp}})
+        expired_roles = collusers.find({"ban_timestamp": {"$lte": current_timestamp}})
 
         for user_data in expired_roles:
             guild_id = user_data["guild_id"]
             guild = self.bot.get_guild(guild_id) or await self.bot.fetch_guild(guild_id)
             member_id = user_data["id"]
-            if collbans.find_one({'id': member_id, 'guild_id': guild_id})["ban"] == "True":
+            if collusers.find_one({'id': member_id, 'guild_id': guild_id})["ban"] == "True":
                 member = guild.get_member(member_id) or await guild.fetch_member(member_id)
                 role = guild.get_role(1229075137374978119)
                 if role in member.roles:
                     await member.remove_roles(role)
-                    collbans.update_one({"id": member_id, "guild_id": guild_id}, {"$set": {'Timestamp': 0, 'ban': 'False'}})
+                    collusers.update_one({"id": member_id, "guild_id": guild_id}, {"$set": {'ban_timestamp': 0, 'ban': 'False', 'ban_reason': None}})
                     iconurl = await self.bot.fetch_guild(guild_id)
-                    iconurlz = iconurl.icon_url
+                    iconurlz = disnake.GuildCommandInteraction.guild.icon.url
                     embed = disnake.Embed(
                         title="ShadowDragons",
                         url="https://discord.com/invite/KE3psXf",
@@ -164,9 +163,9 @@ class BansCog(commands.Cog):
             cur = int(datetime.now().timestamp())
 
             query = {'id': участник.id, 'guild_id': inter.guild.id}
-            update = {'$set': {'ban': 'True', 'Timestamp': current_timestamp, 'reason': причина}}
+            update = {'$set': {'ban': 'True', 'ban_timestamp': current_timestamp, 'ban_reason': причина}}
 
-            collbans.update_one(query, update)
+            collusers.update_one(query, update)
 
             if участник.voice is not None and участник.voice.channel is not None:
                 await участник.move_to(None)
@@ -220,7 +219,7 @@ class BansCog(commands.Cog):
     async def unban(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member):
         if inter.type == disnake.InteractionType.application_command:
             await inter.response.defer()
-            bans = collbans.find_one({'id': участник.id, 'guild_id': inter.guild.id})['ban']
+            bans = collusers.find_one({'id': участник.id, 'guild_id': inter.guild.id})['ban']
             if bans == 'False':
                 embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
                 embed.add_field(name=f'Ошибка',
@@ -234,8 +233,8 @@ class BansCog(commands.Cog):
                 return
 
         query = {'id': участник.id, 'guild_id': inter.guild.id}
-        task = {'$set': {'ban': False, 'Timestamp': 0, 'reason': None}}
-        collbans.update_one(query, task)
+        task = {'$set': {'ban': False, 'ban_timestamp': 0, 'ban_reason': None}}
+        collusers.update_one(query, task)
         await участник.remove_roles(inter.guild.get_role(1229075137374978119))
         embed = disnake.Embed(
             description=f"Участник {участник.mention} был разбанен.",
