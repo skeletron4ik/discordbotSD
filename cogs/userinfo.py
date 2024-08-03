@@ -63,7 +63,7 @@ class InfoCog(commands.Cog):
             embed.add_field(name=f'', value=f'**Идентификатор:** ``{участник.id}``')
             embed.add_field(name=f'', value=f'**Дата регистрации:** ``{registration_time}``', inline=False)
             embed.add_field(name=f'', value=f'**Присоединился:** ``{join_time}``', inline=False)
-            embed.add_field(name=f'', value=f'-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-', inline=False)
+            embed.add_field(name=f'', value=f'-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-', inline=False)
             embed.add_field(name=f'', value=f'**Предупреждений:** ``{warns_count}``', inline=True)
             embed.add_field(name=f'', value=f'**Временных ролей:** ``{number_of_roles}``', inline=True)
             embed.add_field(name=f'', value=f'', inline=False)
