@@ -528,41 +528,56 @@ class WarnsCog(commands.Cog):
                 await inter.response.defer(ephemeral=True)
             except:
                 return
-            usr = collusers.find_one({'id': inter.author.id, 'guild_id': inter.guild.id})
-            if участник is not None:
-                usr = collusers.find_one({'id': участник.id, 'guild_id': inter.guild.id})
-            else:
+
+            if участник is None:
                 участник = inter.author
 
             user_data = collusers.find_one({'id': участник.id, 'guild_id': inter.guild.id})
 
-            warns_count = user_data['warns']
-            amount = 0
-            if warns_count < 1:
-                embed = disnake.Embed(title=f"Предупреждения участника **{участник.name}**:", url="",
-                                      description="", color=0xffff00, timestamp=datetime.now())
-                embed.set_author(name=f"{участник.name}",
-                                 icon_url=f"{участник.avatar}")
+            if user_data is None:
+                embed = disnake.Embed(
+                    title=f"Предупреждения участника **{участник.name}**:",
+                    description=f'Данные о предупреждениях для участника **{участник.mention}** не найдены.',
+                    color=0xffff00,
+                    timestamp=datetime.now()
+                )
+                embed.set_author(name=f"{участник.name}", icon_url=f"{участник.avatar}")
                 embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
-                embed.add_field(name=f'', value=f'Предупреждения у участника {участник.mention} отсутствуют.', inline=False)
-                try:
-                    await inter.edit_original_response(embed=embed)
-                except:
-                    await inter.response.send_message(embed=embed, ephemeral=True)
+                await inter.response.send_message(embed=embed, ephemeral=True)
                 return
-            embed = disnake.Embed(title=f"Предупреждения участника **{участник.name}**:", url="",
-                                  description="", color=0xffff00, timestamp=datetime.now())
-            embed.set_author(name=f"{участник.name}",
-                             icon_url=f"{участник.avatar}")
+
+            warns_count = user_data.get('warns', 0)
+            reasons = user_data.get('reasons', [])
+
+            embed = disnake.Embed(
+                title=f"Предупреждения участника **{участник.name}**:",
+                description="",
+                color=0xffff00,
+                timestamp=datetime.now()
+            )
+            embed.set_author(name=f"{участник.name}", icon_url=f"{участник.avatar}")
             embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
-            embed.add_field(name=f'', value=f'Количество предупреждений у **{участник.mention}**: ``{warns_count}``', inline=False)
-            for value in usr['reasons']:
-                amount = amount + 1
-                embed.add_field(name=f"Предупреждение ``#{amount}``:", value=f'Причина: {value['reason']}', inline=False)
+
+            if warns_count < 1:
+                embed.add_field(name='', value=f'Предупреждения у участника {участник.mention} отсутствуют.',
+                                inline=False)
+            else:
+                embed.add_field(name='', value=f'Количество предупреждений у **{участник.mention}**: ``{warns_count}``',
+                                inline=False)
+                amount = 0
+                for reason_info in reasons:
+                    amount += 1
+                    reason = reason_info['reason']
+                    timestamp = reason_info.get('timestamp', 0)
+                    expires_at = f"<t:{timestamp}:R>" if timestamp else "Не указано"
+                    embed.add_field(name=f"Предупреждение ``#{amount}``:",
+                                    value=f'Причина: {reason}\nИстекает: {expires_at}', inline=False)
+                embed.set_footer(text="Предупреждение")
+
             try:
                 await inter.edit_original_response(embed=embed)
             except:
-                await inter.followup.send(embed=embed, ephemeral=True)
+                await inter.response.send_message(embed=embed, ephemeral=True)
 
 
 def setup(bot):

@@ -4,6 +4,8 @@ import disnake
 from disnake.ext import commands, tasks
 from datetime import datetime, timedelta
 from pymongo import MongoClient
+from datetime import datetime
+
 
 current_datetime = datetime.today()
 
@@ -45,31 +47,72 @@ class InfoCog(commands.Cog):
                 ban = 'Заблокирован' if ban == 'True' else 'Не заблокирован'
                 mute = 'Замучен' if member.current_timeout else 'Не замучен'
                 highest_role = sorted(member.roles, key=lambda r: r.position, reverse=True)[0]
-                registration_time = member.created_at.strftime('%d-%m-%Y в %H:%M:%S')
-                join_time = member.joined_at.strftime('%d-%m-%Y в %H:%M:%S')
-                number_of_roles = user_data.get('number_of_roles')
+                registration_time = member.created_at
+                join_time = member.joined_at
+                temporary_roles = user_data.get('role_ids', [])
+                number_of_roles = user_data.get('number_of_roles', 0)
 
-                return warns_count, ban, mute, highest_role, registration_time, join_time, number_of_roles
+                return warns_count, ban, mute, highest_role, registration_time, join_time, temporary_roles, number_of_roles
             except Exception as e:
                 print(f"Error getting user info: {e}")
-                return (0, 'Неизвестно', 'Неизвестно', None, 'Неизвестно', 'Неизвестно', 0)
+                return (0, 'Неизвестно', 'Неизвестно', None, 'Неизвестно', 'Неизвестно', [], 0)
 
-        warns_count, ban, mute, highest_role, registration_time, join_time, number_of_roles = get_user_info(участник)
+        warns_count, ban, mute, highest_role, registration_time, join_time, temporary_roles, number_of_roles = get_user_info(
+            участник)
+
+        # Определение статуса пользователя
+        status_dict = {
+            disnake.Status.online: "🟢 В сети",
+            disnake.Status.offline: "⚫️ Не в сети",
+            disnake.Status.idle: "🟡 Неактивен",
+            disnake.Status.dnd: "🔴 Не беспокоить"
+        }
+        status = status_dict.get(участник.status, "Неизвестно")
+
+        # Последняя активность
+        last_online_timestamp = None
+        if участник.activity:
+            activity_start = getattr(участник.activity, 'start', None)
+            if activity_start:
+                last_online_timestamp = activity_start.timestamp()
+
+        voice_channel = участник.voice.channel.mention if участник.voice and участник.voice.channel else "Не в голосовом канале"
 
         try:
             embed.add_field(name=f'',
                             value=f'**Основная роль:** {highest_role.mention if highest_role else "``Неизвестно``"}',
                             inline=False)
-            embed.add_field(name=f'', value=f'**Идентификатор:** ``{участник.id}``')
-            embed.add_field(name=f'', value=f'**Дата регистрации:** ``{registration_time}``', inline=False)
-            embed.add_field(name=f'', value=f'**Присоединился:** ``{join_time}``', inline=False)
-            embed.add_field(name=f'', value=f'-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-', inline=False)
-            embed.add_field(name=f'', value=f'**Предупреждений:** ``{warns_count}``', inline=True)
-            embed.add_field(name=f'', value=f'**Временных ролей:** ``{number_of_roles}``', inline=True)
-            embed.add_field(name=f'', value=f'', inline=False)
-            embed.add_field(name=f'', value=f'**Бан:** ``{ban}``', inline=True)
-            embed.add_field(name=f'', value=f'**Мут:** ``{mute}``', inline=True)
+            embed.add_field(name=f'', value=f'**Статус:** ``{status}``', inline=False)
+            embed.add_field(name=f'',
+                            value=f'**Последняя активность:** {f"<t:{int(last_online_timestamp)}:R>" if last_online_timestamp else "``Неизвестно``"}',
+                            inline=False)
+            if участник.voice and участник.voice.channel:
+                embed.add_field(name=f'',
+                                value=f'**Голосовой канал:** {voice_channel}', inline=False)
+            embed.add_field(name=f'',
+                            value=f'**Зарегистрирован:\n** <t:{int(registration_time.timestamp())}:F> (<t:{int(registration_time.timestamp())}:R>)',
+                            inline=True)
+            embed.add_field(name=f'',
+                            value=f'**Присоединился:\n** <t:{int(join_time.timestamp())}:F> (<t:{int(join_time.timestamp())}:R>)',
+                            inline=True)
+            embed.add_field(name=f'', value=f'-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-', inline=False)
+            embed.add_field(name=f'', value=f'**Предупреждений:\n** ``{warns_count}``', inline=True)
+            embed.add_field(name=f'', value=f'**Бан:\n** ``{ban}``', inline=True)
+            embed.add_field(name=f'', value=f'**Мут:\n** ``{mute}``', inline=True)
+            embed.add_field(name=f'', value=f'**Временных ролей:** ``{number_of_roles}``', inline=False)
 
+            if temporary_roles:
+                for role_info in temporary_roles:
+                    role_id = role_info.get('role_ids')
+                    expires_at = role_info.get('expires_at')
+                    role = inter.guild.get_role(role_id)
+                    if role:
+                        embed.add_field(
+                            name=f'',
+                            value=f'{role.mention} - истекает: <t:{int(expires_at)}:R>',
+                            inline=False
+                        )
+            embed.set_footer(text=f'ID: {участник.id}')
 
             await inter.edit_original_response(embed=embed)
         except Exception as e:
