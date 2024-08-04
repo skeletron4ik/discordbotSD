@@ -43,13 +43,15 @@ async def on_ready():
             values = {
                 "id": member.id,
                 "guild_id": guild.id,
+                "balance": 0,
+                "number_of_deal": 0,
                 "warns": 0,
                 "reasons": [],
                 "ban": 'False',
                 "ban_timestamp": 0,
                 "ban_reason": None,
                 "number_of_roles": 0,
-                "role_ids": []
+                "role_ids": [],
             }
             server_values = {
                 "_id": guild.id,
@@ -66,6 +68,8 @@ async def on_member_join(member):
     values = {
         "id": member.id,
         "guild_id": member.guild.id,
+        "balance": 0,
+        "number_of_deal": 0,
         "warns": 0,
         "reasons": [],
         "ban": 'False',
