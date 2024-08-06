@@ -55,7 +55,12 @@ async def on_ready():
             }
             server_values = {
                 "_id": guild.id,
-                "case": 0
+                "case": 0,
+                "booster_timestamp": 0,
+                "admin_booster_multiplier": 0,
+                "global_booster_timestamp": 0,
+                "global_booster_multiplier": 0,
+                "multiplier": 1
             }
 
             if collusers.count_documents({"id": member.id, "guild_id": guild.id}) == 0:
@@ -86,7 +91,12 @@ async def on_member_join(member):
 async def on_guild_join(guild):
     server_values = {
         "_id": guild.id,
-        "case": 0
+        "case": 0,
+        "booster_timestamp": 0,
+        "admin_booster_multiplier": 0,
+        "global_booster_timestamp": 0,
+        "global_booster_multiplier": 0,
+        "multiplier": 1
     }
 
     if collservers.count_documents({"_id": guild.id}) == 0:
