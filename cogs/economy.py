@@ -53,9 +53,10 @@ class EconomyCog(commands.Cog):
                     return
 
             money_to_give = random.uniform(0.1, 1)
-            money_to_give = round(money_to_give, 2)
+            money_to_give1 = round(money_to_give, 2)
             multiplier = collservers.find_one({'_id': message.author.guild.id})['multiplier']
-            collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'balance': money_to_give * multiplier}})
+            collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'message_count': 1}})
+            collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'balance': money_to_give1 * multiplier}})
             collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'message_count': 1}})
 
             cooldowns[user_id] = now
@@ -63,7 +64,8 @@ class EconomyCog(commands.Cog):
 
     @commands.slash_command(name='balance', description='Показывает баланс игрока', aliases=['баланс'])
     async def balance(self, inter: disnake.ApplicationCommandInteraction, member: disnake.Member = None):
-        await inter.response.defer()
+        if inter.type == disnake.InteractionType.application_command:
+            await inter.response.defer(ephemeral=True)
         if member is None:
             member = inter.author
         embed = disnake.Embed(title=f'Информация о пользователе `{member.display_name}`', color=0x4169E1)
@@ -198,7 +200,7 @@ class EconomyCog(commands.Cog):
                         if collusers.find_one({'id': inter.author.id})['balance'] < 399:
                             await interaction.send('У Вас не хватает румбиков', ephemeral=True)
                             return
-
+                        collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
                         collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -399}})
                         embed = disnake.Embed(color=0x4169E1)
                         роль = diamond
@@ -243,6 +245,7 @@ class EconomyCog(commands.Cog):
                         if collusers.find_one({'id': inter.author.id})['balance'] < 699:
                             await interaction.send('У Вас не хватает румбиков', ephemeral=True)
                             return
+                        collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
                         collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -699}})
                         embed = disnake.Embed(color=0x4169E1)
                         роль = diamond
@@ -288,6 +291,7 @@ class EconomyCog(commands.Cog):
                         if collusers.find_one({'id': inter.author.id})['balance'] < 699:
                             await interaction.send('У Вас не хватает румбиков', ephemeral=True)
                             return
+                        collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
                         collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -949}})
                         embed = disnake.Embed(color=0x4169E1)
                         роль = diamond
@@ -341,6 +345,8 @@ class EconomyCog(commands.Cog):
             if select_menu.values[0] == "2":
                 if collusers.find_one({'id': inter.author.id})['balance'] < 49:
                     await interaction.send('У Вас не хватает румбиков', ephemeral=True)
+                    return
+                collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
                 collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -49}})
                 components = disnake.ui.TextInput(
                     label=f"Никнейм",
@@ -362,6 +368,11 @@ class EconomyCog(commands.Cog):
             if select_menu.values[0] == "3":
                 if collusers.find_one({'id': interaction.author.id})['balance'] < 799:
                     await interaction.send('У Вас не хватает румбиков', ephemeral=True)
+                    return
+                if collusers.find_one({'_id': interaction.author.guild.id})['global_booster_timestamp'] != 0:
+                    await interaction.send('Бустер уже действует')
+                    return
+                collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
                 multiplier = collservers.find_one({'_id': interaction.author.guild.id})['multiplier']
                 collusers.find_one_and_update({'_id': interaction.author.id}, {'$inc': {'balance': -799}})
                 timestamp = int(datetime.now().timestamp()) + 86400
@@ -402,6 +413,7 @@ class EconomyCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
+        global time_in_voice, multiplier
         if member.bot:
             return
         channel = member.guild.get_channel(944562833901899827)
@@ -448,23 +460,32 @@ class EconomyCog(commands.Cog):
                     f'{member} провел в голосовом канале {duration} секунд, общее время {total_time[member.id]} секунд')
 
                 minutes = round(total_time[member.id] / 60, 2)
-                rumbiks = round(total_time[member.id] / 60 * 0.1, 2)
-                if rumbiks > 1:
+                rumbiks = duration / 60 * 0.1
+                rumbiks = round(rumbiks, 2)
+                rumbikswithboost = 0
+                if rumbiks > 0.01:
                     multiplier = collservers.find_one({'_id': member.guild.id})['multiplier']
                     collusers.find_one_and_update({'id': member.id}, {'$inc': {'balance': rumbiks * multiplier}})
+                multiplier = collservers.find_one({'_id': member.guild.id})['multiplier']
+                rumbikswithboost = rumbiks * multiplier
+                collusers.find_one_and_update({'id': member.id}, {'$inc': {'time_in_voice': duration}})
+                time_in_voice = collusers.find_one({'id': member.id})['time_in_voice']
+                print(str(time_in_voice) + ' 111')
                 embed = disnake.Embed(color=0xe70404)
                 embed.add_field(name='**Голосовая активность**',
                                 value=f'Участник: `{member.display_name}` ({member.mention})'
                                       f'\nВремя в войсе: с <t:{join_time}:T> до <t:{leave_time}:T>'
                                       f'\nМинус в войсе (без учёта мута): `{minutes}`'
                                       f'\nМинут в войсе: `{round(duration / 60, 2)}`'
-                                      f'\nВыданные румбики: `{rumbiks}`')
+                                      f'\nВыданные румбики: `{rumbiks}`\n'
+                                      f'Выданные румбики с учетом бустера `{rumbikswithboost}`\n'
+                                      f'Времени в войсе: {time_in_voice}\n')
                 timestamp = datetime.now()
                 embed.set_footer(text=member.name, icon_url=member.avatar.url)
                 embed.set_author(name='Shadow Dragons Economy', icon_url=member.guild.icon.url)
-
-                if channel:
-                    await channel.send(embed=embed)
+                thread = member.guild.get_thread(1270673733178101801)
+                await thread.send(embed=embed)
+                duration = 0
             else:
                 print(f'{member} вышел из войса, но время входа не найдено.')
 
@@ -485,8 +506,10 @@ class EconomyCog(commands.Cog):
             for idx, (user_id, balance) in enumerate(top_users, start=1):
                 member = inter.guild.get_member(user_id)
                 if member:
+                    balance = round(balance, 2)
                     embed.add_field(name=f"{idx}. {member.display_name}", value=f"Баланс: {balance}", inline=False)
                 else:
+                    balance = round(balance, 2)
                     embed.add_field(name=f"{idx}. Неизвестный участник (ID: {user_id})", value=f"Баланс: {balance}",
                                     inline=False)
 
