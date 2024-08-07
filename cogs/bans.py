@@ -2,6 +2,7 @@ import disnake
 from disnake.ext import commands, tasks
 from datetime import datetime, timedelta
 from pymongo import MongoClient
+from main import get_rule_info  # список правил
 
 cluster = MongoClient(
     "mongodb+srv://Skeletron:1337@cluster0.knkajvi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
@@ -13,6 +14,9 @@ class BansCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.check_ban.start()
+
+    def get_rule_info(self, причина):
+        return get_rule_info(причина)
 
     @tasks.loop(seconds=210)
     async def check_ban(self):
@@ -29,15 +33,13 @@ class BansCog(commands.Cog):
                 if role in member.roles:
                     await member.remove_roles(role)
                     collusers.update_one({"id": member_id, "guild_id": guild_id}, {"$set": {'ban_timestamp': 0, 'ban': 'False', 'ban_reason': None}})
-                    iconurl = await self.bot.fetch_guild(guild_id)
-                    iconurlz = disnake.GuildCommandInteraction.guild.icon.url
                     embed = disnake.Embed(
                         title="ShadowDragons",
                         url="https://discord.com/invite/KE3psXf",
                         description="",
                         color=0x00ff40
                     )
-                    embed.set_author(name='Вы были разблокированы!', icon_url=iconurlz)
+                    embed.set_author(name='Вы были разблокированы!', icon_url=guild.icon.url)
                     embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
                     embed.add_field(
                         name="",
@@ -55,7 +57,7 @@ class BansCog(commands.Cog):
                                           description=f"Срок бана участника **{участник}** ({участник.mention}) истек!",
                                           colour=0x00ff40,
                                           timestamp=datetime.now())
-                    embed.set_author(name='Участник разблокирован',icon_url=iconurlz)
+                    embed.set_author(name='Участник разблокирован')
                     embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
                     embed.set_footer(text="Разбан")
                     await channel.send(embed=embed)
@@ -63,25 +65,6 @@ class BansCog(commands.Cog):
     @check_ban.before_loop
     async def before_check_warns(self):
         await self.bot.wait_until_ready()
-
-    def get_rule_info(self, причина):
-        rules = {
-            "1.1": "1.1> Обман/попытка обмана Администрации сервера, грубое оспаривание действий Администрации сервера",
-            "1.2": "1.2> Распространение личной информации без согласия",
-            "1.3": "1.3> Обход правил сервера с помощью мультиаккаунта и любым другим способом",
-            "1.4": "1.4> Транслирование или отправка контента, предназначенного для лиц старше 18 лет",
-            "1.5": "1.5> Использование недопустимого никнейма или аватара",
-            "1.6": "1.6> Подделка доказательств против участников/Администрации",
-            "2.1": "2.1> Флуд, спам, чрезмерное упоминание ролей или участника",
-            "2.2": "2.2> Оскорбления участников и их близких родственников",
-            "2.3": "2.3> Оскорбление или неуважительное отношение к Администрации и серверу",
-            "2.4": "2.4> Проведение политической или религиозной агитации, обсуждение военных действий, оскорбление стран, наций и субкультур",
-            "2.5": "2.5> Реклама сторонних проектов, сайтов, каналов и т.д.",
-            "3.1": "3.1> Крики, шумы, помехи, транслирование музыки не через бота, неадекватное поведение, использование программ для изменения голоса",
-            "3.2": "3.2> Многочисленные перемещения по голосовым каналам, быстрое включение/выключение демонстрации экрана",
-            "3.3": "3.3> AFK-фарм Румбиков ◊"
-        }
-        return rules.get(причина, причина)
 
     def format_duration(self, time_str):
         try:

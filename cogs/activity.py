@@ -66,10 +66,8 @@ class ActivityCog(commands.Cog):
             return
         if message.author.id in self.message_count:
             self.message_count[message.author.id] += 1  # Если есть
-            print('+=')
         else:
             self.message_count[message.author.id] = 1  # Типо если нет чела в словарике
-            print('=')
 
 
 def setup(bot):

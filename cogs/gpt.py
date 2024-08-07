@@ -27,7 +27,6 @@ class GPTCog(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: disnake.Message):
         messages = message.content
-        print(messages)
         if self.bot.user.mentioned_in(message):
             print('bot')
 
@@ -41,8 +40,6 @@ class GPTCog(commands.Cog):
             messag = await message.channel.send(message.author.mention + ', ' + 'Идет генерация...')
             parts = []
             for mess in response:
-                print(mess, flush=True, end='')
-
                 parts.append(mess)
             result = ''.join(parts)
 
