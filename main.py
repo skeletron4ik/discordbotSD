@@ -66,15 +66,15 @@ async def on_ready():
                 "guild_id": guild.id,
                 "balance": 0,
                 "number_of_deal": 0,
+                "message_count": 0,
+                "time_in_voice": 0,
                 "warns": 0,
                 "reasons": [],
                 "ban": 'False',
                 "ban_timestamp": 0,
                 "ban_reason": None,
                 "number_of_roles": 0,
-                "role_ids": [],
-                "message_count": 0,
-                "time_in_voice": 0
+                "role_ids": []
             }
             server_values = {
                 "_id": guild.id,
@@ -98,15 +98,15 @@ async def on_member_join(member):
         "guild_id": member.guild.id,
         "balance": 0,
         "number_of_deal": 0,
+        "message_count": 0,
+        "time_in_voice": 0,
         "warns": 0,
         "reasons": [],
         "ban": 'False',
         "ban_timestamp": 0,
         "ban_reason": None,
         "number_of_roles": 0,
-        "role_ids": [],
-        "message_count": 0,
-        "time_in_voice": 0
+        "role_ids": []
     }
 
     if collusers.count_documents({"id": member.id, "guild_id": member.guild.id}) == 0:

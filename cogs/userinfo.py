@@ -51,14 +51,27 @@ class InfoCog(commands.Cog):
                 join_time = member.joined_at
                 temporary_roles = user_data.get('role_ids', [])
                 number_of_roles = user_data.get('number_of_roles', 0)
+                message_count = user_data.get('message_count', 0)
+                time_in_voice = user_data.get('time_in_voice', 0)
+                balance = user_data.get('balance', 0)  # Get the balance from the database
 
-                return warns_count, ban, mute, highest_role, registration_time, join_time, temporary_roles, number_of_roles
+                return warns_count, ban, mute, highest_role, registration_time, join_time, temporary_roles, number_of_roles, message_count, time_in_voice, balance
             except Exception as e:
                 print(f"Error getting user info: {e}")
-                return (0, 'Неизвестно', 'Неизвестно', None, 'Неизвестно', 'Неизвестно', [], 0)
+                return (0, 'Неизвестно', 'Неизвестно', None, 'Неизвестно', 'Неизвестно', [], 0, 0, 0, 0)
 
-        warns_count, ban, mute, highest_role, registration_time, join_time, temporary_roles, number_of_roles = get_user_info(
+        warns_count, ban, mute, highest_role, registration_time, join_time, temporary_roles, number_of_roles, message_count, time_in_voice, balance = get_user_info(
             участник)
+
+        def format_minutes(minutes):
+            if 11 <= minutes % 100 <= 19:
+                return "минут"
+            elif minutes % 10 == 1:
+                return "минута"
+            elif 2 <= minutes % 10 <= 4:
+                return "минуты"
+            else:
+                return "минут"
 
         # Определение статуса пользователя
         status_dict = {
@@ -68,27 +81,28 @@ class InfoCog(commands.Cog):
             disnake.Status.dnd: "🔴 Не беспокоить"
         }
         status = status_dict.get(участник.status, "Неизвестно")
-
-        # Последняя активность
-        last_online_timestamp = None
-        if участник.activity:
-            activity_start = getattr(участник.activity, 'start', None)
-            if activity_start:
-                last_online_timestamp = activity_start.timestamp()
-
         voice_channel = участник.voice.channel.mention if участник.voice and участник.voice.channel else "Не в голосовом канале"
+        current_game = None
+        for activity in участник.activities:
+            if isinstance(activity, disnake.Game):
+                current_game = activity.name
+                break
 
         try:
             embed.add_field(name=f'',
                             value=f'**Основная роль:** {highest_role.mention if highest_role else "``Неизвестно``"}',
                             inline=False)
             embed.add_field(name=f'', value=f'**Статус:** ``{status}``', inline=False)
-            embed.add_field(name=f'',
-                            value=f'**Последняя активность:** {f"<t:{int(last_online_timestamp)}:R>" if last_online_timestamp else "``Неизвестно``"}',
-                            inline=False)
             if участник.voice and участник.voice.channel:
                 embed.add_field(name=f'',
                                 value=f'**Голосовой канал:** {voice_channel}', inline=False)
+            if current_game:
+                embed.add_field(name=f'', value=f'**Играет в:** ``{current_game}``', inline=False)
+            embed.add_field(name=f'', value=f'**Количество сообщений:\n** ``{message_count}``', inline=True)
+            embed.add_field(name=f'',
+                            value=f'**Всего в голосовом канале:** ``{time_in_voice // 60} {format_minutes(time_in_voice // 60)}``',
+                            inline=True)
+            embed.add_field(name=f'', value=f'**Баланс:\n** ``{balance}``◊', inline=True)
             embed.add_field(name=f'',
                             value=f'**Зарегистрирован:\n** <t:{int(registration_time.timestamp())}:F> (<t:{int(registration_time.timestamp())}:R>)',
                             inline=True)
