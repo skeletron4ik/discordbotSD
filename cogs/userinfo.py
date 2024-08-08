@@ -21,7 +21,7 @@ class InfoCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.slash_command(name='userinfo', description='Выводит нужную информацию об участнике')
+    @commands.slash_command(name='user-info', description='Выводит основную информацию об участнике')
     async def user(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
         if inter.type == disnake.InteractionType.application_command:
             try:
@@ -43,6 +43,8 @@ class InfoCog(commands.Cog):
             try:
                 user_data = collusers.find_one({'id': member.id, 'guild_id': inter.guild.id})
                 warns_count = user_data.get('warns', 0)
+                if warns_count == 0:
+                    warns_count = "Не имеется"
                 ban = user_data.get('ban', 'False')
                 ban = 'Заблокирован' if ban == 'True' else 'Не заблокирован'
                 mute = 'Замучен' if member.current_timeout else 'Не замучен'
@@ -51,16 +53,19 @@ class InfoCog(commands.Cog):
                 join_time = member.joined_at
                 temporary_roles = user_data.get('role_ids', [])
                 number_of_roles = user_data.get('number_of_roles', 0)
+                if number_of_roles == 0:
+                    number_of_roles = 'Не имеется'
                 message_count = user_data.get('message_count', 0)
                 time_in_voice = user_data.get('time_in_voice', 0)
-                balance = user_data.get('balance', 0)  # Get the balance from the database
+                balance = round(user_data.get('balance', 0), 2)
+                number_of_deal = user_data.get('number_of_deal', 0)
 
-                return warns_count, ban, mute, highest_role, registration_time, join_time, temporary_roles, number_of_roles, message_count, time_in_voice, balance
+                return warns_count, ban, mute, highest_role, registration_time, join_time, temporary_roles, number_of_roles, message_count, time_in_voice, balance, number_of_deal
             except Exception as e:
                 print(f"Error getting user info: {e}")
-                return (0, 'Неизвестно', 'Неизвестно', None, 'Неизвестно', 'Неизвестно', [], 0, 0, 0, 0)
+                return (0, 'Неизвестно', 'Неизвестно', None, 'Неизвестно', 'Неизвестно', [], 0, 0, 0, 0, 0)
 
-        warns_count, ban, mute, highest_role, registration_time, join_time, temporary_roles, number_of_roles, message_count, time_in_voice, balance = get_user_info(
+        warns_count, ban, mute, highest_role, registration_time, join_time, temporary_roles, number_of_roles, message_count, time_in_voice, balance, number_of_deal = get_user_info(
             участник)
 
         def format_minutes(minutes):
@@ -92,28 +97,32 @@ class InfoCog(commands.Cog):
             embed.add_field(name=f'',
                             value=f'**Основная роль:** {highest_role.mention if highest_role else "``Неизвестно``"}',
                             inline=False)
-            embed.add_field(name=f'', value=f'**Статус:** ``{status}``', inline=False)
+            embed.add_field(name=f'', value=f'**👁️‍🗨️ Статус:** ``{status}``', inline=False)
             if участник.voice and участник.voice.channel:
                 embed.add_field(name=f'',
-                                value=f'**Голосовой канал:** {voice_channel}', inline=False)
+                                value=f'**🔊️ Голосовой канал:** {voice_channel}', inline=False)
             if current_game:
-                embed.add_field(name=f'', value=f'**Играет в:** ``{current_game}``', inline=False)
-            embed.add_field(name=f'', value=f'**Количество сообщений:\n** ``{message_count}``', inline=True)
+                embed.add_field(name=f'', value=f'**🎮 Играет в:** ``{current_game}``', inline=False)
             embed.add_field(name=f'',
-                            value=f'**Всего в голосовом канале:** ``{time_in_voice // 60} {format_minutes(time_in_voice // 60)}``',
-                            inline=True)
-            embed.add_field(name=f'', value=f'**Баланс:\n** ``{balance}``◊', inline=True)
-            embed.add_field(name=f'',
-                            value=f'**Зарегистрирован:\n** <t:{int(registration_time.timestamp())}:F> (<t:{int(registration_time.timestamp())}:R>)',
+                            value=f'**🌍 Зарегистрирован:\n** <t:{int(registration_time.timestamp())}:F> (<t:{int(registration_time.timestamp())}:R>)',
                             inline=True)
             embed.add_field(name=f'',
-                            value=f'**Присоединился:\n** <t:{int(join_time.timestamp())}:F> (<t:{int(join_time.timestamp())}:R>)',
+                            value=f'**🌎 Присоединился:\n** <t:{int(join_time.timestamp())}:F> (<t:{int(join_time.timestamp())}:R>)',
                             inline=True)
+            embed.add_field(name='', value='', inline=False)
+            embed.add_field(name=f'', value=f'**🖊️ Количество сообщений:\n** ``{message_count}``', inline=True)
+            embed.add_field(name=f'',
+                            value=f'**🎤 Всего в голосовом канале:\n** ``{time_in_voice // 60} {format_minutes(time_in_voice // 60)}``',
+                            inline=True)
+            embed.add_field(name='', value='', inline=False)
+            embed.add_field(name=f'', value=f'**💸 Баланс:** ``{balance}``◊', inline=True)
+            embed.add_field(name=f'', value=f'**💼 Количество сделок:** ``{number_of_deal}``', inline=True)
             embed.add_field(name=f'', value=f'-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-', inline=False)
-            embed.add_field(name=f'', value=f'**Предупреждений:\n** ``{warns_count}``', inline=True)
-            embed.add_field(name=f'', value=f'**Бан:\n** ``{ban}``', inline=True)
-            embed.add_field(name=f'', value=f'**Мут:\n** ``{mute}``', inline=True)
-            embed.add_field(name=f'', value=f'**Временных ролей:** ``{number_of_roles}``', inline=False)
+            embed.add_field(name=f'', value=f'**⚠️ Предупреждений:\n** ``{warns_count}``', inline=True)
+            embed.add_field(name=f'', value=f'**🔒 Бан:\n** ``{ban}``', inline=True)
+            embed.add_field(name='', value='', inline=False)
+            embed.add_field(name=f'', value=f'**🙊 Мут:\n** ``{mute}``', inline=True)
+            embed.add_field(name=f'', value=f'**🕒 Временных ролей:\n** ``{number_of_roles}``', inline=True)
 
             if temporary_roles:
                 for role_info in temporary_roles:

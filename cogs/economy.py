@@ -27,6 +27,10 @@ def format_duration(value):
         return f"`{value}` румбика"
     else:
         return f"`{value}` румбиков"
+def format_rumbick(value):
+    emoji = "<:rumbick:1271089081601753118>"
+    return f"{value} {emoji}"
+
 
 
 class EconomyCog(commands.Cog):
@@ -51,66 +55,83 @@ class EconomyCog(commands.Cog):
             money_to_give = random.uniform(0.1, 1)
             money_to_give1 = round(money_to_give, 2)
             multiplier = collservers.find_one({'_id': message.author.guild.id})['multiplier']
-            collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'message_count': 1}})
             collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'balance': money_to_give1 * multiplier}})
             collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'message_count': 1}})
-
             cooldowns[user_id] = now
             print(money_to_give)
 
-    @commands.slash_command(name='balance', description='Показывает баланс игрока', aliases=['баланс'])
-    async def balance(self, inter: disnake.ApplicationCommandInteraction, member: disnake.Member = None):
-        if inter.type == disnake.InteractionType.application_command:
-            await inter.response.defer(ephemeral=True)
-        if member is None:
-            member = inter.author
-        embed = disnake.Embed(title=f'Информация о пользователе `{member.display_name}`', color=0x4169E1)
+    @commands.slash_command(name='balance', description='Показывает баланс участника',
+                            aliases=['баланс', 'счет', 'остаток', 'credit', 'amount', 'sum'])
+    async def balance(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
+        await inter.response.defer()
 
-        if member is None:
+        if участник is None:
+            участник = inter.author
+
+        user_data = collusers.find_one({"id": участник.id})
+        if user_data:
+            balance = round(user_data.get('balance', 0), 2)
+            balance_formatted = format_rumbick(balance)
+
+            embed = disnake.Embed(title=f'', color=0x00ff00)
+            embed.set_author(name=f"{участник.display_name}", icon_url=f"{участник.avatar.url}")
+            embed.set_thumbnail(url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
+            embed.add_field(name='Баланс:', value=f'{balance_formatted}', inline=False)
+            embed.set_footer(text=f'Баланс', icon_url=inter.guild.icon.url)
             embed.timestamp = datetime.now()
-            member = inter.author
-            balance = collusers.find_one({"id": member.id})['balance']
-            num_of_deals = collusers.find_one({'id': member.id})['number_of_deal']
-            balance = round(balance, 2)
-            balance = format_duration(balance)
-
-            embed.add_field(name='Баланс:', value=f'{balance}', inline=True)
-            embed.add_field(name='Количество сделок: ', value=f'`{num_of_deals}`', inline=True)
-            embed.set_footer(text=f'ID: {member.id}', icon_url=member.avatar.url)
             await inter.edit_original_response(embed=embed)
         else:
-            embed.timestamp = datetime.now()
-            balance = collusers.find_one({"id": member.id})['balance']
-            num_of_deals = collusers.find_one({'id': member.id})['number_of_deal']
-            balance = round(balance, 2)
-            balance = format_duration(balance)
+            await inter.edit_original_response(content="Не удалось найти данные пользователя.", ephemeral=True)
 
-            embed.add_field(name='Баланс:', value=f'{balance}', inline=True)
-            embed.add_field(name='Количество сделок: ', value=f'`{num_of_deals}`', inline=True)
-            embed.set_footer(text=f'ID: {member.id}', icon_url=member.avatar.url)
-            await inter.edit_original_response(embed=embed)
+    @commands.slash_command(name='pay', description='Перевод румбиков другому участнику',
+                            aliases=['перевод', 'give', 'transfer'])
+    async def pay(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, количество: int):
+        await inter.response.defer()
 
-    @commands.slash_command(name='transfer', description='Перевод румбиков участнику', aliases=['перевод', 'give'])
-    async def transfer(self, inter: disnake.ApplicationCommandInteraction, member: disnake.Member, количество: int):
-        if disnake.InteractionResponse:
-            await inter.response.defer()
+        # Определение исключительных ролей
+        excluded_roles = {
+            518505773022838797,  # Администратор
+            580790278697254913,  # Гл. Модератор
+            702593498901381184,  # Модератор
+            1044314368717897868,  # Diamond
+            757930494301044737  # Server Booster
+        }
+
         balance = collusers.find_one({"id": inter.author.id})['balance']
 
-        if balance > количество:
+        if balance >= количество:
+            # Вычисление комиссии
+            commission = 0.05  # 5% комиссии
+            is_excluded = any(role.id in excluded_roles for role in участник.roles)
+            if is_excluded:
+                amount_after_commission = количество
+                commission_amount = 0
+            else:
+                amount_after_commission = количество * (1 - commission)
+                commission_amount = количество - amount_after_commission
+
+            # Обновление баланса отправителя и получателя
             collusers.find_one_and_update({'id': inter.author.id}, {"$inc": {"balance": -количество}})
-            collusers.find_one_and_update({'id': member.id}, {"$inc": {"balance": количество}})
-            collusers.find_one_and_update({'id': member.id}, {'$inc': {'number_of_deal': 1}})
-            collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
+            collusers.find_one_and_update({'id': участник.id}, {"$inc": {"balance": amount_after_commission}})
+            collusers.find_one_and_update({'id': участник.id}, {'$inc': {'number_of_deal': 1}})
+            collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
 
-            количество = format_duration(количество)
+            formatted_amount = format_rumbick(количество)
+            formatted_amount_after_commission = format_rumbick(amount_after_commission)
+            formatted_commission_amount = format_rumbick(commission_amount)
 
-            embed = disnake.Embed(title=f'Сделка `{inter.author.display_name}` и `{member.display_name}`',
+            embed = disnake.Embed(title=f'Сделка `{inter.author.display_name}` и `{участник.display_name}`',
                                   color=0x4169E1)
             embed.set_author(name=f'Отправитель: {inter.author.display_name}', icon_url=inter.author.avatar.url)
-            embed.add_field(name=f'Отправитель', value=f'`{inter.author.display_name}`', inline=True)
-            embed.add_field(name=f'Получатель:', value=f'`{member.display_name}`', inline=True)
-            embed.add_field(name=f'Сумма сделки:', value=f'{количество}', inline=False)
-            embed.set_footer(text=f'Получатель: {member.name}', icon_url=member.avatar.url)
+            embed.add_field(name='Отправитель', value=f'`{inter.author.display_name}`', inline=True)
+            embed.add_field(name='Получатель:', value=f'`{участник.display_name}`', inline=True)
+            embed.add_field(name='Сумма сделки:', value=f'{formatted_amount}', inline=False)
+
+            if commission_amount > 0:
+                embed.add_field(name='Комиссия:', value=f'5% ({formatted_commission_amount})', inline=False)
+
+            embed.add_field(name='Итоговая сумма:', value=f'{formatted_amount_after_commission}', inline=False)
+            embed.set_footer(text=f'Получатель: {участник.name}', icon_url=участник.avatar.url)
             embed.timestamp = datetime.now()
             await inter.edit_original_response(embed=embed)
 
@@ -118,24 +139,40 @@ class EconomyCog(commands.Cog):
             unformatted = int(количество) - balance
             formatted = format_duration(unformatted)
             embed = disnake.Embed(title='Произошла ошибка', color=0x4169E1)
-            embed.add_field(name=f'Отправитель', value=f'`{inter.author.display_name}`', inline=True)
-            embed.add_field(name=f'Получатель:', value=f'`{member.display_name}`', inline=True)
-            embed.add_field(name=f'Сумма сделки:', value=f'`{количество}`', inline=False)
-            embed.add_field(name=f'Причина возникновения ошибки:', value=f'У отправителя не хватает {formatted}.',
+            embed.add_field(name='Отправитель', value=f'`{inter.author.display_name}`', inline=True)
+            embed.add_field(name='Получатель:', value=f'`{участник.display_name}`', inline=True)
+            embed.add_field(name='Сумма сделки:', value=f'`{количество}`', inline=False)
+            embed.add_field(name='Причина возникновения ошибки:', value=f'У отправителя не хватает {formatted}.',
                             inline=False)
-            embed.set_footer(text=f'Использовал комманду: {inter.author.name}', icon_url=inter.author.avatar.url)
+            embed.set_footer(text=f'Использовал команду: {inter.author.name}', icon_url=inter.author.avatar.url)
             embed.timestamp = datetime.now()
             await inter.edit_original_response(embed=embed)
 
-    @commands.slash_command(name='givemoney')
-    async def givemoney(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, количество: int):
-        member = участник
-        collusers.find_one_and_update({'id': member.id}, {'$inc': {'balance': количество}})
+    @commands.slash_command(name='money', description="Изменяет баланс участника", aliases=['деньги', 'givemoney', 'setmoney'])
+    async def money(
+            self,
+            inter: disnake.ApplicationCommandInteraction,
+            участник: disnake.Member,
+            действие: str = commands.Param(choices=["добавить (+)", "отнять (-)", "установить (=)"]),
+            количество: int = 0
+    ):
+        if действие == "добавить (+)":
+            collusers.find_one_and_update({'id': участник.id}, {'$inc': {'balance': количество}})
+            await inter.response.send_message(f'Добавлено {количество} румбиков к балансу {участник.display_name}.',
+                                              ephemeral=True)
 
-        await inter.response.send_message('сделано', ephemeral=True)
+        elif действие == "отнять (-)":
+            collusers.find_one_and_update({'id': участник.id}, {'$inc': {'balance': -количество}})
+            await inter.response.send_message(f'Отнято {количество} румбиков от баланса {участник.display_name}.',
+                                              ephemeral=True)
 
-    @commands.slash_command(name='store', description='Магазин ролей и специальных возможностей',
-                            aliases=['shop', 'магазин'])
+        elif действие == "установить (=)":
+            collusers.find_one_and_update({'id': участник.id}, {'$set': {'balance': количество}})
+            await inter.response.send_message(f'Баланс {участник.display_name} установлен на {количество} румбиков.',
+                                              ephemeral=True)
+
+    @commands.slash_command(name='store', description='Магазин ролей и специальных возможностей за Румбики',
+                            aliases=['shop', 'магазин', 'лавка', 'рынок'])
     async def store(self, inter: disnake.ApplicationCommandInteraction):
         if inter.type == disnake.InteractionType.application_command:
             try:
@@ -597,4 +634,4 @@ class EconomyCog(commands.Cog):
 
 def setup(bot):
     bot.add_cog(EconomyCog(bot))
-    print("Economy is ready")
+    print("EconomyCog is ready")
