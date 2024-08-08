@@ -75,7 +75,8 @@ class EconomyCog(commands.Cog):
 
             embed = disnake.Embed(title=f'', color=0x00ff00)
             embed.set_author(name=f"{участник.display_name}", icon_url=f"{участник.avatar.url}")
-            embed.set_thumbnail(url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
+            embed.set_thumbnail(
+                url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
             embed.add_field(name='Баланс:', value=f'{balance_formatted}', inline=False)
             embed.set_footer(text=f'Баланс', icon_url=inter.guild.icon.url)
             embed.timestamp = datetime.now()
@@ -86,9 +87,29 @@ class EconomyCog(commands.Cog):
     @commands.slash_command(name='pay', description='Перевод румбиков другому участнику',
                             aliases=['перевод', 'give', 'transfer'])
     async def pay(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, количество: int):
+        # Проверка на минимальную сумму перевода
+        if количество < 10:
+            embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+            embed.add_field(name=f'Произошла ошибка',
+                            value=f'Ошибка: Вы не можете перевести меньше 10 румбиков.')
+            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+            embed.set_footer(text='Ошибка')
+            await inter.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        # Проверка на попытку перевести самому себе
+        if участник.id == inter.author.id:
+            embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+            embed.add_field(name=f'Произошла ошибка',
+                            value=f'Ошибка: Нельзя переводить румбики самому себе.')
+            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+            embed.set_footer(text='Ошибка')
+            await inter.response.send_message(embed=embed, ephemeral=True)
+            return
+
         await inter.response.defer()
 
-        # Определение исключительных ролей
+        # Определение исключительных ролей на комиссию
         excluded_roles = {
             518505773022838797,  # Администратор
             580790278697254913,  # Гл. Модератор
@@ -99,14 +120,16 @@ class EconomyCog(commands.Cog):
 
         balance = collusers.find_one({"id": inter.author.id})['balance']
 
+        # Проверка на наличие роли-исключения у отправителя
+        is_sender_excluded = any(role.id in excluded_roles for role in inter.author.roles)
+
         if balance >= количество:
-            # Вычисление комиссии
-            commission = 0.05  # 5% комиссии
-            is_excluded = any(role.id in excluded_roles for role in участник.roles)
-            if is_excluded:
+            # Вычисление комиссии (если отправитель не исключен)
+            if is_sender_excluded:
                 amount_after_commission = количество
                 commission_amount = 0
             else:
+                commission = 0.05  # 5% комиссии
                 amount_after_commission = количество * (1 - commission)
                 commission_amount = количество - amount_after_commission
 
@@ -120,17 +143,21 @@ class EconomyCog(commands.Cog):
             formatted_amount_after_commission = format_rumbick(amount_after_commission)
             formatted_commission_amount = format_rumbick(commission_amount)
 
-            embed = disnake.Embed(title=f'Сделка `{inter.author.display_name}` и `{участник.display_name}`',
-                                  color=0x4169E1)
-            embed.set_author(name=f'Отправитель: {inter.author.display_name}', icon_url=inter.author.avatar.url)
-            embed.add_field(name='Отправитель', value=f'`{inter.author.display_name}`', inline=True)
-            embed.add_field(name='Получатель:', value=f'`{участник.display_name}`', inline=True)
-            embed.add_field(name='Сумма сделки:', value=f'{formatted_amount}', inline=False)
+            embed = disnake.Embed(title=f'Сделка `{inter.author.display_name}` ⇾ `{участник.display_name}`',
+                                  color=0x00ff00)
+            embed.set_author(name=f"{участник.display_name}", icon_url=f"{участник.avatar.url}")
+            embed.set_thumbnail(
+                url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
+            embed.add_field(name='Отправитель', value=f'{inter.author.mention}', inline=True)
+            embed.add_field(name='Получатель:', value=f'{участник.mention}', inline=True)
+            embed.add_field(name='Сумма сделки:', value=f'{formatted_amount}', inline=True)
 
             if commission_amount > 0:
-                embed.add_field(name='Комиссия:', value=f'5% ({formatted_commission_amount})', inline=False)
+                embed.add_field(name='Комиссия:', value=f'5% ({formatted_commission_amount})', inline=True)
+                embed.add_field(name='Итоговая сумма:', value=f'{formatted_amount_after_commission}', inline=True)
+            else:
+                embed.add_field(name='Комиссия:', value=f'0%', inline=True)
 
-            embed.add_field(name='Итоговая сумма:', value=f'{formatted_amount_after_commission}', inline=False)
             embed.set_footer(text=f'Получатель: {участник.name}', icon_url=участник.avatar.url)
             embed.timestamp = datetime.now()
             await inter.edit_original_response(embed=embed)
@@ -138,14 +165,11 @@ class EconomyCog(commands.Cog):
         else:
             unformatted = int(количество) - balance
             formatted = format_duration(unformatted)
-            embed = disnake.Embed(title='Произошла ошибка', color=0x4169E1)
-            embed.add_field(name='Отправитель', value=f'`{inter.author.display_name}`', inline=True)
-            embed.add_field(name='Получатель:', value=f'`{участник.display_name}`', inline=True)
-            embed.add_field(name='Сумма сделки:', value=f'`{количество}`', inline=False)
-            embed.add_field(name='Причина возникновения ошибки:', value=f'У отправителя не хватает {formatted}.',
-                            inline=False)
-            embed.set_footer(text=f'Использовал команду: {inter.author.name}', icon_url=inter.author.avatar.url)
-            embed.timestamp = datetime.now()
+            embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+            embed.add_field(name=f'Произошла ошибка',
+                            value=f'Ошибка: У Вас не хватает еще {formatted} для перевода.')
+            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+            embed.set_footer(text='Ошибка')
             await inter.edit_original_response(embed=embed)
 
     @commands.slash_command(name='money', description="Изменяет баланс участника", aliases=['деньги', 'givemoney', 'setmoney'])
@@ -171,8 +195,7 @@ class EconomyCog(commands.Cog):
             await inter.response.send_message(f'Баланс {участник.display_name} установлен на {количество} румбиков.',
                                               ephemeral=True)
 
-    @commands.slash_command(name='store', description='Магазин ролей и специальных возможностей за Румбики',
-                            aliases=['shop', 'магазин', 'лавка', 'рынок'])
+    @commands.slash_command(name='store', description='Магазин ролей и специальных возможностей за Румбики', aliases=['shop', 'магазин', 'лавка', 'рынок'])
     async def store(self, inter: disnake.ApplicationCommandInteraction):
         if inter.type == disnake.InteractionType.application_command:
             try:
