@@ -655,6 +655,128 @@ class EconomyCog(commands.Cog):
         embed.add_field(name='**Бустер активирован**', value=f'Множитель: {multiplier}\nДата окончания: <t:{timestamp}:R>')
         await inter.response.send_message(embed=embed, ephemeral=True)
 
+    class FigureEnum(disnake.enums.Enum):
+        Камень = "Камень"
+        Ножницы = "Ножницы"
+        Бумага = "Бумага"
+    @commands.slash_command(name='rpc', description='Популярная игра, камень-ножницы-бумага')
+    async def rpc(self, inter: disnake.ApplicationCommandInteraction, bet: int, figure: FigureEnum = commands.Param(description='Фигура для игры в Rock-Paper-Scissors')):
+
+        decline = disnake.utils.get(inter.author.guild.emojis, name='773229388573310996')
+        diamond = inter.guild.get_role(1044314368717897868)
+        balance = collusers.find_one({'id': inter.author.id})['balance']
+        cost = bet
+        bet = format_duration(bet)
+        author = inter.author
+        if cost < 10:
+            await inter.response.send_message(f'{decline}  `{inter.author.display_name}`, не указывайте значения от **0** до **10**.', ephemeral=True)
+            return
+        if balance < cost:
+            err = format_duration(cost - balance)
+            await inter.response.send_message(f'{decline}  `{inter.author.display_name}`, Вам не хватает {err}.', ephemeral=True)
+            return
+        collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': -cost}})
+        embed = disnake.Embed(title='Rock-Paper-Scissors',color=0x4169E1)
+        embed.set_author(name='Shadow Dragons', icon_url=inter.author.guild.icon.url)
+        embed.set_footer(text=f'Использовал команду: `{inter.author.id}`', icon_url=inter.author.avatar.url)
+        embed.add_field(name='Информация об игре', value=f'Ставка: {bet}', inline=True)
+        message = await inter.response.send_message('В процессе..')
+        options = [
+            disnake.SelectOption(label='♠ Камень', description="Фигура камень", value="1"),
+            disnake.SelectOption(label="✂ Бумага",
+                                 description="Фигура ножницы",
+                                 value="2"),
+            disnake.SelectOption(label="🧻 Ножницы",
+                                 description="Фигура бумага", value="3"),
+        ]
+
+        # Создаем select menu
+        select_menu = disnake.ui.Select(
+            placeholder="Выбрать фигуру..",
+            min_values=1,
+            max_values=1,
+            options=options,
+        )
+
+
+        async def select_callback(interaction: disnake.MessageInteraction):
+            balance_interaction = collusers.find_one({'id': interaction.author.id})['balance']
+            if author.id == interaction.author.id:
+                await interaction.response.send_message(f'{decline} `{interaction.author.display_name}`, Вы не можете играть сами с собой.', ephemeral=True)
+                return
+            if collusers.find_one({'id': interaction.author.id})['balance'] < cost:
+                err = format_duration(cost - balance_interaction)
+                await interaction.response.send_message(f'{decline} `{interaction.author.display_name}`, Вам не хватает {err}.', ephemeral=True)
+                return
+            collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -cost}})
+            if select_menu.values[0] == "1":  # Первый выбор игрока
+                if figure == 'Камень':
+                    embed.add_field(name='**Итоги:**', value=f'Выбор у двух участников пал на камень, поэтому ничья.\n'
+                                                             f'Ставки возвращаются участникам.', inline=False)
+                    collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': cost}})
+                    collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost}})
+                    await inter.edit_original_response(embed=embed, view=None)
+                elif figure == 'Бумага':
+                    embed.add_field(name='**Итоги:**',
+                                    value=f'{author.mention} выбрал бумагу, а {interaction.author.mention} выбрал камень, поэтому выиграл {author.display_name}.\n'
+                                          f'{author.display_name} получает выигрыш.', inline=False)
+                    collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost * 2}})
+                    await inter.edit_original_response(embed=embed, view=None)
+                elif figure == 'Ножницы':
+                    embed.add_field(name='**Итоги:**',
+                                    value=f'{interaction.author.mention} выбрал камень, а {author.mention} выбрал ножницы, поэтому выиграл {interaction.author.display_name}.\n'
+                                          f'{interaction.author.display_name} получает выигрыш.', inline=False)
+                    collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': cost * 2}})
+                    await inter.edit_original_response(embed=embed, view=None)
+
+            elif select_menu.values[0] == "2":  # Второй выбор игрока
+                if figure == 'Камень':
+                    embed.add_field(name='**Итоги:**',
+                                    value=f'{interaction.author.mention} выбрал камень, а {author.mention} выбрал ножницы, поэтому выиграл {interaction.author.display_name}.\n'
+                                          f'{interaction.author.display_name} получает выигрыш.', inline=False)
+                    collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': cost * 2}})
+                    await inter.edit_original_response(embed=embed, view=None)
+                elif figure == 'Бумага':
+                    embed.add_field(name='**Итоги:**', value=f'Выбор у двух участников пал на бумагу, поэтому ничья.\n'
+                                                             f'Ставки возвращаются участникам.', inline=False)
+                    collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': cost}})
+                    collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost}})
+                    await inter.edit_original_response(embed=embed, view=None)
+                elif figure == 'Ножницы':
+                    embed.add_field(name='**Итоги:**',
+                                    value=f'{author.mention} выбрал ножницы, а {interaction.author.mention} выбрал бумагу, поэтому выиграл {author.display_name}.\n'
+                                          f'{author.display_name} получает выигрыш.', inline=False)
+                    collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost * 2}})
+                    await inter.edit_original_response(embed=embed, view=None)
+
+            elif select_menu.values[0] == "3":  # Третий выбор игрока (предположим, что это "Ножницы")
+                if figure == 'Камень':
+                    embed.add_field(name='**Итоги:**',
+                                    value=f'{author.mention} выбрал камень, а {interaction.author.mention} выбрал ножницы, поэтому выиграл {author.display_name}.\n'
+                                          f'{author.display_name} получает выигрыш.', inline=False)
+                    collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost * 2}})
+                    await inter.edit_original_response(embed=embed, view=None)
+                elif figure == 'Бумага':
+                    embed.add_field(name='**Итоги:**',
+                                    value=f'{interaction.author.mention} выбрал ножницы, а {author.mention} выбрал бумагу, поэтому выиграл {interaction.author.display_name}.\n'
+                                          f'{interaction.author.display_name} получает выигрыш.', inline=False)
+                    collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': cost * 2}})
+                    await inter.edit_original_response(embed=embed, view=None)
+                elif figure == 'Ножницы':
+                    embed.add_field(name='**Итоги:**', value=f'Выбор у двух участников пал на ножницы, поэтому ничья.\n'
+                                                             f'Ставки возвращаются участникам.', inline=False)
+                    collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': cost}})
+                    collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost}})
+                    await inter.edit_original_response(embed=embed, view=None)
+
+        select_menu.callback = select_callback
+
+        # Создаем view и добавляем в него select menu
+        view = disnake.ui.View(timeout=None)
+        view.add_item(select_menu)
+
+        await inter.edit_original_message(embed=embed, view=view)
+
 def setup(bot):
     bot.add_cog(EconomyCog(bot))
     print("EconomyCog is ready")
