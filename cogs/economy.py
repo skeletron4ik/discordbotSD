@@ -150,6 +150,7 @@ class EconomyCog(commands.Cog):
                 url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
             embed.add_field(name='Отправитель', value=f'{inter.author.mention}', inline=True)
             embed.add_field(name='Получатель:', value=f'{участник.mention}', inline=True)
+            embed.add_field(name='', value='', inline=False)
             embed.add_field(name='Сумма сделки:', value=f'{formatted_amount}', inline=True)
 
             if commission_amount > 0:
@@ -202,16 +203,19 @@ class EconomyCog(commands.Cog):
                 await inter.response.defer(ephemeral=True)
             except:
                 return
+        emoji = "<:rumbick:1271089081601753118>"
         diamond = inter.guild.get_role(1044314368717897868)
-        embed = disnake.Embed(title='**Магазин сервера**', color=0x4169E1)
+        embed = disnake.Embed(title='', color=0x4169E1)
+        embed.set_author(name='Магазин сервера', icon_url=inter.guild.icon.url)
+        embed.set_thumbnail(url='https://i.gifer.com/origin/63/6309237109affef229b14c3c5dc7308b_w200.gif')
         embed.add_field(name='**1. 💎 Diamond**',
-                        value=f'Даёт эксклюзивные возможности. Подробнее с возможностями можно ознакомиться в канале https://discord.com/channels/489867322039992320/1069201052303380511\nЦена покупки: 399 ◊ | 699 ◊ | 949 ◊\nСодержит в себе: {diamond}',
+                        value=f'Даёт эксклюзивные возможности. Подробнее с возможностями можно ознакомиться в канале https://discord.com/channels/489867322039992320/1069201052303380511\n Цена покупки:\n``399``{emoji} - 1 месяц\n~~799~~ ``699``{emoji} - 2 месяца\n~~1199~~ ``949``{emoji} - 3 месяца\n**Содержит в себе:** {diamond}',
                         inline=False)
         embed.add_field(name=f'**2. 🌠 Смена никнейма**',
-                        value=f'Даёт возможность сменить свой отображаемый никнейм на сервере один раз.\nЦена покупки: 49 ◊\nСодержит в себе: Возможность смены отображаемого никнейма.',
+                        value=f'Даёт возможность сменить свой отображаемый никнейм на сервере один раз.\nЦена покупки: ``49`` {emoji}\n**Содержит в себе:** Возможность смены отображаемого никнейма.',
                         inline=False)
         embed.add_field(name=f'**3. 🔹 Глобальный бустер румбиков x2**',
-                        value=f'Активировать глобальный бустер румбиков на один день.\nЦена покупки: 799 ◊\nСодержит в себе: глобальный бустер румбиков x2/',
+                        value=f'Активировать глобальный бустер румбиков на один день.\nЦена покупки: ``799`` {emoji}\n**Содержит в себе:** глобальный бустер румбиков x2/',
                         inline=False)
 
         options = [
@@ -235,18 +239,20 @@ class EconomyCog(commands.Cog):
             global embed1
             if select_menu.values[0] == "1":
                 embed1 = disnake.Embed(color=0x4169E1)
-                embed1.add_field(name='**Выберите длительность Diamond**', value='', inline=False)
+                embed1.set_author(name='Выберите длительность 💎 Diamond', icon_url=inter.guild.icon.url)
+                embed1.set_thumbnail(url='https://i.gifer.com/origin/63/6309237109affef229b14c3c5dc7308b_w200.gif')
+                embed1.add_field(name='', value='', inline=False)
                 embed1.add_field(name='**Стоимость**',
                                  value='* 💎 Diamond\n * 💎 Diamond (на 30 дней) - 399 ◊\n * 💎 Diamond (на 60 дней) - 699 ◊ -15%\n * 💎 Diamond (на 90 дней) - 949 ◊ -20%',
                                  inline=False)
-                embed1.set_footer(text=f'ID пользователя: {inter.author.id}', icon_url=inter.author.avatar.url)
+                embed1.add_field(name='Внимание:', value='В случае наличия роли 💎 Diamond, при покупке товара снова - время увеличивается', inline=False)
 
                 components = [
-                    disnake.ui.Button(label="💎 Diamond (на 30 дней)", style=disnake.ButtonStyle.primary,
+                    disnake.ui.Button(label="💎 Купить на 30 дней", style=disnake.ButtonStyle.secondary,
                                       emoji=diamond.emoji, custom_id='30'),
-                    disnake.ui.Button(label="💎 Diamond (на 60 дней)", style=disnake.ButtonStyle.primary,
+                    disnake.ui.Button(label="💎 Купить на 60 дней", style=disnake.ButtonStyle.primary,
                                       emoji=diamond.emoji, custom_id='60'),
-                    disnake.ui.Button(label="💎 Diamond (на 90 дней)", style=disnake.ButtonStyle.primary,
+                    disnake.ui.Button(label="💎 Купить на 90 дней", style=disnake.ButtonStyle.green,
                                       emoji=diamond.emoji, custom_id='90')
                 ]
 
