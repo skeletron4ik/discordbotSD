@@ -13,6 +13,8 @@ All commands
 - [/warn](./img/warn.png)
 - [/warns - Show your or member warns](./img/warns.png)
 - [/user-info - Show your info or member info](./img/userinfo.png)
+    - [Logs warn/mute/ban system](./img/warnss.png)
+    - [Logs warn/mute/ban system](./img/voice.png)
 ---
 # installation
 
