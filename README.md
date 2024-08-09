@@ -7,6 +7,7 @@
 ---
 All commands
 - [/balance - Show user balance](./img/balance.png)
+![discordbotSD](./img/balance.png)
 - [/top - Show top user for type in `TopEnum` class](./img/top.png)
 - [/pay - Pay rumbiks](./img/pay.png)
 - [/rps - Rock-Paper-Scissors](./img/rps.png)
