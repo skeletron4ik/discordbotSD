@@ -16,7 +16,7 @@ All commands
     - [Logs warn/mute/ban system](./img/warnss.png)
     - [Logs warn/mute/ban system](./img/voice.png)
 ---
-# installation
+# Installation
 
 1. clone the repository:
 
