@@ -1,5 +1,5 @@
 # Shadow Dragons multi-functional Bot
 
-![discordbotSD](./SDmfB.jpg)
+![discordbotSD](./SDmfB.png)
 
 # installation
