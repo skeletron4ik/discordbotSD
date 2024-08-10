@@ -219,7 +219,7 @@ class EconomyCog(commands.Cog):
                         value=f'Даёт возможность сменить свой отображаемый никнейм на сервере один раз.\nЦена покупки: ``49``{emoji}\n**Содержит в себе:** Возможность смены отображаемого никнейма.',
                         inline=False)
         embed.add_field(name=f'**3. 🔹 Глобальный бустер румбиков x2**',
-                        value=f'Активировать глобальный бустер румбиков на один день.\nЦена покупки: ``799``{emoji}\n**Содержит в себе:** глобальный бустер румбиков x2.',
+                        value=f'Активировать глобальный бустер румбиков на один день.\nЦена покупки: ``399``{emoji}\n**Содержит в себе:** глобальный бустер румбиков x2.',
                         inline=False)
         embed.add_field(name='', value='')
         embed.add_field(name='', value=f'**Ваш текущий баланс:** {balance_formatted}', inline=False)
@@ -271,54 +271,67 @@ class EconomyCog(commands.Cog):
                 async def process_role(interaction, cost, duration, role_id, ephemeral=False):
                     user_id = interaction.author.id
                     guild_id = interaction.author.guild.id
+                    diamond_role_id = 1044314368717897868  # Specific ID for the "Diamond" role
 
-                    # Check balance
+                    # Проверяем баланс
                     user_data = collusers.find_one({'id': user_id})
                     if user_data['balance'] < cost:
                         await interaction.send('У Вас не хватает румбиков', ephemeral=ephemeral)
                         return
 
-                    # Update balance and deals
+                    # Обновляем баланс и сделки
                     collusers.update_many({'id': user_id}, {'$inc': {'number_of_deal': 1}})
                     collusers.find_one_and_update({'id': user_id}, {'$inc': {'balance': -cost}})
 
-                    # Get role
+                    # Получаем роль по ID (Diamond)
                     role = disnake.utils.get(interaction.guild.roles, id=role_id)
                     if role is None:
                         await interaction.send('Роль не найдена в гильдии. Пожалуйста, свяжитесь с администратором.',
                                                ephemeral=True)
                         return
 
-                    # Check if user already has the role
+                    # Получаем пользователя (author of interaction)
                     member = interaction.author
-                    if role in member.roles:
-                        # Remove old role record from the database
-                        collusers.update_one(
-                            {"id": user_id, "guild_id": guild_id},
-                            {"$pull": {"role_ids": {"role_id": role.id}}}
+
+                    # Вычисляем новый срок длительности роли
+                    new_expiry = int((datetime.now() + timedelta(seconds=duration)).timestamp())
+
+                    # Проверяем наличие роли Diamond у участника
+                    if role.id == diamond_role_id and role in member.roles:
+                        # Retrieve the current expiry time for the role from the database
+                        role_info = collusers.find_one(
+                            {"id": user_id, "guild_id": guild_id, "role_ids.role_ids": role.id},
+                            {"role_ids.$": 1}
                         )
-                        # Update expiry time for the role
-                        new_expiry = int((datetime.now() + timedelta(seconds=duration)).timestamp())
+                        if role_info and "role_ids" in role_info:
+                            current_expiry = role_info["role_ids"][0]["expires_at"]
+                            remaining_time = max(0, current_expiry - int(datetime.now().timestamp()))
+                            new_expiry = int(datetime.now().timestamp()) + remaining_time + duration
+
+                        # Обновляем срок длительности роли в базе
+                        collusers.update_one(
+                            {"id": user_id, "guild_id": guild_id, "role_ids.role_ids": role.id},
+                            {"$set": {"role_ids.$.expires_at": new_expiry}}
+                        )
                         await interaction.send(f'Срок действия роли {role.name} продлен до <t:{new_expiry}:R>.',
                                                ephemeral=ephemeral)
                     else:
-                        # Add role to user
+                        # Выдаем роль участнику
                         await interaction.author.add_roles(role)
-                        new_expiry = int((datetime.now() + timedelta(seconds=duration)).timestamp())
                         await interaction.send(f'Роль {role.name} выдана и закончится <t:{new_expiry}:R>.',
                                                ephemeral=ephemeral)
 
-                    # Update database with new expiry time
-                    collusers.update_one(
-                        {"id": user_id, "guild_id": guild_id},
-                        {
-                            "$push": {"role_ids": {"role_id": role.id, "expires_at": new_expiry}},
-                            "$inc": {"number_of_roles": 1}
-                        },
-                        upsert=True
-                    )
+                        # Обновляем базу с новой длительностью роли
+                        collusers.update_one(
+                            {"id": user_id, "guild_id": guild_id},
+                            {
+                                "$push": {"role_ids": {"role_ids": role.id, "expires_at": new_expiry}},
+                                "$inc": {"number_of_roles": 1}
+                            },
+                            upsert=True
+                        )
 
-                    # Create and send user notification embed
+                    # Создаем и отправляем embed пользователю
                     embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
                     embed.add_field(name="Роль выдана",
                                     value=f"Роль {role.name} выдана {interaction.author.display_name} и закончится <t:{new_expiry}:R>.")
@@ -326,7 +339,7 @@ class EconomyCog(commands.Cog):
                         url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
                     await interaction.response.send_message(embed=embed, ephemeral=ephemeral)
 
-                    # Send log message
+                    # Создаем и отправлем embed в логи
                     channel = await self.bot.fetch_channel(944562833901899827)
                     log_embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
                     log_embed.add_field(name="",
@@ -343,7 +356,7 @@ class EconomyCog(commands.Cog):
 
                 async def button_callback(interaction: disnake.MessageInteraction):
                     button_id = interaction.component.custom_id
-                    diamond_role_id = 123456789012345678  # ID роли "Diamond"
+                    diamond_role_id = 1044314368717897868  # ID роли "Diamond"
 
                     if button_id == '30':
                         await process_role(interaction, cost=399, duration=2678400, role_id=diamond_role_id,
@@ -365,16 +378,17 @@ class EconomyCog(commands.Cog):
                 await interaction.response.send_message(embed=embed1, ephemeral=True, view=view)
 
             if select_menu.values[0] == "2":
-                if collusers.find_one({'id': inter.author.id})['balance'] < 49:
+                nikname_price = 49
+                if collusers.find_one({'id': inter.author.id})['balance'] < nikname_price:
                     await interaction.send('У Вас не хватает румбиков', ephemeral=True)
                     return
                 collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
-                collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -49}})
+                collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -nikname_price}})
                 components = disnake.ui.TextInput(
                     label=f"Никнейм",
                     custom_id="nickname",
                     style=disnake.TextInputStyle.short,
-                    placeholder="52 тонны узбеков",
+                    placeholder="Введите новый никнейм",
                     required=True,
                     min_length=1,
                     max_length=32,
@@ -388,7 +402,8 @@ class EconomyCog(commands.Cog):
                 await interaction.response.send_modal(modal=modal)
 
             if select_menu.values[0] == "3":
-                if collusers.find_one({'id': interaction.author.id})['balance'] < 799:
+                global_booset_price = 399
+                if collusers.find_one({'id': interaction.author.id})['balance'] < global_booset_price:
                     await interaction.send('У Вас не хватает румбиков', ephemeral=True)
                     return
                 if collservers.find_one({'_id': interaction.author.guild.id})['global_booster_timestamp'] != 0:
@@ -396,7 +411,7 @@ class EconomyCog(commands.Cog):
                     return
                 collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
                 multiplier = collservers.find_one({'_id': interaction.author.guild.id})['multiplier']
-                collusers.find_one_and_update({'_id': interaction.author.id}, {'$inc': {'balance': -799}})
+                collusers.find_one_and_update({'_id': interaction.author.id}, {'$inc': {'balance': -global_booset_price}})
                 timestamp = int(datetime.now().timestamp()) + 86400
                 collservers.find_one_and_update({'_id': interaction.author.guild.id}, {'$inc': {'global_booster_timestamp': int(timestamp)}})
                 collservers.find_one_and_update({'_id': interaction.author.guild.id},
