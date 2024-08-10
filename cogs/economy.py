@@ -193,27 +193,40 @@ class EconomyCog(commands.Cog):
             await inter.response.send_message(f'Баланс {участник.display_name} установлен на {количество} румбиков.',
                                               ephemeral=True)
 
-    @commands.slash_command(name='store', description='Магазин ролей и специальных возможностей за Румбики', aliases=['shop', 'магазин', 'лавка', 'рынок'])
+    @commands.slash_command(name='store', description='Магазин ролей и специальных возможностей за Румбики',
+                            aliases=['shop', 'магазин', 'лавка', 'рынок'])
     async def store(self, inter: disnake.ApplicationCommandInteraction):
         if inter.type == disnake.InteractionType.application_command:
             try:
                 await inter.response.defer(ephemeral=True)
             except:
                 return
+        emoji = "<:rumbick:1271089081601753118>"
         diamond = inter.guild.get_role(1044314368717897868)
-        embed = disnake.Embed(title='**Магазин сервера**', color=0x4169E1)
-        embed.add_field(name='**1. 💎 Diamond**',
-                        value=f'Даёт эксклюзивные возможности. Подробнее с возможностями можно ознакомиться в канале https://discord.com/channels/489867322039992320/1069201052303380511\nЦена покупки: 399 ◊ | 699 ◊ | 949 ◊\nСодержит в себе: {diamond}',
+        user_data = collusers.find_one({"id": inter.author.id})
+        if user_data:
+            balance = round(user_data.get('balance', 0), 2)
+            balance_formatted = format_rumbick(balance)
+        else:
+            balance_formatted = '0'
+        embed = disnake.Embed(title='', color=0x4169E1)
+        embed.set_author(name='Магазин сервера', icon_url=inter.guild.icon.url)
+        embed.set_thumbnail(url='https://i.gifer.com/origin/63/6309237109affef229b14c3c5dc7308b_w200.gif')
+        embed.add_field(name=f'**1. 💎 Diamond**',
+                        value=f'Даёт эксклюзивные возможности. Подробнее с возможностями можно ознакомиться в канале https://discord.com/channels/489867322039992320/1069201052303380511\nЦена покупки:\n``399``{emoji} - 1 месяц\n~~799~~ ``699``{emoji} - 2 месяца\n~~1199~~ ``949``{emoji} - 3 месяца\n**Содержит в себе:** {diamond.mention}',
                         inline=False)
         embed.add_field(name=f'**2. 🌠 Смена никнейма**',
-                        value=f'Даёт возможность сменить свой отображаемый никнейм на сервере один раз.\nЦена покупки: 49 ◊\nСодержит в себе: Возможность смены отображаемого никнейма.',
+                        value=f'Даёт возможность сменить свой отображаемый никнейм на сервере один раз.\nЦена покупки: ``49``{emoji}\n**Содержит в себе:** Возможность смены отображаемого никнейма.',
                         inline=False)
         embed.add_field(name=f'**3. 🔹 Глобальный бустер румбиков x2**',
-                        value=f'Активировать глобальный бустер румбиков на один день.\nЦена покупки: 799 ◊\nСодержит в себе: глобальный бустер румбиков x2/',
+                        value=f'Активировать глобальный бустер румбиков на один день.\nЦена покупки: ``799``{emoji}\n**Содержит в себе:** глобальный бустер румбиков x2.',
                         inline=False)
+        embed.add_field(name='', value='')
+        embed.add_field(name='', value=f'**Ваш текущий баланс:** {balance_formatted}', inline=False)
+
 
         options = [
-            disnake.SelectOption(label="💎Diamond", description="Даёт эксклюзивные возможности", value="1"),
+            disnake.SelectOption(label=f"💎 Diamond", description="Даёт эксклюзивные возможности", value="1"),
             disnake.SelectOption(label="🌠 Возможность сменить никнейм",
                                  description="При покупке Вы получаете возможность один раз сменить никнейм",
                                  value="2"),
@@ -233,159 +246,114 @@ class EconomyCog(commands.Cog):
             global embed1
             if select_menu.values[0] == "1":
                 embed1 = disnake.Embed(color=0x4169E1)
-                embed1.add_field(name='**Выберите длительность Diamond**', value='', inline=False)
+                embed1.set_author(name=f'Выберите длительность {diamond.name}', icon_url=inter.guild.icon.url)
+                embed1.set_thumbnail(url='https://i.gifer.com/origin/63/6309237109affef229b14c3c5dc7308b_w200.gif')
+                embed1.add_field(name='', value='', inline=False)
                 embed1.add_field(name='**Стоимость**',
-                                 value='* 💎 Diamond\n * 💎 Diamond (на 30 дней) - 399 ◊\n * 💎 Diamond (на 60 дней) - 699 ◊ -15%\n * 💎 Diamond (на 90 дней) - 949 ◊ -20%',
+                                 value=f'* {diamond.mention}\n * {diamond.mention} (на 30 дней) - 399{emoji}\n * {diamond.mention} (на 60 дней) - ~~799~~ 699{emoji} **Скидка -15%**\n * {diamond.mention} (на 90 дней) - ~~1199~~ 949{emoji} **Скидка -20%**',
                                  inline=False)
-                embed1.set_footer(text=f'ID пользователя: {inter.author.id}', icon_url=inter.author.avatar.url)
+                embed1.add_field(name='Обратите внимание:',
+                                 value=f'Если у вас уже есть роль {diamond.mention}, при повторной покупке её срок действия будет продлён.',
+                                 inline=False)
+                embed1.add_field(name='', value='')
+                embed1.add_field(name='', value=f'**Ваш текущий баланс:** {balance_formatted}', inline=False)
 
                 components = [
-                    disnake.ui.Button(label="💎 Diamond (на 30 дней)", style=disnake.ButtonStyle.primary,
+                    disnake.ui.Button(label=f"💎 Купить на 30 дней", style=disnake.ButtonStyle.secondary,
                                       emoji=diamond.emoji, custom_id='30'),
-                    disnake.ui.Button(label="💎 Diamond (на 60 дней)", style=disnake.ButtonStyle.primary,
+                    disnake.ui.Button(label=f"💎 Купить на 60 дней", style=disnake.ButtonStyle.primary,
                                       emoji=diamond.emoji, custom_id='60'),
-                    disnake.ui.Button(label="💎 Diamond (на 90 дней)", style=disnake.ButtonStyle.primary,
+                    disnake.ui.Button(label=f"💎 Купить на 90 дней", style=disnake.ButtonStyle.green,
                                       emoji=diamond.emoji, custom_id='90')
                 ]
 
                 # Обрабатываем нажатие кнопки
+                async def process_role(interaction, cost, duration, role_id, ephemeral=False):
+                    user_id = interaction.author.id
+                    guild_id = interaction.author.guild.id
+
+                    # Check balance
+                    user_data = collusers.find_one({'id': user_id})
+                    if user_data['balance'] < cost:
+                        await interaction.send('У Вас не хватает румбиков', ephemeral=ephemeral)
+                        return
+
+                    # Update balance and deals
+                    collusers.update_many({'id': user_id}, {'$inc': {'number_of_deal': 1}})
+                    collusers.find_one_and_update({'id': user_id}, {'$inc': {'balance': -cost}})
+
+                    # Get role
+                    role = disnake.utils.get(interaction.guild.roles, id=role_id)
+                    if role is None:
+                        await interaction.send('Роль не найдена в гильдии. Пожалуйста, свяжитесь с администратором.',
+                                               ephemeral=True)
+                        return
+
+                    # Check if user already has the role
+                    member = interaction.author
+                    if role in member.roles:
+                        # Remove old role record from the database
+                        collusers.update_one(
+                            {"id": user_id, "guild_id": guild_id},
+                            {"$pull": {"role_ids": {"role_id": role.id}}}
+                        )
+                        # Update expiry time for the role
+                        new_expiry = int((datetime.now() + timedelta(seconds=duration)).timestamp())
+                        await interaction.send(f'Срок действия роли {role.name} продлен до <t:{new_expiry}:R>.',
+                                               ephemeral=ephemeral)
+                    else:
+                        # Add role to user
+                        await interaction.author.add_roles(role)
+                        new_expiry = int((datetime.now() + timedelta(seconds=duration)).timestamp())
+                        await interaction.send(f'Роль {role.name} выдана и закончится <t:{new_expiry}:R>.',
+                                               ephemeral=ephemeral)
+
+                    # Update database with new expiry time
+                    collusers.update_one(
+                        {"id": user_id, "guild_id": guild_id},
+                        {
+                            "$push": {"role_ids": {"role_id": role.id, "expires_at": new_expiry}},
+                            "$inc": {"number_of_roles": 1}
+                        },
+                        upsert=True
+                    )
+
+                    # Create and send user notification embed
+                    embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
+                    embed.add_field(name="Роль выдана",
+                                    value=f"Роль {role.name} выдана {interaction.author.display_name} и закончится <t:{new_expiry}:R>.")
+                    embed.set_thumbnail(
+                        url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
+                    await interaction.response.send_message(embed=embed, ephemeral=ephemeral)
+
+                    # Send log message
+                    channel = await self.bot.fetch_channel(944562833901899827)
+                    log_embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
+                    log_embed.add_field(name="",
+                                        value=f"Участник **{interaction.author.name}** ({interaction.author.mention}) получил роль ``{role.name}``",
+                                        inline=False)
+                    log_embed.set_thumbnail(
+                        url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
+                    log_embed.add_field(name="Модератор:", value=f"**Магазин** ({interaction.author.mention})",
+                                        inline=True)
+                    log_embed.add_field(name="Канал:", value=f"{interaction.channel.mention}", inline=True)
+                    log_embed.add_field(name="Длительность:", value=f"(<t:{new_expiry}:R>)", inline=True)
+                    log_embed.set_footer(text=f"ID участника: {interaction.author.id}")
+                    await channel.send(embed=log_embed)
+
                 async def button_callback(interaction: disnake.MessageInteraction):
-                    if interaction.component.custom_id == '30':
-                        if collusers.find_one({'id': inter.author.id})['balance'] < 399:
-                            await interaction.send('У Вас не хватает румбиков', ephemeral=True)
-                            return
-                        collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
-                        collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -399}})
-                        embed = disnake.Embed(color=0x4169E1)
-                        роль = diamond
-                        await interaction.author.add_roles(роль)
-                        expiry = datetime.now() + timedelta(seconds=2678400)
-                        expiry = int(expiry.timestamp())
-                        collusers.update_one(
-                            {"id": interaction.author.id, "guild_id": interaction.author.guild.id},
-                            {
-                                "$push": {"role_ids": {"role_ids": роль.id, "expires_at": expiry}},
-                                "$inc": {"number_of_roles": 1}
-                            },
-                            upsert=True
-                        )
+                    button_id = interaction.component.custom_id
+                    diamond_role_id = 123456789012345678  # ID роли "Diamond"
 
-                        embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
-                        embed.add_field(name="Роль выдана",
-                                        value=f"Роль {роль.name} выдана {interaction.author.display_name} и закончится <t:{expiry}:R>.")
-                        embed.set_thumbnail(
-                            url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
-                        await interaction.response.send_message(embed=embed)
-
-                        channel = await self.bot.fetch_channel(944562833901899827)
-
-                        embed = disnake.Embed(title="", url="", description="", color=0x00d5ff,
-                                              timestamp=datetime.now())
-                        embed.add_field(name="",
-                                        value=f"Участник **{interaction.author.name}** ({interaction.author.mention}) получил роль ``{роль.name}``",
-                                        inline=False)
-                        embed.set_thumbnail(
-                            url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
-                        embed.add_field(name="Модератор:", value=f"**Магазин** ({inter.author.mention})",
-                                        inline=True)
-                        embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
-                        embed.add_field(name="Длительность:",
-                                        value=f"(<t:{expiry}:R>)",
-                                        inline=True)
-                        embed.set_footer(text=f"ID участника: {interaction.author.id}")
-                        await channel.send(embed=embed)
-
-                    elif interaction.component.custom_id == '60':
-                        if collusers.find_one({'id': inter.author.id})['balance'] < 699:
-                            await interaction.send('У Вас не хватает румбиков', ephemeral=True)
-                            return
-                        collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
-                        collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -699}})
-                        embed = disnake.Embed(color=0x4169E1)
-                        роль = diamond
-                        await interaction.author.add_roles(роль)
-                        expiry = datetime.now() + timedelta(seconds=5097600)
-
-                        expiry = int(expiry.timestamp())
-                        collusers.update_one(
-                            {"id": interaction.author.id, "guild_id": interaction.author.guild.id},
-                            {
-                                "$push": {"role_ids": {"role_ids": роль.id, "expires_at": expiry}},
-                                "$inc": {"number_of_roles": 1}
-                            },
-                            upsert=True
-                        )
-
-                        embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
-                        embed.add_field(name="Роль выдана",
-                                        value=f"Роль {роль.name} выдана {interaction.author.display_name} и закончится <t:{expiry}:R>.")
-                        embed.set_thumbnail(
-                            url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
-                        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-                        channel = await self.bot.fetch_channel(944562833901899827)
-
-                        embed = disnake.Embed(title="", url="", description="", color=0x00d5ff,
-                                              timestamp=datetime.now())
-                        embed.add_field(name="",
-                                        value=f"Участник **{interaction.author.name}** ({interaction.author.mention}) получил роль ``{роль.name}``",
-                                        inline=False)
-                        embed.set_thumbnail(
-                            url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
-                        embed.add_field(name="Модератор:", value=f"**Магазин** ({inter.author.mention})",
-                                        inline=True)
-                        embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
-                        embed.add_field(name="Длительность:",
-                                        value=f"(<t:{expiry}:R>)",
-                                        inline=True)
-                        embed.set_footer(text=f"ID участника: {interaction.author.id}")
-                        await channel.send(embed=embed)
-
-                    elif interaction.component.custom_id == '90':
-                        if collusers.find_one({'id': inter.author.id})['balance'] < 699:
-                            await interaction.send('У Вас не хватает румбиков', ephemeral=True)
-                            return
-                        collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
-                        collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -949}})
-                        embed = disnake.Embed(color=0x4169E1)
-                        роль = diamond
-                        await interaction.author.add_roles(роль)
-                        expiry = datetime.now() + timedelta(seconds=7776000)
-
-                        expiry = int(expiry.timestamp())
-                        collusers.update_one(
-                            {"id": interaction.author.id, "guild_id": interaction.author.guild.id},
-                            {
-                                "$push": {"role_ids": {"role_ids": роль.id, "expires_at": expiry}},
-                                "$inc": {"number_of_roles": 1}
-                            },
-                            upsert=True
-                        )
-
-                        embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
-                        embed.add_field(name="Роль выдана",
-                                        value=f"Роль {роль.name} выдана {interaction.author.display_name} и закончится <t:{expiry}:R>.")
-                        embed.set_thumbnail(
-                            url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
-                        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-                        channel = await self.bot.fetch_channel(944562833901899827)
-
-                        embed = disnake.Embed(title="", url="", description="", color=0x00d5ff,
-                                              timestamp=datetime.now())
-                        embed.add_field(name="",
-                                        value=f"Участник **{interaction.author.name}** ({interaction.author.mention}) получил роль ``{роль.name}``",
-                                        inline=False)
-                        embed.set_thumbnail(
-                            url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
-                        embed.add_field(name="Модератор:", value=f"**Магазин** ({inter.author.mention})",
-                                        inline=True)
-                        embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
-                        embed.add_field(name="Длительность:",
-                                        value=f"(<t:{expiry}:R>)",
-                                        inline=True)
-                        embed.set_footer(text=f"ID участника: {interaction.author.id}")
-                        await channel.send(embed=embed)
+                    if button_id == '30':
+                        await process_role(interaction, cost=399, duration=2678400, role_id=diamond_role_id,
+                                           ephemeral=True)
+                    elif button_id == '60':
+                        await process_role(interaction, cost=699, duration=5097600, role_id=diamond_role_id,
+                                           ephemeral=True)
+                    elif button_id == '90':
+                        await process_role(interaction, cost=949, duration=7776000, role_id=diamond_role_id,
+                                           ephemeral=True)
 
                 for button in components:
                     button.callback = button_callback
@@ -594,13 +562,13 @@ class EconomyCog(commands.Cog):
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'booster_timestamp': 0}})
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'multiplier': 1}})
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'admin_booster_multiplier': 0}})
-                print('!= ==')
+
         elif timestamp_booster == 0 and global_timestamp_booster != 0:
             if timestamp_now > global_timestamp_booster:
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'multiplier': 1}})
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'global_booster_timestamp': 0}})
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'global_booster_multiplier': 0}})
-                print('== !=')
+
         elif timestamp_booster != 0 and global_timestamp_booster != 0:
             if timestamp_now > global_timestamp_booster and timestamp_now > timestamp_booster:
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'global_booster_timestamp': 0}})
@@ -608,19 +576,16 @@ class EconomyCog(commands.Cog):
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'booster_timestamp': 0}})
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'multiplier': 1}})
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'admin_booster_multiplier': 0}})
-                print('!= != 1')
 
             elif timestamp_now > global_timestamp_booster:
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$inc': {'multiplier': int(-global_booster_multiplier)}})
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'global_booster_timestamp': 0}})
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'global_booster_multiplier': 0}})
-                print('!= != 1')
+
             elif timestamp_now > timestamp_booster:
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'booster_timestamp': 0}})
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$inc': {'multiplier': int(-admin_booster_multiplier)}})
                 collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'admin_booster_multiplier': 0}})
-                print('!= != 2')
-
 
 
 
