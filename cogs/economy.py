@@ -16,7 +16,7 @@ cooldowns = {}
 voice_timestamps = {}
 mute_timestamps = {}
 total_time = {}
-
+emoji = "<:rumbick:1271089081601753118>"
 
 def format_duration(value):
     if value == 1:
@@ -28,6 +28,13 @@ def format_duration(value):
 def format_rumbick(value):
     emoji = "<:rumbick:1271089081601753118>"
     return f"{value} {emoji}"
+
+def create_error_embed(message: str) -> disnake.Embed:
+    embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+    embed.add_field(name='Произошла ошибка', value=f'Ошибка: {message}')
+    embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+    embed.set_footer(text='Ошибка')
+    return embed
 
 
 
@@ -87,21 +94,16 @@ class EconomyCog(commands.Cog):
     async def pay(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, количество: int):
         # Проверка на минимальную сумму перевода
         if количество < 10:
-            embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
-            embed.add_field(name=f'Произошла ошибка',
-                            value=f'Ошибка: Вы не можете перевести меньше 10 румбиков.')
-            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-            embed.set_footer(text='Ошибка')
+            error_message = "Вы не можете перевести меньше 10 румбиков."
+            embed = create_error_embed(error_message)
             await inter.response.send_message(embed=embed, ephemeral=True)
             return
 
         # Проверка на попытку перевести самому себе
         if участник.id == inter.author.id:
             embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
-            embed.add_field(name=f'Произошла ошибка',
-                            value=f'Ошибка: Нельзя переводить румбики самому себе.')
-            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-            embed.set_footer(text='Ошибка')
+            error_message = "Вы не можете перевести румбики самому себе."
+            embed = create_error_embed(error_message)
             await inter.response.send_message(embed=embed, ephemeral=True)
             return
 
@@ -163,35 +165,77 @@ class EconomyCog(commands.Cog):
         else:
             unformatted = int(количество) - balance
             formatted = format_duration(unformatted)
-            embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
-            embed.add_field(name=f'Произошла ошибка',
-                            value=f'Ошибка: У Вас не хватает еще {formatted} для перевода.')
-            embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-            embed.set_footer(text='Ошибка')
-            await inter.edit_original_response(embed=embed)
+            error_message = f"У Вас не хватает еще {formatted} для перевода."
+            embed = create_error_embed(error_message)
+            await inter.followup.send(embed=embed, ephemeral=True)
 
-    @commands.slash_command(name='money', description="Изменяет баланс участника", aliases=['деньги', 'givemoney', 'setmoney'])
+    @commands.slash_command(name='change-balance', description="Изменяет баланс участника", aliases=['деньги', 'givemoney', 'setmoney'])
     async def money(
             self,
             inter: disnake.ApplicationCommandInteraction,
             участник: disnake.Member,
             действие: str = commands.Param(choices=["добавить (+)", "отнять (-)", "установить (=)"]),
-            количество: int = 0
+            количество: float = 0.0
     ):
+        # Получение текущего баланса участника
+        user_data = collusers.find_one({'id': участник.id})
+        current_balance = round(user_data.get('balance', 0.0), 2)
+
         if действие == "добавить (+)":
+            new_balance = round(current_balance + количество, 2)
             collusers.find_one_and_update({'id': участник.id}, {'$inc': {'balance': количество}})
-            await inter.response.send_message(f'Добавлено {количество} румбиков к балансу {участник.display_name}.',
-                                              ephemeral=True)
+            embed = disnake.Embed(title=f'', color=0x00ff00)
+            embed.set_author(name=f"{inter.user.display_name}", icon_url=f"{inter.user.avatar.url}")
+            embed.set_thumbnail(
+                url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
+            embed.add_field(name='', value=f'Вы **добавили** {количество}{emoji} к балансу {участник.mention}, теперь его текущий баланс {new_balance}{emoji}', inline=False)
+            embed.set_footer(text=f'Баланс участника {участник.display_name} изменен', icon_url=участник.avatar.url)
+            embed.timestamp = datetime.now()
+            await inter.response.send_message(embed=embed, ephemeral=True)
 
         elif действие == "отнять (-)":
+            new_balance = round(current_balance - количество, 2)
             collusers.find_one_and_update({'id': участник.id}, {'$inc': {'balance': -количество}})
-            await inter.response.send_message(f'Отнято {количество} румбиков от баланса {участник.display_name}.',
-                                              ephemeral=True)
+            embed = disnake.Embed(title=f'', color=0x00ff00)
+            embed.set_author(name=f"{inter.user.display_name}", icon_url=f"{inter.user.avatar.url}")
+            embed.set_thumbnail(
+                url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
+            embed.add_field(name='', value=f'Вы **отняли** {количество}{emoji} от баланса {участник.mention}, теперь его текущий баланс {new_balance}{emoji}',
+                            inline=False)
+            embed.set_footer(text=f'Баланс участника {участник.display_name} изменен', icon_url=участник.avatar.url)
+            embed.timestamp = datetime.now()
+            await inter.response.send_message(embed=embed, ephemeral=True)
 
         elif действие == "установить (=)":
+            new_balance = round(количество, 2)
             collusers.find_one_and_update({'id': участник.id}, {'$set': {'balance': количество}})
-            await inter.response.send_message(f'Баланс {участник.display_name} установлен на {количество} румбиков.',
-                                              ephemeral=True)
+            embed = disnake.Embed(title=f'', color=0x00ff00)
+            embed.set_author(name=f"{inter.user.display_name}", icon_url=f"{inter.user.avatar.url}")
+            embed.set_thumbnail(
+                url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
+            embed.add_field(name='', value=f'Вы **установили** баланс {участник.mention} на {количество}{emoji}  ',
+                            inline=False)
+            embed.set_footer(text=f'Баланс участника {участник.display_name} изменен', icon_url=участник.avatar.url)
+            embed.timestamp = datetime.now()
+            await inter.response.send_message(embed=embed, ephemeral=True)
+
+        channel = await self.bot.fetch_channel(944562833901899827)
+        log_embed = disnake.Embed(title='', color=0x00ff00)
+        log_embed.set_thumbnail(
+            url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
+        log_embed.add_field(name=f'', value=f'Баланс участника **{участник.display_name}** был изменен', inline=False)
+        log_embed.add_field(name='Администратор:', value=f'{inter.user.mention}', inline=True)
+        log_embed.add_field(name='Участник:', value=f'{участник.mention}', inline=True)
+        log_embed.add_field(name='',value='', inline=False)
+        log_embed.add_field(name='Действие:', value=действие, inline=True)
+        log_embed.add_field(name='Количество:', value=f'{количество}{emoji}', inline=True)
+        log_embed.add_field(name='', value='', inline=False)
+        log_embed.add_field(name='Баланс до изменения:', value=f'{current_balance}{emoji}', inline=True)
+        log_embed.add_field(name='Текущий баланс:', value=f'{new_balance}{emoji}', inline=True)
+        log_embed.set_footer(text=f'ID Участника: {участник.id}', icon_url=участник.avatar.url)
+        log_embed.timestamp = datetime.now()
+        await channel.send(embed=log_embed)
+
 
     @commands.slash_command(name='store', description='Магазин ролей и специальных возможностей за Румбики',
                             aliases=['shop', 'магазин', 'лавка', 'рынок'])
@@ -201,7 +245,6 @@ class EconomyCog(commands.Cog):
                 await inter.response.defer(ephemeral=True)
             except:
                 return
-        emoji = "<:rumbick:1271089081601753118>"
         diamond = inter.guild.get_role(1044314368717897868)
         user_data = collusers.find_one({"id": inter.author.id})
         if user_data:
@@ -236,7 +279,7 @@ class EconomyCog(commands.Cog):
 
         # Создаем select menu
         select_menu = disnake.ui.Select(
-            placeholder="Выбрать предмет для покупки..",
+            placeholder="Выбрать предмет для покупки...",
             min_values=1,
             max_values=1,
             options=options,
@@ -276,7 +319,9 @@ class EconomyCog(commands.Cog):
                     # Проверяем баланс
                     user_data = collusers.find_one({'id': user_id})
                     if user_data['balance'] < cost:
-                        await interaction.send('У Вас не хватает румбиков', ephemeral=ephemeral)
+                        error_message = "У вас не хватает румбиков для покупки."
+                        embed = create_error_embed(error_message)
+                        await inter.edit_original_response(embed=embed)
                         return
 
                     # Обновляем баланс и сделки
@@ -286,8 +331,9 @@ class EconomyCog(commands.Cog):
                     # Получаем роль по ID (Diamond)
                     role = disnake.utils.get(interaction.guild.roles, id=role_id)
                     if role is None:
-                        await interaction.send('Роль не найдена в гильдии. Пожалуйста, свяжитесь с администратором.',
-                                               ephemeral=True)
+                        error_message = "Роль не найдена. Пожалуйста сважитесь с Администратором."
+                        embed = create_error_embed(error_message)
+                        await inter.response.send_message(embed=embed, ephemeral=True)
                         return
 
                     # Получаем пользователя (author of interaction)
@@ -380,7 +426,9 @@ class EconomyCog(commands.Cog):
             if select_menu.values[0] == "2":
                 nikname_price = 49
                 if collusers.find_one({'id': inter.author.id})['balance'] < nikname_price:
-                    await interaction.send('У Вас не хватает румбиков', ephemeral=True)
+                    error_message = "У вас не хватает румбиков для покупки."
+                    embed = create_error_embed(error_message)
+                    await inter.edit_original_response(embed=embed)
                     return
                 collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
                 collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -nikname_price}})
@@ -401,35 +449,142 @@ class EconomyCog(commands.Cog):
                 )
                 await interaction.response.send_modal(modal=modal)
 
+
             if select_menu.values[0] == "3":
-                global_booset_price = 399
-                if collusers.find_one({'id': interaction.author.id})['balance'] < global_booset_price:
-                    await interaction.send('У Вас не хватает румбиков', ephemeral=True)
-                    return
-                if collservers.find_one({'_id': interaction.author.guild.id})['global_booster_timestamp'] != 0:
-                    await interaction.send('Бустер уже действует')
-                    return
-                collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
-                multiplier = collservers.find_one({'_id': interaction.author.guild.id})['multiplier']
-                collusers.find_one_and_update({'_id': interaction.author.id}, {'$inc': {'balance': -global_booset_price}})
-                timestamp = int(datetime.now().timestamp()) + 86400
-                collservers.find_one_and_update({'_id': interaction.author.guild.id}, {'$inc': {'global_booster_timestamp': int(timestamp)}})
-                collservers.find_one_and_update({'_id': interaction.author.guild.id},
-                                              {'$inc': {'global_booster_multiplier': int(2)}})
-                if multiplier != 1:
-                    collservers.find_one_and_update({'_id': interaction.author.guild.id},
-                                                  {'$inc': {'multiplier': 2}})
-                else:
-                    collservers.find_one_and_update({'_id': interaction.author.guild.id},
-                                                    {'$set': {'multiplier': 2}})
-                embed = disnake.Embed(title="", url="", description="", color=0x00d5ff, timestamp=datetime.now())
-                embed.add_field(name='**Бустер румбиков успешно приобретён**', value=f'{interaction.author.mention}, Вы успешно приобрели бустер румбиков x2 на один день.', inline=False)
-                await interaction.send(embed=embed, ephemeral=True)
-                channel = interaction.author.guild.get_channel(489867322039992323)
-                embed = disnake.Embed(title="", url="", description="", color=0x00d5ff, timestamp=datetime.now())
-                embed.add_field(name=f'**Бустер румбиков 2x активирован**', value=f'Участник сервера `{interaction.author.display_name}` ({interaction.author.mention}), активировал глобальный бустер румбиков x2 на один день!\n'
-                                                                                  f'Бустер закончится <t:{timestamp}:R>', inline=False)
-                await channel.send(embed=embed)
+                global_booster_price_map = {
+                    '1_day': 399,
+                    '3_days': 999,
+                    '7_days': 1899
+                }
+
+                options = [
+                    disnake.ui.Button(label="🔹 Купить на 1 день", style=disnake.ButtonStyle.secondary,
+                                      custom_id='1_day'),
+                    disnake.ui.Button(label="🔹 Купить на 3 дня", style=disnake.ButtonStyle.primary, custom_id='3_days'),
+                    disnake.ui.Button(label="🔹 Купить на 7 дней", style=disnake.ButtonStyle.success, custom_id='7_days')
+                ]
+
+                def get_day_word(day_count):
+                    if day_count == 1:
+                        return 'день'
+                    elif day_count in [2, 3, 4]:
+                        return 'дня'
+                    else:
+                        return 'дней'
+
+                async def button_callback(interaction: disnake.MessageInteraction):
+                    button_id = interaction.component.custom_id
+                    cost = global_booster_price_map[button_id]
+                    duration_map = {
+                        '1_day': 86400,
+                        '3_days': 259200,
+                        '7_days': 604800
+                    }
+                    duration = duration_map[button_id]
+                    day_count = int(button_id.split('_')[0])
+
+                    if collusers.find_one({'id': interaction.author.id})['balance'] < cost:
+                        error_message = "У вас не хватает румбиков для покупки."
+                        embed = create_error_embed(error_message)
+                        await interaction.edit_original_response(embed=embed)
+                        return
+
+                    # Получение данных сервера
+                    server_data = collservers.find_one({'_id': interaction.author.guild.id})
+                    current_timestamp = server_data['global_booster_timestamp']
+                    current_time = int(datetime.now().timestamp())
+
+                    if current_timestamp != 0 and current_timestamp > current_time:
+                        # Продление бустера
+                        new_timestamp = current_timestamp + duration
+                        embed_message = f"{interaction.author.mention}, срок действия вашего активного бустера продлён на {day_count} {get_day_word(day_count)}."
+                        extend_embed = disnake.Embed(
+                            title="Бустер румбиков продлён",
+                            description=embed_message,
+                            color=0x00d5ff,
+                            timestamp=datetime.now()
+                        )
+                        await interaction.send(embed=extend_embed, ephemeral=True)
+                    else:
+                        # Покупка бустера и обновление множителя
+                        new_timestamp = current_time + duration
+                        embed_message = f"{interaction.author.mention}, Вы успешно приобрели бустер румбиков x2 на {day_count} {get_day_word(day_count)}."
+                        purchase_embed = disnake.Embed(
+                            title="Бустер румбиков приобретён",
+                            description=embed_message,
+                            color=0x00d5ff,
+                            timestamp=datetime.now()
+                        )
+                        await interaction.send(embed=purchase_embed, ephemeral=True)
+
+                        # Проверка и обновление глобального множителя бустера
+                        admin_multiplier = server_data['admin_booster_multiplier']
+                        if admin_multiplier != 1:
+                            new_multiplier = admin_multiplier + 1  # Добавляем только 1 вместо 2
+                        else:
+                            new_multiplier = admin_multiplier + 2  # Если админский бустер 1x, то добавляем 2
+
+                        collservers.find_one_and_update(
+                            {'_id': interaction.author.guild.id},
+                            {'$set': {'multiplier': new_multiplier}}
+                        )
+
+                    # Обновление информации о бустере в базе данных
+                    collservers.find_one_and_update(
+                        {'_id': interaction.author.guild.id},
+                        {
+                            '$set': {
+                                'global_booster_timestamp': new_timestamp,
+                                'global_booster_multiplier': 2
+                            }
+                        }
+                    )
+
+                    # Обновление баланса пользователя и количества сделок
+                    collusers.update_many({'id': interaction.author.id}, {'$inc': {'number_of_deal': 1}})
+                    collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -cost}})
+
+                    # Уведомление в канале сервера
+                    channel = interaction.author.guild.get_channel(944562833901899827)
+                    if current_timestamp != 0 and current_timestamp > current_time:
+                        # Уведомление о продлении бустера
+                        server_embed = disnake.Embed(
+                            title="Бустер румбиков продлён",
+                            description=f"Участник сервера `{interaction.author.display_name}` ({interaction.author.mention}) продлил глобальный бустер румбиков x2 на {day_count} {get_day_word(day_count)}!\nНовый срок окончания бустера: <t:{new_timestamp}:R>.",
+                            color=0x00d5ff,
+                            timestamp=datetime.now()
+                        )
+                    else:
+                        # Уведомление о покупке бустера
+                        server_embed = disnake.Embed(
+                            title="Бустер румбиков 2x активирован",
+                            description=f"Участник сервера `{interaction.author.display_name}` ({interaction.author.mention}) активировал глобальный бустер румбиков x2 на {day_count} {get_day_word(day_count)}!\nБустер закончится <t:{new_timestamp}:R>.",
+                            color=0x00d5ff,
+                            timestamp=datetime.now()
+                        )
+                    await channel.send(embed=server_embed)
+
+                for button in options:
+                    button.callback = button_callback
+
+                view = disnake.ui.View(timeout=None)
+                for button in options:
+                    view.add_item(button)
+
+                embed = disnake.Embed(color=0x4169E1)
+                embed.set_author(name=f'Выберите длительность Бустера', icon_url=inter.guild.icon.url)
+                embed.set_thumbnail(url='https://i.gifer.com/origin/63/6309237109affef229b14c3c5dc7308b_w200.gif')
+                embed.add_field(name='Выберите желаемую длительность для активации глобального бустера румбиков x2:',
+                                value='', inline=False)
+                embed.add_field(name='**Стоимость**',
+                                value=f'* Глобальный бустер х2\n * Бустер (на 1 день) - 399{emoji}\n * Бустер (на 3 дня) - ~~1200~~ 999{emoji} **Скидка -17%**\n * Бустер (на 7 дней) - ~~2799~~ 1899{emoji} **Скидка -33%**',
+                                inline=False)
+                embed.add_field(name='Обратите внимание:',
+                                value=f'Если глобальный бустер румбиков уже активен, при повторной покупке его срок действия будет продлён.',
+                                inline=False)
+                embed.add_field(name='', value='')
+                embed.add_field(name='', value=f'**Ваш текущий баланс:** {balance_formatted}', inline=False)
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
         select_menu.callback = select_callback
 
@@ -566,45 +721,61 @@ class EconomyCog(commands.Cog):
 
     @tasks.loop(seconds=60)
     async def check_booster(self):
-        timestamp_booster = collservers.find_one({'_id': 489867322039992320})['booster_timestamp']
-        global_timestamp_booster = collservers.find_one({'_id': 489867322039992320})['global_booster_timestamp']
-        global_booster_multiplier = global_timestamp_booster = collservers.find_one({'_id': 489867322039992320})['global_booster_multiplier']
-        admin_booster_multiplier = global_timestamp_booster = collservers.find_one({'_id': 489867322039992320})['admin_booster_multiplier']
+        server_id = 489867322039992320
+        server_data = collservers.find_one({'_id': server_id})
+
+        timestamp_booster = server_data['booster_timestamp']
+        global_timestamp_booster = server_data['global_booster_timestamp']
+        global_booster_multiplier = server_data['global_booster_multiplier']
+        admin_booster_multiplier = server_data['admin_booster_multiplier']
         timestamp_now = int(datetime.now().timestamp())
 
+        # Проверяем, истек ли админский бустер, но глобальный не активен
         if timestamp_booster != 0 and global_timestamp_booster == 0:
             if timestamp_booster < timestamp_now:
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'booster_timestamp': 0}})
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'multiplier': 1}})
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'admin_booster_multiplier': 0}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'booster_timestamp': 0}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': 1}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'admin_booster_multiplier': 0}})
+                print('Admin booster expired, no global booster active.')
+                return
 
+        # Проверяем, истек ли глобальный бустер, но админский не активен
         elif timestamp_booster == 0 and global_timestamp_booster != 0:
             if timestamp_now > global_timestamp_booster:
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'multiplier': 1}})
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'global_booster_timestamp': 0}})
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'global_booster_multiplier': 0}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': 1}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_timestamp': 0}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_multiplier': 0}})
+                print('Global booster expired, no admin booster active.')
+                return
 
+        # Проверяем, истекли ли оба бустера
         elif timestamp_booster != 0 and global_timestamp_booster != 0:
             if timestamp_now > global_timestamp_booster and timestamp_now > timestamp_booster:
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'global_booster_timestamp': 0}})
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'global_booster_multiplier': 0}})
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'booster_timestamp': 0}})
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'multiplier': 1}})
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'admin_booster_multiplier': 0}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_timestamp': 0}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_multiplier': 0}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'booster_timestamp': 0}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': 1}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'admin_booster_multiplier': 0}})
+                print('Both boosters expired.')
+                return
 
-            elif timestamp_now > global_timestamp_booster:
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$inc': {'multiplier': int(-global_booster_multiplier)}})
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'global_booster_timestamp': 0}})
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'global_booster_multiplier': 0}})
+            # Проверяем, истек ли глобальный бустер, но админский еще активен
+            elif timestamp_now > global_timestamp_booster and timestamp_now < timestamp_booster:
+                new_multiplier = admin_booster_multiplier + 1  # Учитываем, что глобальный бустер добавлял 1x к множителю
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': new_multiplier}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_timestamp': 0}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_multiplier': 0}})
+                print('Global booster expired, admin booster still active.')
+                return
 
-            elif timestamp_now > timestamp_booster:
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'booster_timestamp': 0}})
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$inc': {'multiplier': int(-admin_booster_multiplier)}})
-                collservers.find_one_and_update({'_id': 489867322039992320}, {'$set': {'admin_booster_multiplier': 0}})
-
-
-
-
+            # Проверяем, истек ли админский бустер, но глобальный еще активен
+            elif timestamp_now > timestamp_booster and timestamp_now < global_timestamp_booster:
+                new_multiplier = global_booster_multiplier + 1  # Учитываем, что админский бустер добавлял 1x к множителю
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': new_multiplier}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'booster_timestamp': 0}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'admin_booster_multiplier': 0}})
+                print('Admin booster expired, global booster still active.')
+                return
 
     @commands.slash_command(name='booster', description='Включает бустер румбиков')
     async def booster(self, inter: disnake.ApplicationCommandInteraction, multiplier: int, expiry: str):
