@@ -81,8 +81,10 @@ async def on_ready():
                 "case": 0,
                 "booster_timestamp": 0,
                 "admin_booster_multiplier": 0,
+                "admin_booster_activated_by": [],
                 "global_booster_timestamp": 0,
                 "global_booster_multiplier": 0,
+                "global_booster_activated_by": [],
                 "multiplier": 1
             }
 
@@ -119,8 +121,10 @@ async def on_guild_join(guild):
         "case": 0,
         "booster_timestamp": 0,
         "admin_booster_multiplier": 0,
+        "admin_booster_activated_by": [],
         "global_booster_timestamp": 0,
         "global_booster_multiplier": 0,
+        "global_booster_activated_by": [],
         "multiplier": 1
     }
 

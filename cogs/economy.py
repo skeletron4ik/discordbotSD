@@ -476,7 +476,7 @@ class EconomyCog(commands.Cog):
                     button_id = interaction.component.custom_id
                     cost = global_booster_price_map[button_id]
                     duration_map = {
-                        '1_day': 86400,
+                        '1_day': 60,
                         '3_days': 259200,
                         '7_days': 604800
                     }
@@ -493,6 +493,7 @@ class EconomyCog(commands.Cog):
                     server_data = collservers.find_one({'_id': interaction.author.guild.id})
                     current_timestamp = server_data['global_booster_timestamp']
                     current_time = int(datetime.now().timestamp())
+                    admin_multiplier = server_data['admin_booster_multiplier']
 
                     if current_timestamp != 0 and current_timestamp > current_time:
                         # Продление бустера
@@ -505,6 +506,12 @@ class EconomyCog(commands.Cog):
                             timestamp=datetime.now()
                         )
                         await interaction.send(embed=extend_embed, ephemeral=True)
+
+                        # Обновление списка активировавших бустер
+                        collservers.find_one_and_update(
+                            {'_id': interaction.author.guild.id},
+                            {'$addToSet': {'global_booster_activated_by': interaction.author.id}}
+                        )
                     else:
                         # Покупка бустера и обновление множителя
                         new_timestamp = current_time + duration
@@ -518,15 +525,20 @@ class EconomyCog(commands.Cog):
                         await interaction.send(embed=purchase_embed, ephemeral=True)
 
                         # Проверка и обновление глобального множителя бустера
-                        admin_multiplier = server_data['admin_booster_multiplier']
-                        if admin_multiplier != 1:
-                            new_multiplier = admin_multiplier + 1  # Добавляем только 1 вместо 2
+                        if admin_multiplier == 1 or admin_multiplier == 0:
+                            new_multiplier = 2  # Если админский бустер 1x или 0x, то устанавливаем 2
                         else:
-                            new_multiplier = admin_multiplier + 2  # Если админский бустер 1x, то добавляем 2
+                            new_multiplier = admin_multiplier + 1  # Добавляем только 1 к текущему админскому множителю
 
                         collservers.find_one_and_update(
                             {'_id': interaction.author.guild.id},
                             {'$set': {'multiplier': new_multiplier}}
+                        )
+
+                        # Обновление списка активировавших бустер
+                        collservers.find_one_and_update(
+                            {'_id': interaction.author.guild.id},
+                            {'$addToSet': {'global_booster_activated_by': interaction.author.id}}
                         )
 
                     # Обновление информации о бустере в базе данных
@@ -724,58 +736,152 @@ class EconomyCog(commands.Cog):
         server_id = 489867322039992320
         server_data = collservers.find_one({'_id': server_id})
 
-        timestamp_booster = server_data['booster_timestamp']
-        global_timestamp_booster = server_data['global_booster_timestamp']
-        global_booster_multiplier = server_data['global_booster_multiplier']
-        admin_booster_multiplier = server_data['admin_booster_multiplier']
+        if not server_data:
+            print(f"Server data for ID {server_id} not found.")
+            return
+
+        timestamp_booster = server_data.get('booster_timestamp', 0)
+        global_timestamp_booster = server_data.get('global_booster_timestamp', 0)
+        global_booster_multiplier = server_data.get('global_booster_multiplier', 0)
+        admin_booster_multiplier = server_data.get('admin_booster_multiplier', 0)
         timestamp_now = int(datetime.now().timestamp())
 
         # Проверяем, истек ли админский бустер, но глобальный не активен
         if timestamp_booster != 0 and global_timestamp_booster == 0:
             if timestamp_booster < timestamp_now:
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'booster_timestamp': 0}})
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': 1}})
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'admin_booster_multiplier': 0}})
+                result = collservers.find_one_and_update(
+                    {'_id': server_id},
+                    {
+                        '$set': {
+                            'booster_timestamp': 0,
+                            'multiplier': 1,
+                            'admin_booster_multiplier': 0,
+                            'admin_booster_activated_by': []
+                        }
+                    }
+                )
                 print('Admin booster expired, no global booster active.')
+                print(f"Update result: {result}")
                 return
 
         # Проверяем, истек ли глобальный бустер, но админский не активен
         elif timestamp_booster == 0 and global_timestamp_booster != 0:
             if timestamp_now > global_timestamp_booster:
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': 1}})
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_timestamp': 0}})
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_multiplier': 0}})
+                result = collservers.find_one_and_update(
+                    {'_id': server_id},
+                    {
+                        '$set': {
+                            'multiplier': 1,
+                            'global_booster_timestamp': 0,
+                            'global_booster_multiplier': 0,
+                            'global_booster_activated_by': []
+                        }
+                    }
+                )
                 print('Global booster expired, no admin booster active.')
+                print(f"Update result: {result}")
                 return
 
         # Проверяем, истекли ли оба бустера
         elif timestamp_booster != 0 and global_timestamp_booster != 0:
             if timestamp_now > global_timestamp_booster and timestamp_now > timestamp_booster:
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_timestamp': 0}})
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_multiplier': 0}})
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'booster_timestamp': 0}})
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': 1}})
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'admin_booster_multiplier': 0}})
+                result = collservers.find_one_and_update(
+                    {'_id': server_id},
+                    {
+                        '$set': {
+                            'global_booster_timestamp': 0,
+                            'global_booster_multiplier': 0,
+                            'booster_timestamp': 0,
+                            'multiplier': 1,
+                            'admin_booster_multiplier': 0,
+                            'global_booster_activated_by': [],
+                            'admin_booster_activated_by': []
+                        }
+                    }
+                )
                 print('Both boosters expired.')
+                print(f"Update result: {result}")
                 return
 
             # Проверяем, истек ли глобальный бустер, но админский еще активен
             elif timestamp_now > global_timestamp_booster and timestamp_now < timestamp_booster:
                 new_multiplier = admin_booster_multiplier + 1  # Учитываем, что глобальный бустер добавлял 1x к множителю
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': new_multiplier}})
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_timestamp': 0}})
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_multiplier': 0}})
+                result = collservers.find_one_and_update(
+                    {'_id': server_id},
+                    {
+                        '$set': {
+                            'multiplier': new_multiplier,
+                            'global_booster_timestamp': 0,
+                            'global_booster_multiplier': 0,
+                            'global_booster_activated_by': []
+                        }
+                    }
+                )
                 print('Global booster expired, admin booster still active.')
+                print(f"Update result: {result}")
                 return
 
             # Проверяем, истек ли админский бустер, но глобальный еще активен
             elif timestamp_now > timestamp_booster and timestamp_now < global_timestamp_booster:
                 new_multiplier = global_booster_multiplier + 1  # Учитываем, что админский бустер добавлял 1x к множителю
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': new_multiplier}})
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'booster_timestamp': 0}})
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'admin_booster_multiplier': 0}})
+                result = collservers.find_one_and_update(
+                    {'_id': server_id},
+                    {
+                        '$set': {
+                            'multiplier': new_multiplier,
+                            'booster_timestamp': 0,
+                            'admin_booster_multiplier': 0,
+                            'admin_booster_activated_by': []
+                        }
+                    }
+                )
                 print('Admin booster expired, global booster still active.')
+                print(f"Update result: {result}")
                 return
+
+        #Если админский бустер истекает, заменить multiplier на global_booster_multiplier
+        if timestamp_booster != 0 and timestamp_now > timestamp_booster:
+            if global_timestamp_booster == 0 or timestamp_now > global_timestamp_booster:
+                result = collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': 1}})
+            else:
+                result = collservers.find_one_and_update({'_id': server_id},
+                                                         {'$set': {'multiplier': global_booster_multiplier}})
+
+            result = collservers.find_one_and_update(
+                {'_id': server_id},
+                {
+                    '$set': {
+                        'booster_timestamp': 0,
+                        'admin_booster_multiplier': 0,
+                        'admin_booster_activated_by': []
+                    }
+                }
+            )
+            print('Admin booster expired.')
+            print(f"Update result: {result}")
+            return
+
+        # Если глобальный бустер истекает, заменить multiplier на admin_booster_multiplier
+        if global_timestamp_booster != 0 and timestamp_now > global_timestamp_booster:
+            if timestamp_booster == 0 or timestamp_now > timestamp_booster:
+                result = collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': 1}})
+            else:
+                result = collservers.find_one_and_update({'_id': server_id},
+                                                         {'$set': {'multiplier': admin_booster_multiplier}})
+
+            result = collservers.find_one_and_update(
+                {'_id': server_id},
+                {
+                    '$set': {
+                        'global_booster_timestamp': 0,
+                        'global_booster_multiplier': 0,
+                        'global_booster_activated_by': []
+                    }
+                }
+            )
+            print('Global booster expired.')
+            print(f"Update result: {result}")
+            return
 
     @commands.slash_command(name='booster', description='Включает бустер румбиков')
     async def booster(self, inter: disnake.ApplicationCommandInteraction, multiplier: int, expiry: str):
@@ -784,19 +890,88 @@ class EconomyCog(commands.Cog):
         except:
             embed = disnake.Embed(color=0xe70404)
             embed.add_field(name='Произошла ошибка', value='Ошибка в конвертации в секунды')
+            await inter.response.send_message(embed=embed, ephemeral=True)
+            return
+
         timestamp = int(datetime.now().timestamp()) + expiry
-        if collservers.find_one({'_id': 489867322039992320})['global_booster_timestamp'] != 0:
-            collservers.find_one_and_update({'_id': inter.author.guild.id}, {'$inc': {'multiplier': int(multiplier)}})
-            collservers.find_one_and_update({'_id': inter.author.guild.id}, {'$set': {'booster_timestamp': int(timestamp)}})
-            collservers.find_one_and_update({'_id': inter.author.guild.id}, {'$set': {'admin_booster_multiplier': int(multiplier)}})
+        server_data = collservers.find_one({'_id': inter.author.guild.id})
+        global_booster_active = server_data['global_booster_timestamp'] != 0 and server_data[
+            'global_booster_timestamp'] > int(datetime.now().timestamp())
+
+        if global_booster_active:
+            # Уменьшаем общий множитель на 1 при активном глобальном бустере
+            new_multiplier = server_data['multiplier'] + int(multiplier) - 1
         else:
-            collservers.find_one_and_update({'_id': inter.author.guild.id}, {'$set': {'multiplier': int(multiplier)}})
-            collservers.find_one_and_update({'_id': inter.author.guild.id}, {'$set': {'booster_timestamp': int(timestamp)}})
-            collservers.find_one_and_update({'_id': inter.author.guild.id}, {'$set': {'admin_booster_multiplier': int(multiplier)}})
+            new_multiplier = int(multiplier)
+
+        collservers.find_one_and_update(
+            {'_id': inter.author.guild.id},
+            {
+                '$set': {
+                    'multiplier': new_multiplier,
+                    'booster_timestamp': int(timestamp),
+                    'admin_booster_multiplier': int(multiplier)
+                },
+                '$addToSet': {'admin_booster_activated_by': inter.author.id}
+            }
+        )
 
         embed = disnake.Embed(color=0x4169E1)
-        embed.add_field(name='**Бустер активирован**', value=f'Множитель: {multiplier}\nДата окончания: <t:{timestamp}:R>')
+        embed.add_field(name='**Бустер активирован**',
+                        value=f'Множитель: {multiplier}\n Общий множитель: {new_multiplier}\nДата окончания: <t:{timestamp}:R>')
         await inter.response.send_message(embed=embed, ephemeral=True)
+
+    @commands.slash_command(name='boosters', description="Показывает текущие активные бустеры.")
+    async def boosters(self, inter: disnake.ApplicationCommandInteraction):
+        server_id = inter.guild_id
+        server_data = collservers.find_one({'_id': server_id})
+
+        # Извлечение информации о бустерах
+        admin_booster_multiplier = server_data.get('admin_booster_multiplier', 0)
+        admin_booster_activated_by = server_data.get('admin_booster_activated_by', [])
+        booster_timestamp = server_data.get('booster_timestamp', 0)
+
+        global_booster_multiplier = server_data.get('global_booster_multiplier', 0)
+        global_booster_activated_by = server_data.get('global_booster_activated_by', [])
+        global_booster_timestamp = server_data.get('global_booster_timestamp', 0)
+
+        embed = disnake.Embed(title="Активные бустеры", color=disnake.Color.blue())
+
+        # Форматирование оставшегося времени
+        def format_time_remaining(timestamp):
+            time_remaining = timedelta(seconds=timestamp - int(datetime.now().timestamp()))
+            return str(time_remaining)
+
+        # Серверный бустер (администраторский)
+        if booster_timestamp > int(datetime.now().timestamp()):
+            users_admin_booster = ', '.join([str(self.bot.get_user(user_id)) for user_id in admin_booster_activated_by])
+            time_remaining_admin = format_time_remaining(booster_timestamp)
+            embed.add_field(
+                name="Серверный бустер (администраторский)",
+                value=f"**Множитель:** x{admin_booster_multiplier}\n"
+                      f"**Активирован:** {users_admin_booster}\n"
+                      f"**Истекает через:** {time_remaining_admin}",
+                inline=False
+            )
+
+        # Глобальный бустер
+        if global_booster_timestamp > int(datetime.now().timestamp()):
+            users_global_booster = ', '.join(
+                [str(self.bot.get_user(user_id)) for user_id in global_booster_activated_by])
+            time_remaining_global = format_time_remaining(global_booster_timestamp)
+            embed.add_field(
+                name="Глобальный бустер",
+                value=f"**Множитель:** x{global_booster_multiplier}\n"
+                      f"**Активирован:** {users_global_booster}\n"
+                      f"**Истекает через:** {time_remaining_global}",
+                inline=False
+            )
+
+        # Если нет активных бустеров
+        if not embed.fields:
+            embed.description = "На данный момент нет активных бустеров."
+
+        await inter.response.send_message(embed=embed)
 
     @commands.Cog.listener()
     async def on_modal_submit(self, inter: disnake.ModalInteraction):
