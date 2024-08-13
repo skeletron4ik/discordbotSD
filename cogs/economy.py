@@ -1146,6 +1146,46 @@ class EconomyCog(commands.Cog):
 
         await inter.response.send_modal(modal=modal)
 
+
+
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.bot:
+            if message.channel.id == 1070322967634006057:
+                if message.embeds:
+                    message_embed = str(message.embeds[0].description)
+                    if 'Bump done!' in str(message_embed) or 'Время фиксации апа:' in message_embed or 'Ви успішно лайкнули сервер.' in message_embed or 'Вы успешно лайкнули сервер.' in message_embed:
+                        author_interaction = message.interaction.author
+                    elif 'Server bumped by' in message_embed:
+                        mention_pattern = r"<@!?(\d+)>"
+                        mentions = re.findall(mention_pattern, message_embed)
+                        print(mentions[0])
+                        author_interaction = await message.author.guild.fetch_member(mentions[0])
+                        print(author_interaction)
+                    else:
+                        return
+                    collusers.find_one_and_update({'id': author_interaction.id}, {'$inc': {'balance': 5}})
+                    embed = disnake.Embed(color=0x4169E1)
+                    embed.add_field(name=f'**Успешный бамп!**',
+                                    value=f'{author_interaction.mention}, Вы успешно бампнули сервер\n'
+                                          f' и за это получаете `5` румбиков.')
+                    embed.set_footer(text=f'Bumped by {author_interaction.display_name}', icon_url=author_interaction.avatar.url)
+                    embed.set_author(name=message.author.guild.name, icon_url=message.author.guild.icon.url)
+                    await message.channel.send(content=author_interaction.mention, embed=embed)
+
+
+
+    @commands.slash_command(name='embed')
+    async def embed(self, inter: disnake.ApplicationCommandInteraction):
+        embed = disnake.Embed(description=f'**Успешный Up!**\n'
+                                          f'Время фиксации апа:')
+        await inter.response.send_message(embed=embed)
+
+    @commands.user_command(name='balance', dm_permission=False, nsfw=True)
+    async def balinuser(self, inter: disnake.ApplicationCommandInteraction, user: disnake.User):
+        await self.balance(inter, user)
+
 def setup(bot):
     bot.add_cog(EconomyCog(bot))
     print("EconomyCog is ready")
