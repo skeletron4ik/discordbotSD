@@ -7,6 +7,7 @@ import asyncio
 import time
 import random
 import math
+import re
 
 cluster = MongoClient('mongodb+srv://Skeletron:1337@cluster0.knkajvi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
 collusers = cluster.server.users
