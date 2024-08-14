@@ -5,13 +5,10 @@ from disnake.ext import commands, tasks
 from datetime import datetime, timedelta
 from pymongo import MongoClient
 from datetime import datetime
-
+from main import cluster
 
 current_datetime = datetime.today()
 
-cluster = MongoClient(
-    "mongodb+srv://Skeletron:1337@cluster0.knkajvi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-)
 collusers = cluster.server.users
 collservers = cluster.server.servers
 collbans = cluster.server.bans

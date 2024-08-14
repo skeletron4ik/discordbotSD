@@ -5,12 +5,12 @@ from datetime import datetime
 import os
 import asyncio
 import time
+from dotenv import load_dotenv
 
-
+load_dotenv()
 bot = commands.Bot(command_prefix="!", intents=disnake.Intents.all(), reload=True)
 bot.member_cache_flags = disnake.MemberCacheFlags.all()
-cluster = MongoClient(
-    "mongodb+srv://Skeletron:1337@cluster0.knkajvi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+cluster = MongoClient(os.getenv('MONGODB'))
 collusers = cluster.server.users
 collservers = cluster.server.servers
 
@@ -136,4 +136,4 @@ for file in os.listdir("./cogs"):
     if file.endswith(".py"):
         bot.load_extension(f"cogs.{file[:-3]}")
 
-bot.run("MTI0MzI3ODk3MTYxODA2NjQ2Mw.G0b0Ow.ucu1wwr_RuVQzaOjwSho49-azeKRw7L05afNTM")
+bot.run(os.getenv('TOKEN'))

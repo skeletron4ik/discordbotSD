@@ -8,8 +8,8 @@ import time
 import random
 import math
 import re
+from main import cluster
 
-cluster = MongoClient('mongodb+srv://Skeletron:1337@cluster0.knkajvi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
 collusers = cluster.server.users
 collservers = cluster.server.servers
 
