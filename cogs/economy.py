@@ -876,18 +876,19 @@ class EconomyCog(commands.Cog):
 
         multiplier = server_data.get('multiplier', 1)
 
-        embed = disnake.Embed(title="Активные бустеры", color=disnake.Color.blue())
+
+        embed = disnake.Embed(title="Активные Бустеры Румбиков на данный момент:", color=0x00ff00)
         embed.set_thumbnail(url='https://i.imgur.com/vlX2dxG.gif')
+        embed.set_footer(text=f'Активные бустеры румбиков', icon_url=inter.guild.icon.url)
+        embed.timestamp = datetime.now()
 
         # Серверный бустер (администраторский)
         if booster_timestamp > int(datetime.now().timestamp()):
             users_admin_booster = ', '.join([f'<@{user_id}>' for user_id in admin_booster_activated_by])
             time_remaining_admin = f"<t:{booster_timestamp}:R>"
             embed.add_field(
-                name="Серверный бустер (администраторский)",
-                value=f"**Множитель:** x{admin_booster_multiplier}\n"
-                      f"**Активирован:** {users_admin_booster}\n"
-                      f"**Истекает через:** {time_remaining_admin}",
+                name="Серверный бустер:",
+                value=f"Серверный бустер от Администрации сервера:\n {users_admin_booster} активировал бустер ``x{admin_booster_multiplier}`` который истекает через: {time_remaining_admin}",
                 inline=False
             )
 
@@ -898,7 +899,7 @@ class EconomyCog(commands.Cog):
             embed.add_field(
                 name="Глобальный бустер",
                 value=f"**Множитель:** x{global_booster_multiplier}\n"
-                      f"**Активирован:** {users_global_booster}\n"
+                      f"**Активировал:** {users_global_booster}\n"
                       f"**Истекает через:** {time_remaining_global}",
                 inline=False
             )
