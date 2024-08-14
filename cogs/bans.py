@@ -3,10 +3,8 @@ from disnake.ext import commands, tasks
 from datetime import datetime, timedelta
 from pymongo import MongoClient
 from main import get_rule_info  # список правил
+from main import cluster
 
-cluster = MongoClient(
-    "mongodb+srv://Skeletron:1337@cluster0.knkajvi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-)
 collusers = cluster.server.users
 collservers = cluster.server.servers
 
