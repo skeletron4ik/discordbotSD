@@ -562,19 +562,25 @@ class EconomyCog(commands.Cog):
                     if current_timestamp != 0 and current_timestamp > current_time:
                         # Уведомление о продлении бустера
                         server_embed = disnake.Embed(
-                            title="Бустер румбиков продлён",
-                            description=f"Участник сервера `{interaction.author.display_name}` ({interaction.author.mention}) продлил глобальный бустер румбиков x2 на {day_count} {get_day_word(day_count)}!\nНовый срок окончания бустера: <t:{new_timestamp}:R>.",
-                            color=0x00d5ff,
+                            title="Бустер румбиков x2 продлён!",
+                            description=f"{interaction.author.mention} продлил глобальный бустер румбиков ``x2`` на ``{day_count} {get_day_word(day_count)}``!\nНовый срок окончания бустера: <t:{new_timestamp}:R>.",
+                            color=0x00ff00,
                             timestamp=datetime.now()
                         )
+                        server_embed.set_author(name=f"{inter.user.display_name}", icon_url=f"{inter.user.avatar.url}")
+                        server_embed.set_thumbnail(url='https://i.imgur.com/vlX2dxG.gif')
+                        server_embed.set_footer(text=f'Продление глобального бустера', icon_url=inter.guild.icon.url)
                     else:
                         # Уведомление о покупке бустера
                         server_embed = disnake.Embed(
-                            title="Бустер румбиков 2x активирован",
-                            description=f"Участник сервера `{interaction.author.display_name}` ({interaction.author.mention}) активировал глобальный бустер румбиков x2 на {day_count} {get_day_word(day_count)}!\nБустер закончится <t:{new_timestamp}:R>.",
-                            color=0x00d5ff,
+                            title="Бустер румбиков x2 активирован",
+                            description=f"{interaction.author.mention} активировал глобальный бустер румбиков ``x2`` на ``{day_count} {get_day_word(day_count)}``!\nБустер закончится <t:{new_timestamp}:R>.",
+                            color=0x00ff00,
                             timestamp=datetime.now()
                         )
+                        server_embed.set_author(name=f"{inter.user.display_name}", icon_url=f"{inter.user.avatar.url}")
+                        server_embed.set_thumbnail(url='https://i.imgur.com/vlX2dxG.gif')
+                        server_embed.set_footer(text=f'Активация глобального бустера', icon_url=inter.guild.icon.url)
                     await channel.send(embed=server_embed)
 
                 for button in options:
@@ -887,8 +893,10 @@ class EconomyCog(commands.Cog):
             users_admin_booster = ', '.join([f'<@{user_id}>' for user_id in admin_booster_activated_by])
             time_remaining_admin = f"<t:{booster_timestamp}:R>"
             embed.add_field(
-                name="Серверный бустер:",
-                value=f"Серверный бустер от Администрации сервера:\n {users_admin_booster} активировал бустер ``x{admin_booster_multiplier}`` который истекает через: {time_remaining_admin}",
+                name="Ивентовый бустер:",
+                value=f"**Активировал:** {users_admin_booster}\n"
+                      f"**Множитель:** ``x{admin_booster_multiplier}``\n"
+                      f"**Истекает через:** {time_remaining_admin}",
                 inline=False
             )
 
@@ -898,16 +906,17 @@ class EconomyCog(commands.Cog):
             time_remaining_global = f"<t:{global_booster_timestamp}:R>"
             embed.add_field(
                 name="Глобальный бустер",
-                value=f"**Множитель:** x{global_booster_multiplier}\n"
-                      f"**Активировал:** {users_global_booster}\n"
+                value=f"**Активировал:** {users_global_booster}\n"
+                      f"**Множитель:** ``x{global_booster_multiplier}``\n"
                       f"**Истекает через:** {time_remaining_global}",
                 inline=False
             )
+            embed.add_field(name='', value='')
 
         # Общий множитель
         embed.add_field(
-            name="Текущий общий множитель",
-            value=f"x{multiplier}",
+            name="",
+            value=f"```Текущий общий множитель: x{multiplier}```",
             inline=False
         )
 
