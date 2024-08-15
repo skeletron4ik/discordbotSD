@@ -47,24 +47,47 @@ class EconomyCog(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: disnake.Message):
         if message.author.bot:
-            return
-        now = datetime.now()
-        user_id = message.author.id
-        if len(message.content) > 3:
+            if message.channel.id == 1070322967634006057:
+                if message.embeds:
+                    message_embed = str(message.embeds[0].description)
+                    if 'Bump done!' in str(
+                            message_embed) or 'Время фиксации апа:' in message_embed or 'Ви успішно лайкнули сервер.' in message_embed or 'Вы успешно лайкнули сервер.' in message_embed:
+                        author_interaction = message.interaction.author
+                    elif 'Server bumped by' in message_embed:
+                        mention_pattern = r"<@!?(\d+)>"
+                        mentions = re.findall(mention_pattern, message_embed)
+                        print(mentions[0])
+                        author_interaction = await message.author.guild.fetch_member(mentions[0])
+                        print(author_interaction)
+                    collusers.find_one_and_update({'id': author_interaction.id}, {'$inc': {'balance': 5}})
+                    embed = disnake.Embed(color=0x4169E1)
+                    embed.add_field(name=f'**Успешный бамп!**',
+                                    value=f'{author_interaction.mention}, Вы успешно бампнули сервер\n'
+                                          f' и за это получаете `5` румбиков.')
+                    embed.set_footer(text=f'Bumped by {author_interaction.display_name}',
+                                     icon_url=author_interaction.avatar.url)
+                    embed.set_author(name=message.author.guild.name, icon_url=message.author.guild.icon.url)
+                    await message.channel.send(content=author_interaction.mention, embed=embed)
+        else:
+            now = datetime.now()
+            user_id = message.author.id
+            if len(message.content) > 3:
 
-            if user_id in cooldowns:
-                last_used = cooldowns[user_id]
-                if now - last_used < timedelta(minutes=1):
-                    time_left = timedelta(minutes=1) - (now - last_used)
-                    return
+                if user_id in cooldowns:
+                    last_used = cooldowns[user_id]
+                    if now - last_used < timedelta(minutes=1):
+                        time_left = timedelta(minutes=1) - (now - last_used)
+                        return
 
-            money_to_give = random.uniform(0.1, 1)
-            money_to_give1 = round(money_to_give, 2)
-            multiplier = collservers.find_one({'_id': message.author.guild.id})['multiplier']
-            collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'balance': money_to_give1 * multiplier}})
-            collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'message_count': 1}})
-            cooldowns[user_id] = now
-            print(money_to_give1)
+                multiplier = collservers.find_one({'_id': message.author.guild.id})['multiplier']
+                money_to_give = random.uniform(0.1, 1)
+                money_to_give1 = money_to_give * multiplier
+                money_to_give2 = round(money_to_give1, 2)
+                collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'balance': money_to_give2}})
+                collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'message_count': 1}})
+                cooldowns[user_id] = now
+                print(money_to_give2)
+                print(money_to_give1)
 
     @commands.slash_command(name='balance', description='Показывает баланс участника',
                             aliases=['баланс', 'счет', 'остаток', 'credit', 'amount', 'sum'])
@@ -669,7 +692,6 @@ class EconomyCog(commands.Cog):
                 rumbikswithboost = rumbiks * multiplier
                 collusers.find_one_and_update({'id': member.id}, {'$inc': {'time_in_voice': duration}})
                 time_in_voice = collusers.find_one({'id': member.id})['time_in_voice']
-                print(str(time_in_voice) + ' 111')
                 embed = disnake.Embed(color=0xe70404)
                 embed.add_field(name='**Голосовая активность**',
                                 value=f'Участник: `{member.display_name}` ({member.mention})'
@@ -1090,40 +1112,6 @@ class EconomyCog(commands.Cog):
         )
 
         await inter.response.send_modal(modal=modal)
-
-
-
-
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        if message.author.bot:
-            if message.channel.id == 1070322967634006057:
-                if message.embeds:
-                    message_embed = str(message.embeds[0].description)
-                    if 'Bump done!' in str(message_embed) or 'Время фиксации апа:' in message_embed or 'Ви успішно лайкнули сервер.' in message_embed or 'Вы успешно лайкнули сервер.' in message_embed:
-                        author_interaction = message.interaction.author
-                    elif 'Server bumped by' in message_embed:
-                        mention_pattern = r"<@!?(\d+)>"
-                        mentions = re.findall(mention_pattern, message_embed)
-                        print(mentions[0])
-                        author_interaction = await message.author.guild.fetch_member(mentions[0])
-                        print(author_interaction)
-                    elif message.embeds[0].fields[0]:
-                        if 'Время фиксации апа:' in str(message.embeds[0].fields[0]):
-                            author_interaction = message.interaction.author
-                        else:
-                            return
-                    else:
-                        return
-                    collusers.find_one_and_update({'id': author_interaction.id}, {'$inc': {'balance': 5}})
-                    embed = disnake.Embed(color=0x4169E1)
-                    embed.add_field(name=f'**Успешный бамп!**',
-                                    value=f'{author_interaction.mention}, Вы успешно бампнули сервер\n'
-                                          f' и за это получаете `5` румбиков.')
-                    embed.set_footer(text=f'Bumped by {author_interaction.display_name}', icon_url=author_interaction.avatar.url)
-                    embed.set_author(name=message.author.guild.name, icon_url=message.author.guild.icon.url)
-                    await message.channel.send(content=author_interaction.mention, embed=embed)
-
 
 
     @commands.slash_command(name='embed')
