@@ -1102,14 +1102,17 @@ class EconomyCog(commands.Cog):
                     message_embed = str(message.embeds[0].description)
                     if 'Bump done!' in str(message_embed) or 'Время фиксации апа:' in message_embed or 'Ви успішно лайкнули сервер.' in message_embed or 'Вы успешно лайкнули сервер.' in message_embed:
                         author_interaction = message.interaction.author
-                    elif 'Время фиксации апа:' in str(message.embeds[0].fields[0]):
-                        author_interaction = message.interaction.author
                     elif 'Server bumped by' in message_embed:
                         mention_pattern = r"<@!?(\d+)>"
                         mentions = re.findall(mention_pattern, message_embed)
                         print(mentions[0])
                         author_interaction = await message.author.guild.fetch_member(mentions[0])
                         print(author_interaction)
+                    elif message.embeds[0].fields[0]:
+                        if 'Время фиксации апа:' in str(message.embeds[0].fields[0]):
+                            author_interaction = message.interaction.author
+                        else:
+                            return
                     else:
                         return
                     collusers.find_one_and_update({'id': author_interaction.id}, {'$inc': {'balance': 5}})
