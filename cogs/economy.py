@@ -315,7 +315,12 @@ class EconomyCog(commands.Cog):
                 embed1 = disnake.Embed(color=0x4169E1)
                 embed1.set_author(name=f'Выберите длительность {diamond.name}', icon_url=inter.guild.icon.url)
                 embed1.set_thumbnail(url='https://i.gifer.com/origin/63/6309237109affef229b14c3c5dc7308b_w200.gif')
-                embed1.add_field(name='', value='', inline=False)
+                embed1.add_field(name='',
+                                 value=f'{diamond.mention} - Привилегия на сервере, открывает не доступные для обычных пользователей функции.',
+                                 inline=False)
+                embed1.add_field(name='',
+                                 value='```🟢 Отдельное отображение от остальных участников\n🟢 Голосовой канал, в который могут заходить только участники с этой ролью\n🟢 Доступ к Журналу аудита\n🟢 Возможность изменять свой никнейм\n🟢 На Вас не работает автомодерация сообщений\n🟢 Отключен кулдаун между использованиям команд\n🟢 При нарушениях длительность Ваших предупреждений уменьшается на 10 дней\n🟢 Комиссия 0% на перевод Румбиков```')
+                embed1.add_field(name='', value='')
                 embed1.add_field(name='**Стоимость**',
                                  value=f'* {diamond.mention}\n * {diamond.mention} (на 30 дней) - 399{emoji}\n * {diamond.mention} (на 60 дней) - ~~799~~ 699{emoji} **Скидка -15%**\n * {diamond.mention} (на 90 дней) - ~~1199~~ 949{emoji} **Скидка -20%**',
                                  inline=False)
@@ -357,7 +362,7 @@ class EconomyCog(commands.Cog):
                     if role is None:
                         error_message = "Роль не найдена. Пожалуйста сважитесь с Администратором."
                         embed = create_error_embed(error_message)
-                        await inter.response.send_message(embed=embed, ephemeral=True)
+                        await inter.edit_original_response(embed=embed)
                         return
 
                     # Получаем пользователя (author of interaction)
@@ -383,13 +388,29 @@ class EconomyCog(commands.Cog):
                             {"id": user_id, "guild_id": guild_id, "role_ids.role_ids": role.id},
                             {"$set": {"role_ids.$.expires_at": new_expiry}}
                         )
-                        await interaction.send(f'Срок действия роли {role.name} продлен до <t:{new_expiry}:R>.',
-                                               ephemeral=ephemeral)
+                        embed = disnake.Embed(
+                            description=f"**Вы продлили роль {role.name}, новый срок окончания:** <t:{new_expiry}:R>",
+                            colour=0x00ff00,
+                            timestamp=datetime.now())
+
+                        embed.set_author(name="Вы успешно продлили срок роли Diamond!",
+                                         icon_url=inter.guild.icon.url)
+                        embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
+                        embed.set_footer(text="Покупка прошла успешно",
+                                         icon_url=inter.guild.icon.url)
+                        await inter.edit_original_response(embed=embed)
                     else:
                         # Выдаем роль участнику
                         await interaction.author.add_roles(role)
-                        await interaction.send(f'Роль {role.name} выдана и закончится <t:{new_expiry}:R>.',
-                                               ephemeral=ephemeral)
+                        embed = disnake.Embed(
+                            description=f"**Вы приобрели роль {role.name}, которая заканчивается: <t:{new_expiry}:R>\n Теперь Вам доступны следующие функции:**\n```🟢 Отдельное отображение от остальных участников\n🟢 Голосовой канал, в который могут заходить только участники с этой ролью\n🟢 Доступ к Журналу аудита\n🟢 Возможность изменять свой никнейм\n🟢 На Вас не работает автомодерация сообщений\n🟢 Отключен кулдаун между использованиям команд\n🟢 При нарушениях длительность Ваших предупреждений уменьшается на 10 дней\n🟢 Комиссия 0% на перевод Румбиков```",
+                            colour=0x00ff00,
+                            timestamp=datetime.now())
+                        embed.set_author(name="Вы успешно приобрели роль Diamond!",
+                                         icon_url=inter.guild.icon.url)
+                        embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
+                        embed.set_footer(text="Покупка прошла успешно",
+                                         icon_url=inter.guild.icon.url)
 
                         # Обновляем базу с новой длительностью роли
                         collusers.update_one(
@@ -401,13 +422,8 @@ class EconomyCog(commands.Cog):
                             upsert=True
                         )
 
-                    # Создаем и отправляем embed пользователю
-                    embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
-                    embed.add_field(name="Роль выдана",
-                                    value=f"Роль {role.name} выдана {interaction.author.display_name} и закончится <t:{new_expiry}:R>.")
-                    embed.set_thumbnail(
-                        url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
-                    await interaction.response.send_message(embed=embed, ephemeral=ephemeral)
+                        # Создаем и отправляем embed пользователю
+                        await inter.edit_original_response(embed=embed)
 
                     # Создаем и отправлем embed в логи
                     channel = await self.bot.fetch_channel(944562833901899827)
