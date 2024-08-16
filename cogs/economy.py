@@ -421,7 +421,6 @@ class EconomyCog(commands.Cog):
                             },
                             upsert=True
                         )
-
                         # Создаем и отправляем embed пользователю
                         await inter.edit_original_response(embed=embed)
 
