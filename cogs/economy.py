@@ -1110,7 +1110,7 @@ class EconomyCog(commands.Cog):
                     if select_menu.values[0] == "1":  # Первый выбор игрока
                         if figure == 'К':
                             embed.add_field(name='**Итоги:**',
-                                            value=f'Выбор у двух участников пал на камень, поэтому ничья.\n'
+                                            value=f'Выбор у двух участников пал на камень, поэтому ичья.\n'
                                                   f'Ставки возвращаются участникам.', inline=False)
                             collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': cost}})
                             collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost}})
