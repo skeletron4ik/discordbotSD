@@ -612,8 +612,8 @@ class EconomyCog(commands.Cog):
                         # Уведомление о продлении бустера
                         server_embed = disnake.Embed(
                             title="Бустер румбиков x2 продлён!",
-                            description=f"{interaction.author.mention} продлил глобальный бустер румбиков ``x2`` на ``{day_count} {get_day_word(day_count)}``!\nНовый срок окончания бустера: <t:{new_timestamp}:R>.\n **Поблагодарим добряка в чате!**",
-                            color=0x00ff00,
+                            description=f"{interaction.author.mention} __продлил__ глобальный бустер румбиков ``x2`` на ``{day_count} {get_day_word(day_count)}``!\nНовый срок окончания бустера: <t:{new_timestamp}:R>.\n **Поблагодарим добряка в чате!**",
+                            color=0x00faff,
                             timestamp=datetime.now()
                         )
                         server_embed.set_author(name=f"{inter.user.display_name}", icon_url=f"{inter.user.avatar.url}")
@@ -622,9 +622,9 @@ class EconomyCog(commands.Cog):
                     else:
                         # Уведомление о покупке бустера
                         server_embed = disnake.Embed(
-                            title="Бустер румбиков x2 активирован",
-                            description=f"{interaction.author.mention} активировал глобальный бустер румбиков ``x2`` на ``{day_count} {get_day_word(day_count)}``!\nБустер закончится <t:{new_timestamp}:R>.\n **Поблагодарим добряка в чате!**",
-                            color=0x00ff00,
+                            title="Бустер румбиков x2 активирован!",
+                            description=f"{interaction.author.mention} __активировал__ глобальный бустер румбиков ``x2`` на ``{day_count} {get_day_word(day_count)}``!\nБустер закончится <t:{new_timestamp}:R>.\n **Поблагодарим добряка в чате!**",
+                            color=0x00faff,
                             timestamp=datetime.now()
                         )
                         server_embed.set_author(name=f"{inter.user.display_name}", icon_url=f"{inter.user.avatar.url}")
@@ -869,30 +869,43 @@ class EconomyCog(commands.Cog):
         timestamp_booster = server_data['booster_timestamp']
         global_timestamp_booster = server_data['global_booster_timestamp']
         global_booster_multiplier = server_data['global_booster_multiplier']
-        admin_booster_multiplier = server_data['admin_booster_multiplier']
+        event_booster_multiplier = server_data['admin_booster_multiplier']  # заменено
+        current_multiplier = server_data['multiplier']  # Получаем текущий общий множитель
         timestamp_now = int(datetime.now().timestamp())
 
-        # Проверяем, истек ли админский бустер, но глобальный не активен
+        async def send_message_on_booster_end(booster_type, multiplier):
+            channel = self.bot.get_channel(944562833901899827)
+            guild = self.bot.get_guild(server_id)  # Получаем объект сервера
+            icon_url = guild.icon.url if guild.icon else None  # Получаем URL иконки, если она установлена
+
+            embed = disnake.Embed(
+                title=f"{booster_type} бустер закончился.",
+                description=f"Срок действия бустера истёк.\n```Текущий общий множитель: x{multiplier}```",
+                color=0xff0000,
+                timestamp = datetime.now()
+            )
+            embed.set_thumbnail(url='https://i.imgur.com/vlX2dxG.gif')
+            embed.set_footer(text=f'Жаль, что приятные вещи не вечны.', icon_url=icon_url)
+            await channel.send(embed=embed)
+
         if timestamp_booster != 0 and global_timestamp_booster == 0:
             if timestamp_booster < timestamp_now:
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'booster_timestamp': 0}})
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': 1}})
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'admin_booster_multiplier': 0}})
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'admin_booster_activated_by': []}})
-                print('Admin booster expired, no global booster active.')
+                await send_message_on_booster_end("Ивентовый", 1)  # передаем 1 как множитель
                 return
 
-        # Проверяем, истек ли глобальный бустер, но админский не активен
         elif timestamp_booster == 0 and global_timestamp_booster != 0:
             if timestamp_now > global_timestamp_booster:
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': 1}})
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_timestamp': 0}})
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_multiplier': 0}})
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_activated_by': []}})
-                print('Global booster expired, no admin booster active.')
+                await send_message_on_booster_end("Глобальный", 1)  # передаем 1 как множитель
                 return
 
-        # Проверяем, истекли ли оба бустера
         elif timestamp_booster != 0 and global_timestamp_booster != 0:
             if timestamp_now > global_timestamp_booster and timestamp_now > timestamp_booster:
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_timestamp': 0}})
@@ -902,92 +915,129 @@ class EconomyCog(commands.Cog):
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'admin_booster_multiplier': 0}})
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'admin_booster_activated_by': []}})
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_activated_by': []}})
-                print('Both boosters expired.')
+                await send_message_on_booster_end("Ивентовый и глобальный", 1)  # передаем 1 как множитель
                 return
 
-            # Проверяем, истек ли глобальный бустер, но админский еще активен
             elif timestamp_now > global_timestamp_booster and timestamp_now < timestamp_booster:
-                new_multiplier = admin_booster_multiplier  # Устанавливаем множитель равный admin_booster_multiplier
+                new_multiplier = event_booster_multiplier
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': new_multiplier}})
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_timestamp': 0}})
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_multiplier': 0}})
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_activated_by': []}})
-                print('Global booster expired, admin booster still active.')
+                await send_message_on_booster_end("Глобальный", new_multiplier)  # передаем новый множитель
                 return
 
-            # Проверяем, истек ли админский бустер, но глобальный еще активен
             elif timestamp_now > timestamp_booster and timestamp_now < global_timestamp_booster:
-                new_multiplier = global_booster_multiplier  # Устанавливаем множитель равный global_booster_multiplier
+                new_multiplier = global_booster_multiplier
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': new_multiplier}})
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'booster_timestamp': 0}})
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'admin_booster_multiplier': 0}})
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'admin_booster_activated_by': []}})
-                print('Admin booster expired, global booster still active.')
+                await send_message_on_booster_end("Ивентовый", new_multiplier)  # передаем новый множитель
                 return
 
-        # Новые условия: если админский бустер истекает, заменить multiplier на global_booster_multiplier
         if timestamp_booster != 0 and timestamp_now > timestamp_booster:
             if global_timestamp_booster == 0 or timestamp_now > global_timestamp_booster:
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': 1}})
+                current_multiplier = 1
             else:
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': global_booster_multiplier}})
+                current_multiplier = global_booster_multiplier
 
             collservers.find_one_and_update({'_id': server_id}, {'$set': {'booster_timestamp': 0}})
             collservers.find_one_and_update({'_id': server_id}, {'$set': {'admin_booster_multiplier': 0}})
             collservers.find_one_and_update({'_id': server_id}, {'$set': {'admin_booster_activated_by': []}})
-            print('Admin booster expired.')
+            await send_message_on_booster_end("Ивентовый", current_multiplier)  # передаем текущий множитель
             return
 
-        # Новые условия: если глобальный бустер истекает, заменить multiplier на admin_booster_multiplier
         if global_timestamp_booster != 0 and timestamp_now > global_timestamp_booster:
             if timestamp_booster == 0 or timestamp_now > timestamp_booster:
                 collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': 1}})
+                current_multiplier = 1
             else:
-                collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': admin_booster_multiplier}})
+                collservers.find_one_and_update({'_id': server_id}, {'$set': {'multiplier': event_booster_multiplier}})
+                current_multiplier = event_booster_multiplier
 
             collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_timestamp': 0}})
             collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_multiplier': 0}})
             collservers.find_one_and_update({'_id': server_id}, {'$set': {'global_booster_activated_by': []}})
-            print('Global booster expired.')
+            await send_message_on_booster_end("Глобальный", current_multiplier)  # передаем текущий множитель
             return
 
     @commands.slash_command(name='booster', description='Включает бустер румбиков')
-    async def booster(self, inter: disnake.ApplicationCommandInteraction, multiplier: int, expiry: str):
+    async def booster(self, inter: disnake.ApplicationCommandInteraction, множитель: int, длительность: str,
+                      ивент: str = ''):
         try:
-            expiry = self.convert_to_seconds(expiry)
-        except:
+            # Преобразование длительности в секунды
+            длительность_в_секундах = self.convert_to_seconds(длительность)
+        except Exception as e:
             embed = disnake.Embed(color=0xe70404)
             embed.add_field(name='Произошла ошибка', value='Ошибка в конвертации в секунды')
             await inter.response.send_message(embed=embed, ephemeral=True)
             return
 
-        timestamp = int(datetime.now().timestamp()) + expiry
+        # Сохранение текущего времени и расчёт времени окончания бустера
+        timestamp = int(datetime.now().timestamp()) + длительность_в_секундах
         server_data = collservers.find_one({'_id': inter.author.guild.id})
         global_booster_active = server_data['global_booster_timestamp'] != 0 and server_data[
             'global_booster_timestamp'] > int(datetime.now().timestamp())
 
         if global_booster_active:
             # Уменьшаем общий множитель на 1 при активном глобальном бустере
-            new_multiplier = server_data['multiplier'] + int(multiplier) - 1
+            новый_множитель = server_data['multiplier'] + int(множитель) - 1
         else:
-            new_multiplier = int(multiplier)
+            новый_множитель = int(множитель)
 
         collservers.find_one_and_update(
             {'_id': inter.author.guild.id},
             {
                 '$set': {
-                    'multiplier': new_multiplier,
+                    'multiplier': новый_множитель,
                     'booster_timestamp': int(timestamp),
-                    'admin_booster_multiplier': int(multiplier)
-                },
-                '$addToSet': {'admin_booster_activated_by': inter.author.id}
+                    'admin_booster_multiplier': int(множитель),
+                    'admin_booster_activated_by': {'$addToSet': inter.author.id}
+                }
             }
         )
 
-        embed = disnake.Embed(color=0x4169E1)
-        embed.add_field(name='**Бустер активирован**',
-                        value=f'Множитель: {multiplier}\n Общий множитель: {new_multiplier}\nДата окончания: <t:{timestamp}:R>')
+        # Форматирование длительности в строку для отображения
+        длительность_в_строке = self.format_duration(длительность)
+
+        # Создание embed сообщения
+        embed = disnake.Embed(
+            title="Бустер румбиков активирован!",
+            description=f"{inter.author.mention} __активировал__ ивентовый бустер румбиков ``x{множитель}`` на {длительность_в_строке}!\nБустер закончится <t:{timestamp}:R>.",
+            color=0xfa00ff,
+            timestamp=datetime.now()
+        )
+        embed.set_author(name=f"{inter.author.display_name}", icon_url=f"{inter.author.avatar.url}")
+        embed.set_thumbnail(url='https://i.imgur.com/vlX2dxG.gif')
+        embed.set_footer(text=f'Активация ивентового бустера', icon_url=inter.guild.icon.url)
+
+        # Если указано название ивента, добавляем его в embed
+        if ивент:
+            embed.add_field(name='Ивент:', value=ивент)
+
         await inter.response.send_message(embed=embed, ephemeral=True)
+
+    def format_duration(self, time_str):
+        """Форматирование длительности в строку."""
+        try:
+            value = int(time_str[:-1])
+        except ValueError:
+            raise ValueError(f"Invalid time format: {time_str}")
+
+        unit = time_str[-1]
+        if unit == 'д' or unit == 'd':
+            return f"{value} дней"
+        elif unit == 'ч' or unit == 'h':
+            return f"{value} часов"
+        elif unit == 'м' or unit == 'm':
+            return f"{value} минут"
+        elif unit == 'с' or unit == 's':
+            return f"{value} секунд"
+        else:
+            raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
     @commands.slash_command(name="boosters", description="Показывает текущие активные бустеры")
     async def boosters(self, inter: disnake.ApplicationCommandInteraction):
@@ -1006,7 +1056,7 @@ class EconomyCog(commands.Cog):
         multiplier = server_data.get('multiplier', 1)
 
 
-        embed = disnake.Embed(title="Активные Бустеры Румбиков на данный момент:", color=0x00ff00)
+        embed = disnake.Embed(title="Активные бустеры румбиков на данный момент:", color=0x00ff00)
         embed.set_thumbnail(url='https://i.imgur.com/vlX2dxG.gif')
         embed.set_footer(text=f'Активные бустеры румбиков', icon_url=inter.guild.icon.url)
         embed.timestamp = datetime.now()
@@ -1055,7 +1105,7 @@ class EconomyCog(commands.Cog):
         if inter.custom_id == "my_modal":
             nickname = inter.text_values["nickname"]
             await inter.author.edit(nick=nickname)
-            await inter.response.send_message('Никнейм изменён.', ephemeral=True)
+            await inter.response.send_message('Никнейм успешно изменён.', ephemeral=True)
 
 
 

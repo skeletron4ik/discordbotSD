@@ -42,9 +42,12 @@ class GamesCog(commands.Cog):
         if inter.custom_id == "knb":
             figure = inter.text_values['figurez']
             decline = disnake.utils.get(inter.author.guild.emojis, name='773229388573310996')
+            challenge_user_id = inter.text_values.get('challenge_user_id')
+            challenged_user = inter.guild.get_member(int(challenge_user_id)) if challenge_user_id else None
+
             if figure in ['К', 'Н', 'Б']:
                 bet = inter.text_values['bet']
-                await inter.response.defer(with_message=True)  # Defer response to avoid multiple responses
+                await inter.response.defer(with_message=True)
                 message = await inter.followup.send('В процессе..')
 
                 balance = collusers.find_one({'id': inter.author.id})['balance']
@@ -72,38 +75,34 @@ class GamesCog(commands.Cog):
                     url='https://media0.giphy.com/media/JoDQSE8d1tB2tsPAAg/200w.gif?cid=6c09b952xijiedj0le1rvko2nmee3rri4fzrvchqb4q7as94&ep=v1_gifs_search&rid=200w.gif&ct=g')
                 embed.set_author(name=inter.author.display_name, icon_url=inter.author.avatar.url)
                 embed.set_footer(text=f'Rock-Paper-Scissors', icon_url=inter.guild.icon.url)
-                embed.add_field(name='Информация об игре', value=f'Ставка: {bet}', inline=True)
+                embed.add_field(name='', value=f'**Ставка:** {bet}', inline=True)
 
-                # Функция для обработки нажатий на кнопки
-                async def button_callback(interaction: disnake.MessageInteraction, choice: str):
-                    balance_interaction = collusers.find_one({'id': interaction.author.id})['balance']
-                    if author.id == interaction.author.id:
-                        error_message = f"{decline} `{interaction.author.display_name}`, Вы не можете играть сами с собой."
-                        embed = create_error_embed(error_message)
-                        await interaction.response.send_message(embed=embed, ephemeral=True)
-                        return
-                    if collusers.find_one({'id': interaction.author.id})['balance'] < cost:
-                        err = format_rumbick(cost - balance_interaction)
-                        error_message = f"{decline} `{interaction.author.display_name}`, Вам не хватает {err}."
-                        embed = create_error_embed(error_message)
-                        await interaction.response.send_message(embed=embed, ephemeral=True)
-                        return
-                    collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -cost}})
+                if challenged_user:
+                    embed.add_field(name='Вызов брошен', value=f'Только для: {challenged_user.mention}', inline=False)
+                else:
+                    embed.add_field(name='Вызов брошен', value='Для всех участников', inline=False)
 
-                # Функция для обработки нажатий на кнопки
                 async def button_callback(interaction: disnake.MessageInteraction, choice: str, embed: disnake.Embed):
-                    balance_interaction = collusers.find_one({'id': interaction.author.id})['balance']
+                    if challenged_user and interaction.author.id != challenged_user.id:
+                        error_message = f"{decline} `{interaction.author.display_name}`, Вы не можете участвовать в этой игре."
+                        embed = create_error_embed(error_message)
+                        await interaction.response.send_message(embed=embed, ephemeral=True)
+                        return
+
                     if author.id == interaction.author.id:
                         error_message = f"{decline} `{interaction.author.display_name}`, Вы не можете играть сами с собой."
                         embed = create_error_embed(error_message)
                         await interaction.response.send_message(embed=embed, ephemeral=True)
                         return
-                    if collusers.find_one({'id': interaction.author.id})['balance'] < cost:
+
+                    balance_interaction = collusers.find_one({'id': interaction.author.id})['balance']
+                    if balance_interaction < cost:
                         err = format_rumbick(cost - balance_interaction)
                         error_message = f"{decline} `{interaction.author.display_name}`, Вам не хватает {err}."
                         embed = create_error_embed(error_message)
                         await interaction.response.send_message(embed=embed, ephemeral=True)
                         return
+
                     collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -cost}})
 
                     if choice == "Камень":  # Камень
@@ -163,35 +162,38 @@ class GamesCog(commands.Cog):
                             collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': cost}})
                             collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost}})
 
+
                     await inter.edit_original_response(embed=embed, view=None)
 
-                    # Создание кнопок для выбора
-                    button_rock = disnake.ui.Button(label="🗿 Камень", style=disnake.ButtonStyle.primary)
-                    button_paper = disnake.ui.Button(label="📃 Бумага", style=disnake.ButtonStyle.primary)
-                    button_scissors = disnake.ui.Button(label="✂️ Ножницы", style=disnake.ButtonStyle.primary)
+                button_rock = disnake.ui.Button(label="🗿 Камень", style=disnake.ButtonStyle.primary)
+                button_paper = disnake.ui.Button(label="📃 Бумага", style=disnake.ButtonStyle.primary)
+                button_scissors = disnake.ui.Button(label="✂️ Ножницы", style=disnake.ButtonStyle.primary)
 
-                    # Привязка обработчиков к кнопкам
-                    button_rock.callback = lambda i: button_callback(i, "Камень")
-                    button_paper.callback = lambda i: button_callback(i, "Бумага")
-                    button_scissors.callback = lambda i: button_callback(i, "Ножницы")
+                button_rock.callback = lambda i: button_callback(i, "Камень")
+                button_paper.callback = lambda i: button_callback(i, "Бумага")
+                button_scissors.callback = lambda i: button_callback(i, "Ножницы")
 
-                    # Создаем view и добавляем кнопки
-                    view = disnake.ui.View(timeout=None)
-                    view.add_item(button_rock)
-                    view.add_item(button_paper)
-                    view.add_item(button_scissors)
+                # Create a view with a timeout of 5 minutes
+                view = disnake.ui.View(timeout=300)
+                view.add_item(button_rock)
+                view.add_item(button_paper)
+                view.add_item(button_scissors)
 
-                    await message.edit(embed=embed, view=view, content=None)
+                async def on_timeout():
+                    # Add a new field to the existing embed
+                    embed.add_field(name="Игра отменена",
+                                    value="Никто не принял вызов в течение 5 минут.\n **Ставка возвращена**.", inline=False)
+                    view.clear_items()  # Remove all buttons
+                    await message.edit(embed=embed, view=view)
+                    collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': cost}})
 
+                view.on_timeout = on_timeout
+
+                await message.edit(embed=embed, view=view, content=None)
             else:
                 error_message = f"{decline} `{inter.author.display_name}`, Вы выбрали несуществующий ход."
                 embed = create_error_embed(error_message)
                 await inter.response.send_message(embed=embed, ephemeral=True)
-
-    class FigureEnum(disnake.enums.Enum):
-        Камень = "Камень"
-        Ножницы = "Ножницы"
-        Бумага = "Бумага"
 
     @commands.slash_command(name='rps', description='Популярная игра, камень-ножницы-бумага')
     async def rps(self, inter: disnake.ApplicationCommandInteraction):
@@ -215,14 +217,23 @@ class GamesCog(commands.Cog):
             max_length=16,
         )
 
+        challenge_user_input = disnake.ui.TextInput(
+            label=f"Участник (необязательно)",
+            custom_id="challenge_user_id",
+            style=disnake.TextInputStyle.short,
+            placeholder="Введите ID участника для вызова",
+            required=False,
+            min_length=0,
+            max_length=32,
+        )
+
         modal = disnake.ui.Modal(
             title="Камень-Ножницы-Бумага",
             custom_id="knb",
-            components=[components, betz]
+            components=[components, betz, challenge_user_input]
         )
 
         await inter.response.send_modal(modal=modal)
-
 
 def setup(bot):
     bot.add_cog(GamesCog(bot))
