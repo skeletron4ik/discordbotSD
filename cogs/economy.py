@@ -677,87 +677,24 @@ class EconomyCog(commands.Cog):
         now = int(datetime.now().timestamp())
 
         # Check if the user is in mute before entering the channel
-        if after.channel is not None and after.self_mute and member.id not in mute_timestamps:
-            mute_timestamps[member.id] = now
+        if after.channel is not None and after.self_mute:
+            if member.id not in mute_timestamps:
+                mute_timestamps[member.id] = []
+            if not mute_timestamps[member.id] or mute_timestamps[member.id][-1][1] is not None:
+                mute_timestamps[member.id].append((now, None))
+            print(f'{member} замутился в {now}')
 
         # Mute status changed
         if before.self_mute != after.self_mute:
-            if after.self_mute:
-                mute_timestamps[member.id] = now
-                print(f'{member} замутился в {now}')
-            else:
-                if member.id in mute_timestamps:
-                    muted_duration = now - mute_timestamps.pop(member.id)
-                    if member.id in total_time:
-                        total_time[member.id] += muted_duration
-                    else:
-                        total_time[member.id] = muted_duration
-                    print(f'{member} размутился в {now}, мьют продолжался {muted_duration} секунд')
+            if not after.self_mute:
+                if member.id in mute_timestamps and mute_timestamps[member.id][-1][1] is None:
+                    mute_timestamps[member.id][-1] = (mute_timestamps[member.id][-1][0], now)
+                    print(f'{member} размутился в {now}')
 
         # User joined a voice channel
         if before.channel is None and after.channel is not None:
             voice_timestamps[member.id] = now
             print(f'{member} зашел в войс в {now}')
-
-        # User switched voice channels
-        elif before.channel is not None and after.channel is not None:
-            join_time = voice_timestamps.pop(member.id, None)
-            if join_time:
-                leave_time = now
-                duration = leave_time - join_time
-
-                # Calculate total time including mute
-                total_time_with_mute = leave_time - join_time
-
-                # Calculate mute time
-                if member.id in mute_timestamps:
-                    muted_duration = leave_time - mute_timestamps.pop(member.id)
-                    duration -= muted_duration
-                    print(f'{member} сменил канал в {leave_time}, время мьюта {muted_duration}')
-
-                if member.id in total_time:
-                    total_time[member.id] += duration
-                else:
-                    total_time[member.id] = duration
-
-                # Save time spent in previous channel before moving to AFK
-                if after.channel.id == afk_channel_id:
-                    minutes = round(duration / 60, 2)
-                    rumbiks = round(duration / 60 * 0.1, 2)
-
-                    multiplier = collservers.find_one({'_id': member.guild.id})['multiplier']
-                    if rumbiks > 0.01:
-                        collusers.find_one_and_update({'id': member.id}, {'$inc': {'balance': rumbiks * multiplier}})
-                    if multiplier > 1:
-                        rumbikswithboost = rumbiks * multiplier
-                    else:
-                        rumbikswithboost = None
-                    collusers.find_one_and_update({'id': member.id}, {'$inc': {'time_in_voice': minutes}})
-                    time_in_voice = collusers.find_one({'id': member.id})['time_in_voice']
-
-                    # Prepare time format in seconds, minutes, and hours
-                    hours, rem = divmod(total_time[member.id], 3600)
-                    minutes, seconds = divmod(rem, 60)
-
-                    embed = disnake.Embed(color=0xe70404)
-                    embed.add_field(
-                        name='**Голосовая активность**',
-                        value=(
-                            f'Участник: `{member.display_name}` ({member.mention})\n'
-                            f'Время в войсе: с <t:{join_time}:T> до <t:{leave_time}:T>\n'
-                            f'Время в войсе (без учёта мута): `{duration} секунд`\n'
-                            f'Время в войсе (с учётом мута): `{total_time_with_mute} секунд`\n'
-                            f'Выданные румбики: `{rumbiks}`\n'
-                            f'{f"Выданные румбики с учетом бустера `{rumbikswithboost}`" if multiplier > 1 else ""}\n'
-                            f'Общее время в войсе: `{time_in_voice}` минут'
-                        )
-                    )
-                    embed.set_footer(text=member.name, icon_url=member.avatar.url)
-                    embed.set_author(name='Shadow Dragons Economy', icon_url=member.guild.icon.url)
-                    thread = member.guild.get_thread(1270673733178101801)
-                    await thread.send(embed=embed)
-
-                voice_timestamps[member.id] = now
 
         # User left a voice channel
         elif before.channel is not None and after.channel is None:
@@ -766,19 +703,21 @@ class EconomyCog(commands.Cog):
                 leave_time = now
                 duration = leave_time - join_time
 
-                # Calculate total time including mute
-                total_time_with_mute = leave_time - join_time
-
-                # Calculate mute time
+                # Calculate total mute time
+                total_mute_time = 0
                 if member.id in mute_timestamps:
-                    muted_duration = leave_time - mute_timestamps.pop(member.id)
-                    duration -= muted_duration
-                    print(f'{member} вышел из войса в {leave_time}, время мьюта {muted_duration}')
+                    for mute_start, mute_end in mute_timestamps[member.id]:
+                        if mute_end is None:
+                            mute_end = leave_time
+                        total_mute_time += mute_end - mute_start
+                    duration -= total_mute_time
+                    print(f'{member} вышел из войса в {leave_time}, общее время мьюта {total_mute_time} секунд')
+                    mute_timestamps.pop(member.id, None)
 
                 if member.id in total_time:
-                    total_time[member.id] += duration
+                    total_time[member.id] += duration + total_mute_time
                 else:
-                    total_time[member.id] = duration
+                    total_time[member.id] = duration + total_mute_time
 
                 # Handle leaving voice channel other than AFK
                 if before.channel.id != afk_channel_id:
@@ -806,7 +745,7 @@ class EconomyCog(commands.Cog):
                             f'Участник: `{member.display_name}` ({member.mention})\n'
                             f'Время в войсе: с <t:{join_time}:T> до <t:{leave_time}:T>\n'
                             f'Время в войсе (без учёта мута): `{duration} секунд`\n'
-                            f'Общее время в войсе (с учётом мута): `{total_time_with_mute} секунд`\n'
+                            f'Общее время в войсе: `{int(hours)} ч, {int(minutes)} мин, {int(seconds)} сек`\n'
                             f'Выданные румбики: `{rumbiks}`\n'
                             f'{f"Выданные румбики с учетом бустера `{rumbikswithboost}`" if multiplier > 1 else ""}\n'
                             f'Общее время в войсе: `{time_in_voice}` минут'
@@ -816,48 +755,69 @@ class EconomyCog(commands.Cog):
                     embed.set_author(name='Shadow Dragons Economy', icon_url=member.guild.icon.url)
                     thread = member.guild.get_thread(1270673733178101801)
                     await thread.send(embed=embed)
+                    total_time[member.id] = 0
 
-                # Reset "Время в войсе (с учётом мута)"
-                total_time.pop(member.id, None)
+        # User switched voice channels
+        elif before.channel is not None and after.channel is not None and before.channel.id != after.channel.id:
+            join_time = voice_timestamps.pop(member.id, None)
+            if join_time:
+                leave_time = now
+                duration = leave_time - join_time
 
-            else:
-                print(f'{member} вышел из войса, но время входа не найдено.')
+                # Calculate total mute time
+                total_mute_time = 0
+                if member.id in mute_timestamps:
+                    for mute_start, mute_end in mute_timestamps[member.id]:
+                        if mute_end is None:
+                            mute_end = leave_time
+                        total_mute_time += mute_end - mute_start
+                    duration -= total_mute_time
+                    print(f'{member} сменил канал в {leave_time}, общее время мьюта {total_mute_time} секунд')
+                    mute_timestamps.pop(member.id, None)
 
-    class TopEnum(disnake.enums.Enum):
-        Румбики = "Румбики"
-
-    def get_top_users(self):
-        top_records = collusers.find().sort('balance', -1).limit(10)
-        return [(record['id'], record['balance']) for record in top_records]
-
-    @commands.slash_command(name='top', description='Топ пользователи', aliases=['топ', 'лучшие'])
-    async def top(self, inter: disnake.ApplicationCommandInteraction,
-                  тип: TopEnum = commands.Param(description="Выберите тип топа")):
-        if тип == 'Румбики':
-            embed = disnake.Embed(title="🏆 Топ участников по румбикам", description="", color=0xffff00, timestamp=datetime.now())
-            embed.set_thumbnail(url='https://i.imgur.com/64ibjZo.gif')
-            top_records = collusers.find().sort('balance', -1).limit(10)
-            top_users = self.get_top_users()
-            for idx, (user_id, balance) in enumerate(top_users, start=1):
-                member = inter.guild.get_member(user_id)
-
-                if idx == 1:
-                    position_emoji = "🥇"
-                elif idx == 2:
-                    position_emoji = "🥈"
-                elif idx == 3:
-                    position_emoji = "🥉"
+                if member.id in total_time:
+                    total_time[member.id] += duration + total_mute_time
                 else:
-                    position_emoji = ""
+                    total_time[member.id] = duration + total_mute_time
 
-                if member:
-                    balance = round(balance, 2)
-                    embed.add_field(name=f"{position_emoji} ``#{idx}``. {member.display_name}", value=f"Баланс: {balance}{emoji}", inline=False)
-                else:
-                    balance = round(balance, 2)
-                    embed.add_field(name=f"``#{idx}``. ~~Неизвестный участник (ID: {user_id})~~", value=f"Баланс: {balance}{emoji}", inline=False)
-                embed.set_footer(text=inter.guild.name, icon_url=inter.guild.icon.url)
-            await inter.response.send_message(embed=embed, ephemeral=True)
+                # Save time spent in previous channel before moving to AFK
+                if after.channel.id == afk_channel_id:
+                    minutes = round(duration / 60, 2)
+                    rumbiks = round(duration / 60 * 0.1, 2)
+
+                    multiplier = collservers.find_one({'_id': member.guild.id})['multiplier']
+                    if rumbiks > 0.01:
+                        collusers.find_one_and_update({'id': member.id}, {'$inc': {'balance': rumbiks * multiplier}})
+                    if multiplier > 1:
+                        rumbikswithboost = rumbiks * multiplier
+                    else:
+                        rumbikswithboost = None
+                    collusers.find_one_and_update({'id': member.id}, {'$inc': {'time_in_voice': minutes}})
+                    time_in_voice = collusers.find_one({'id': member.id})['time_in_voice']
+
+                    # Prepare time format in seconds, minutes, and hours
+                    hours, rem = divmod(total_time[member.id], 3600)
+                    minutes, seconds = divmod(rem, 60)
+
+                    embed = disnake.Embed(color=0xe70404)
+                    embed.add_field(
+                        name='**Голосовая активность**',
+                        value=(
+                            f'Участник: `{member.display_name}` ({member.mention})\n'
+                            f'Время в войсе: с <t:{join_time}:T> до <t:{leave_time}:T>\n'
+                            f'Время в войсе (без учёта мута): `{duration} секунд`\n'
+                            f'Общее время в войсе: `{int(hours)} ч, {int(minutes)} мин, {int(seconds)} сек`\n'
+                            f'Выданные румбики: `{rumbiks}`\n'
+                            f'{f"Выданные румбики с учетом бустера `{rumbikswithboost}`" if multiplier > 1 else ""}\n'
+                            f'Общее время в войсе: `{time_in_voice}` минут'
+                        )
+                    )
+                    embed.set_footer(text=member.name, icon_url=member.avatar.url)
+                    embed.set_author(name='Shadow Dragons Economy', icon_url=member.guild.icon.url)
+                    thread = member.guild.get_thread(1270673733178101801)
+                    await thread.send(embed=embed)
+                    total_time[member.id] = 0
+                voice_timestamps[member.id] = now
 
     def convert_to_seconds(self, time_str):
         try:
