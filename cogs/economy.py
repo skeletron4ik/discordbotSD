@@ -17,7 +17,7 @@ cooldowns = {}
 voice_timestamps = {}
 mute_timestamps = {}
 total_time = {}
-emoji = "<:rumbick:1271089081601753118>"
+emoji = "<a:rumbick_gif:1276856664842047518>"
 
 def format_duration(value):
     if value == 1:
@@ -27,8 +27,8 @@ def format_duration(value):
     else:
         return f"`{value}` румбиков"
 def format_rumbick(value):
-    emoji = "<:rumbick:1271089081601753118>"
-    return f"{value} {emoji}"
+    emoji = "<a:rumbick_gif:1276856664842047518>"
+    return f"{value}{emoji}"
 
 def create_error_embed(message: str) -> disnake.Embed:
     embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
@@ -607,7 +607,7 @@ class EconomyCog(commands.Cog):
                     collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -cost}})
 
                     # Уведомление в канале сервера
-                    channel = interaction.author.guild.get_channel(944562833901899827)
+                    channel = interaction.author.guild.get_channel(489867322039992323)
                     if current_timestamp != 0 and current_timestamp > current_time:
                         # Уведомление о продлении бустера
                         server_embed = disnake.Embed(
@@ -706,6 +706,9 @@ class EconomyCog(commands.Cog):
                 leave_time = now
                 duration = leave_time - join_time
 
+                # Calculate total time including mute
+                total_time_with_mute = leave_time - join_time
+
                 # Calculate mute time
                 if member.id in mute_timestamps:
                     muted_duration = leave_time - mute_timestamps.pop(member.id)
@@ -743,7 +746,7 @@ class EconomyCog(commands.Cog):
                             f'Участник: `{member.display_name}` ({member.mention})\n'
                             f'Время в войсе: с <t:{join_time}:T> до <t:{leave_time}:T>\n'
                             f'Время в войсе (без учёта мута): `{duration} секунд`\n'
-                            f'Время в войсе (с учётом мута): `{int(hours)} ч, {int(minutes)} мин, {int(seconds)} сек`\n'
+                            f'Время в войсе (с учётом мута): `{total_time_with_mute} секунд`\n'
                             f'Выданные румбики: `{rumbiks}`\n'
                             f'{f"Выданные румбики с учетом бустера `{rumbikswithboost}`" if multiplier > 1 else ""}\n'
                             f'Общее время в войсе: `{time_in_voice}` минут'
@@ -762,6 +765,9 @@ class EconomyCog(commands.Cog):
             if join_time:
                 leave_time = now
                 duration = leave_time - join_time
+
+                # Calculate total time including mute
+                total_time_with_mute = leave_time - join_time
 
                 # Calculate mute time
                 if member.id in mute_timestamps:
@@ -800,7 +806,7 @@ class EconomyCog(commands.Cog):
                             f'Участник: `{member.display_name}` ({member.mention})\n'
                             f'Время в войсе: с <t:{join_time}:T> до <t:{leave_time}:T>\n'
                             f'Время в войсе (без учёта мута): `{duration} секунд`\n'
-                            f'Общее время в войсе (с учётом мута): `{int(hours)} ч, {int(minutes)} мин, {int(seconds)} сек`\n'
+                            f'Общее время в войсе (с учётом мута): `{total_time_with_mute} секунд`\n'
                             f'Выданные румбики: `{rumbiks}`\n'
                             f'{f"Выданные румбики с учетом бустера `{rumbikswithboost}`" if multiplier > 1 else ""}\n'
                             f'Общее время в войсе: `{time_in_voice}` минут'
@@ -828,19 +834,29 @@ class EconomyCog(commands.Cog):
     async def top(self, inter: disnake.ApplicationCommandInteraction,
                   тип: TopEnum = commands.Param(description="Выберите тип топа")):
         if тип == 'Румбики':
-            embed = disnake.Embed(title="Топ участников по румбикам", description="", color=0x4169E1)
+            embed = disnake.Embed(title="🏆 Топ участников по румбикам", description="", color=0xffff00, timestamp=datetime.now())
+            embed.set_thumbnail(url='https://i.imgur.com/64ibjZo.gif')
             top_records = collusers.find().sort('balance', -1).limit(10)
             top_users = self.get_top_users()
             for idx, (user_id, balance) in enumerate(top_users, start=1):
                 member = inter.guild.get_member(user_id)
+
+                if idx == 1:
+                    position_emoji = "🥇"
+                elif idx == 2:
+                    position_emoji = "🥈"
+                elif idx == 3:
+                    position_emoji = "🥉"
+                else:
+                    position_emoji = ""
+
                 if member:
                     balance = round(balance, 2)
-                    embed.add_field(name=f"{idx}. {member.display_name}", value=f"Баланс: {balance}", inline=False)
+                    embed.add_field(name=f"{position_emoji} ``#{idx}``. {member.display_name}", value=f"Баланс: {balance}{emoji}", inline=False)
                 else:
                     balance = round(balance, 2)
-                    embed.add_field(name=f"{idx}. Неизвестный участник (ID: {user_id})", value=f"Баланс: {balance}",
-                                    inline=False)
-
+                    embed.add_field(name=f"``#{idx}``. ~~Неизвестный участник (ID: {user_id})~~", value=f"Баланс: {balance}{emoji}", inline=False)
+                embed.set_footer(text=inter.guild.name, icon_url=inter.guild.icon.url)
             await inter.response.send_message(embed=embed, ephemeral=True)
 
     def convert_to_seconds(self, time_str):
@@ -861,7 +877,7 @@ class EconomyCog(commands.Cog):
         else:
             raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
-    @tasks.loop(seconds=60)
+    @tasks.loop(seconds=300)
     async def check_booster(self):
         server_id = 489867322039992320
         server_data = collservers.find_one({'_id': server_id})
@@ -874,7 +890,7 @@ class EconomyCog(commands.Cog):
         timestamp_now = int(datetime.now().timestamp())
 
         async def send_message_on_booster_end(booster_type, multiplier):
-            channel = self.bot.get_channel(944562833901899827)
+            channel = self.bot.get_channel(489867322039992323)
             guild = self.bot.get_guild(server_id)  # Получаем объект сервера
             icon_url = guild.icon.url if guild.icon else None  # Получаем URL иконки, если она установлена
 
@@ -1006,19 +1022,36 @@ class EconomyCog(commands.Cog):
         # Создание embed сообщения
         embed = disnake.Embed(
             title="Бустер румбиков активирован!",
-            description=f"{inter.author.mention} __активировал__ ивентовый бустер румбиков ``x{множитель}`` на {длительность_в_строке}!\nБустер закончится <t:{timestamp}:R>.",
+            description=f"Вы успешно активировали ивентовый бустер румбиков ``x{множитель}`` на **{длительность_в_строке}**!\nБустер закончится <t:{timestamp}:R>.",
             color=0xfa00ff,
             timestamp=datetime.now()
         )
         embed.set_author(name=f"{inter.author.display_name}", icon_url=f"{inter.author.avatar.url}")
         embed.set_thumbnail(url='https://i.imgur.com/vlX2dxG.gif')
         embed.set_footer(text=f'Активация ивентового бустера', icon_url=inter.guild.icon.url)
-
         # Если указано название ивента, добавляем его в embed
         if ивент:
-            embed.add_field(name='Ивент:', value=ивент)
+            embed.add_field(name='Ивент:', value=ивент, inline=False)
+        embed.add_field(name='', value=f'```Текущий общий множитель: x{новый_множитель}```', inline=False)
 
         await inter.response.send_message(embed=embed, ephemeral=True)
+
+        channel = await self.bot.fetch_channel(489867322039992323)
+        log_embed = disnake.Embed(
+            title="Бустер румбиков активирован!",
+            description=f"{inter.author.mention} __активировал__ ивентовый бустер румбиков ``x{множитель}`` на **{длительность_в_строке}**!\nБустер закончится <t:{timestamp}:R>.",
+            color=0xfa00ff,
+            timestamp=datetime.now()
+        )
+        log_embed.set_author(name=f"{inter.author.display_name}", icon_url=f"{inter.author.avatar.url}")
+        log_embed.set_thumbnail(url='https://i.imgur.com/vlX2dxG.gif')
+        log_embed.set_footer(text=f'Активация ивентового бустера', icon_url=inter.guild.icon.url)
+        # Если указано название ивента, добавляем его в embed
+        if ивент:
+            log_embed.add_field(name='Ивент:', value=ивент, inline=False)
+        log_embed.add_field(name='', value=f'```Текущий общий множитель: x{новый_множитель}```', inline=False)
+
+        await channel.send(embed=log_embed)
 
     def format_duration(self, time_str):
         """Форматирование длительности в строку."""
@@ -1086,17 +1119,17 @@ class EconomyCog(commands.Cog):
             )
             embed.add_field(name='', value='')
 
+        # Если нет активных бустеров
+        if len(embed.fields) == 1:  # Only the multiplier field exists
+            embed.description = "На данный момент нет активных бустеров."
+            embed.clear_fields()  # Clear the multiplier field if no boosters are active
+
         # Общий множитель
         embed.add_field(
             name="",
             value=f"```Текущий общий множитель: x{multiplier}```",
             inline=False
         )
-
-        # Если нет активных бустеров
-        if len(embed.fields) == 1:  # Only the multiplier field exists
-            embed.description = "На данный момент нет активных бустеров."
-            embed.clear_fields()  # Clear the multiplier field if no boosters are active
 
         await inter.response.send_message(embed=embed)
 
