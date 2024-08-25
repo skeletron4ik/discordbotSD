@@ -665,9 +665,28 @@ class EconomyCog(commands.Cog):
 
         await inter.edit_original_response(embed=embed, view=view)
 
+
+
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         global time_in_voice, multiplier
+
+        def format_time(seconds):
+            days, seconds = divmod(seconds, 86400)
+            hours, seconds = divmod(seconds, 3600)
+            minutes, seconds = divmod(seconds, 60)
+
+            time_components = []
+            if days > 0:
+                time_components.append(f'{int(days)} д')
+            if hours > 0:
+                time_components.append(f'{int(hours)} ч')
+            if minutes > 0:
+                time_components.append(f'{int(minutes)} мин')
+            if seconds > 0 or not time_components:
+                time_components.append(f'{int(seconds)} сек')
+
+            return ', '.join(time_components)
 
         if member.bot:
             return
@@ -731,28 +750,31 @@ class EconomyCog(commands.Cog):
                         rumbikswithboost = rumbiks * multiplier
                     else:
                         rumbikswithboost = None
-                    collusers.find_one_and_update({'id': member.id}, {'$inc': {'time_in_voice': minutes}})
+
+                    # Update total voice time in seconds
+                    collusers.find_one_and_update({'id': member.id}, {'$inc': {'time_in_voice': total_time[member.id]}})
                     time_in_voice = collusers.find_one({'id': member.id})['time_in_voice']
 
-                    # Prepare time format in seconds, minutes, and hours
-                    hours, rem = divmod(total_time[member.id], 3600)
-                    minutes, seconds = divmod(rem, 60)
+                    # Use the helper function to format the duration
+                    formatted_duration = format_time(duration)
+                    formatted_total_time = format_time(total_time[member.id])
+                    formatted_time_in_voice = format_time(time_in_voice)
 
-                    embed = disnake.Embed(color=0xe70404)
+                    embed = disnake.Embed(color=0xe70404, timestamp=datetime.now())
+                    embed.set_thumbnail(url='https://i.imgur.com/B0w8aJT.gif')
                     embed.add_field(
-                        name='**Голосовая активность**',
+                        name='**Голосовая активность:**',
                         value=(
                             f'Участник: `{member.display_name}` ({member.mention})\n'
                             f'Время в войсе: с <t:{join_time}:T> до <t:{leave_time}:T>\n'
-                            f'Время в войсе (без учёта мута): `{duration} секунд`\n'
-                            f'Общее время в войсе: `{int(hours)} ч, {int(minutes)} мин, {int(seconds)} сек`\n'
-                            f'Выданные румбики: `{rumbiks}`\n'
-                            f'{f"Выданные румбики с учетом бустера `{rumbikswithboost}`" if multiplier > 1 else ""}\n'
-                            f'Общее время в войсе: `{time_in_voice}` минут'
+                            f'Время (без учёта мута): `{formatted_duration}`\n'
+                            f'Время (всего): `{formatted_total_time}`\n'
+                            f'{f"**Выданно с учетом бустера:** `{rumbikswithboost}`{emoji}" if multiplier > 1 else f"**Выданно:** `{rumbiks}`{emoji}"}\n'
+                            f'Общее время в войсе: `{formatted_time_in_voice}`'
                         )
                     )
-                    embed.set_footer(text=member.name, icon_url=member.avatar.url)
-                    embed.set_author(name='Shadow Dragons Economy', icon_url=member.guild.icon.url)
+                    embed.set_footer(text=f"ID: {member.id}", icon_url=member.guild.icon.url)
+                    embed.set_author(name=member.display_name, icon_url=member.avatar.url)
                     thread = member.guild.get_thread(1270673733178101801)
                     await thread.send(embed=embed)
                     total_time[member.id] = 0
@@ -792,32 +814,36 @@ class EconomyCog(commands.Cog):
                         rumbikswithboost = rumbiks * multiplier
                     else:
                         rumbikswithboost = None
-                    collusers.find_one_and_update({'id': member.id}, {'$inc': {'time_in_voice': minutes}})
+
+                    # Update total voice time in seconds
+                    collusers.find_one_and_update({'id': member.id}, {'$inc': {'time_in_voice': total_time[member.id]}})
                     time_in_voice = collusers.find_one({'id': member.id})['time_in_voice']
 
-                    # Prepare time format in seconds, minutes, and hours
-                    hours, rem = divmod(total_time[member.id], 3600)
-                    minutes, seconds = divmod(rem, 60)
+                    # Use the helper function to format the duration
+                    formatted_duration = format_time(duration)
+                    formatted_total_time = format_time(total_time[member.id])
+                    formatted_time_in_voice = format_time(time_in_voice)
 
-                    embed = disnake.Embed(color=0xe70404)
+                    embed = disnake.Embed(color=0xe70404, timestamp=datetime.now())
+                    embed.set_thumbnail(
+                        url='https://i.imgur.com/B0w8aJT.gif')
                     embed.add_field(
-                        name='**Голосовая активность**',
+                        name='**Голосовая активность:**',
                         value=(
                             f'Участник: `{member.display_name}` ({member.mention})\n'
                             f'Время в войсе: с <t:{join_time}:T> до <t:{leave_time}:T>\n'
-                            f'Время в войсе (без учёта мута): `{duration} секунд`\n'
-                            f'Общее время в войсе: `{int(hours)} ч, {int(minutes)} мин, {int(seconds)} сек`\n'
-                            f'Выданные румбики: `{rumbiks}`\n'
-                            f'{f"Выданные румбики с учетом бустера `{rumbikswithboost}`" if multiplier > 1 else ""}\n'
-                            f'Общее время в войсе: `{time_in_voice}` минут'
+                            f'Время (без учёта мута): `{formatted_duration}`\n'
+                            f'Время (всего): `{formatted_total_time}`\n'
+                            f'{f"**Выданно с учетом бустера:** `{rumbikswithboost}`{emoji}" if multiplier > 1 else f"**Выданно:** `{rumbiks}`{emoji}"}\n'
+                            f'Общее время в войсе: `{formatted_time_in_voice}`'
                         )
                     )
-                    embed.set_footer(text=member.name, icon_url=member.avatar.url)
-                    embed.set_author(name='Shadow Dragons Economy', icon_url=member.guild.icon.url)
+                    embed.set_footer(text=f"ID: {member.id}", icon_url=member.guild.icon.url)
+                    embed.set_author(name=member.display_name, icon_url=member.avatar.url)
                     thread = member.guild.get_thread(1270673733178101801)
                     await thread.send(embed=embed)
                     total_time[member.id] = 0
-                voice_timestamps[member.id] = now
+            voice_timestamps[member.id] = now
 
     def convert_to_seconds(self, time_str):
         try:

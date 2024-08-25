@@ -13,7 +13,7 @@ from main import cluster
 collusers = cluster.server.users
 collservers = cluster.server.servers
 
-emoji = "<:rumbick:1271089081601753118>"
+emoji = "<a:rumbick_gif:1276856664842047518>"
 
 def format_rubick_text(value):
     if value == 1:
@@ -70,7 +70,7 @@ class GamesCog(commands.Cog):
 
                 collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': -cost}})
 
-                embed = disnake.Embed(title='Камень-Ножницы-Бумага', color=0xff00fa)
+                embed = disnake.Embed(title='Камень-Ножницы-Бумага', color=0xff00fa, timestamp=datetime.now())
                 embed.set_thumbnail(
                     url='https://media0.giphy.com/media/JoDQSE8d1tB2tsPAAg/200w.gif?cid=6c09b952xijiedj0le1rvko2nmee3rri4fzrvchqb4q7as94&ep=v1_gifs_search&rid=200w.gif&ct=g')
                 embed.set_author(name=inter.author.display_name, icon_url=inter.author.avatar.url)
@@ -78,9 +78,9 @@ class GamesCog(commands.Cog):
                 embed.add_field(name='', value=f'**Ставка:** {bet}', inline=True)
 
                 if challenged_user:
-                    embed.add_field(name='Вызов брошен', value=f'Только для: {challenged_user.mention}', inline=False)
+                    embed.add_field(name='Вызов брошен:', value=f'Только для: {challenged_user.mention}', inline=False)
                 else:
-                    embed.add_field(name='Вызов брошен', value='Для всех участников', inline=False)
+                    embed.add_field(name='Вызов брошен:', value='Для всех участников', inline=False)
 
                 async def button_callback(interaction: disnake.MessageInteraction, choice: str, embed: disnake.Embed):
                     if challenged_user and interaction.author.id != challenged_user.id:
@@ -169,9 +169,10 @@ class GamesCog(commands.Cog):
                 button_paper = disnake.ui.Button(label="📃 Бумага", style=disnake.ButtonStyle.primary)
                 button_scissors = disnake.ui.Button(label="✂️ Ножницы", style=disnake.ButtonStyle.primary)
 
-                button_rock.callback = lambda i: button_callback(i, "Камень")
-                button_paper.callback = lambda i: button_callback(i, "Бумага")
-                button_scissors.callback = lambda i: button_callback(i, "Ножницы")
+                # Передаем embed при вызове button_callback
+                button_rock.callback = lambda i: button_callback(i, "Камень", embed)
+                button_paper.callback = lambda i: button_callback(i, "Бумага", embed)
+                button_scissors.callback = lambda i: button_callback(i, "Ножницы", embed)
 
                 # Create a view with a timeout of 5 minutes
                 view = disnake.ui.View(timeout=300)
@@ -182,7 +183,8 @@ class GamesCog(commands.Cog):
                 async def on_timeout():
                     # Add a new field to the existing embed
                     embed.add_field(name="Игра отменена",
-                                    value="Никто не принял вызов в течение 5 минут.\n **Ставка возвращена**.", inline=False)
+                                    value="Никто не принял вызов в течение 5 минут.\n **Ставка возвращена**.",
+                                    inline=False)
                     view.clear_items()  # Remove all buttons
                     await message.edit(embed=embed, view=view)
                     collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': cost}})
@@ -190,6 +192,7 @@ class GamesCog(commands.Cog):
                 view.on_timeout = on_timeout
 
                 await message.edit(embed=embed, view=view, content=None)
+
             else:
                 error_message = f"{decline} `{inter.author.display_name}`, Вы выбрали несуществующий ход."
                 embed = create_error_embed(error_message)
@@ -234,6 +237,130 @@ class GamesCog(commands.Cog):
         )
 
         await inter.response.send_modal(modal=modal)
+    @commands.slash_command(name='coinflip', description='Игра Орел или Решка')
+    async def coinflip(self, inter: disnake.ApplicationCommandInteraction, ставка: int,
+                       участник: disnake.Member = None):
+        decline = disnake.utils.get(inter.author.guild.emojis, name='773229388573310996')
+
+        # Проверка ставки
+        if ставка < 10:
+            error_message = f"{decline}  `{inter.author.display_name}`, Вы можете поставить не менее **10** румбиков."
+            embed = self.create_error_embed(error_message)
+            await inter.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        balance = collusers.find_one({'id': inter.author.id})['balance']
+        if balance < ставка:
+            err = format_rumbick(ставка - balance)
+            error_message = f"{decline}  `{inter.author.display_name}`, Вам не хватает {err}."
+            embed = self.create_error_embed(error_message)
+            await inter.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        # Снимаем ставку у инициатора
+        collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': -ставка}})
+
+        embed = disnake.Embed(title='Орел или Решка', color=0xff8800, timestamp=datetime.now())
+        embed.set_author(name=inter.author.display_name, icon_url=inter.author.avatar.url)
+        embed.set_thumbnail(
+            url='https://cdn.dribbble.com/users/1493264/screenshots/5573460/coin-flip-dribbble.gif')  # Замените на актуальную ссылку на изображение
+        embed.add_field(name='Ставка', value=f'{format_rumbick(ставка)}', inline=True)
+
+        if участник:
+            embed.add_field(name='Вызов брошен:', value=f'Только для: {участник.mention}', inline=False)
+        else:
+            embed.add_field(name='Вызов брошен:', value='Для всех участников', inline=False)
+        embed.set_footer(text="Coinflip", icon_url=inter.guild.icon.url)
+
+        # Кнопки для выбора
+        async def button_callback(interaction: disnake.MessageInteraction, choice: str, embed: disnake.Embed):
+            if участник and interaction.author.id != участник.id:
+                error_message = f"{decline} `{interaction.author.display_name}`, Вы не можете участвовать в этой игре."
+                embed = self.create_error_embed(error_message)
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+
+            if inter.author.id == interaction.author.id:
+                error_message = f"{decline} `{interaction.author.display_name}`, Вы не можете играть сами с собой."
+                embed = self.create_error_embed(error_message)
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+
+            # Проверяем баланс оппонента
+            balance_opponent = collusers.find_one({'id': interaction.author.id})['balance']
+            if balance_opponent < ставка:
+                err = format_rumbick(ставка - balance_opponent)
+                error_message = f"{decline} `{interaction.author.display_name}`, Вам не хватает {err}."
+                embed = self.create_error_embed(error_message)
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+
+            # Снимаем ставку у оппонента
+            collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -ставка}})
+
+            # Логика игры с шансом на ребро
+            outcome = random.choices(['Орел', 'Решка', 'Ребро'], [0.45, 0.45, 0.10])[0]
+            if outcome == 'Ребро':
+                embed.add_field(name='Результат', value='Монета упала на ребро! Ставки возвращаются.', inline=False)
+                # Возвращаем ставки
+                collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': ставка}})
+                collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': ставка}})
+            else:
+                if choice == outcome:
+                    if inter.author.id == interaction.author.id:  # Если выборы совпадают
+                        embed.add_field(name='Результат', value=f'Выпала {outcome}.', inline=False)
+                        embed.add_field(name='Выбор оппонента', value=f'{interaction.author.mention} выбрал {choice}.',
+                                        inline=False)
+                        embed.add_field(name='**Итоги:**',
+                                        value='Ставки возвращаются, оба игрока выбрали одно и то же.', inline=False)
+                        collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': ставка}})
+                        collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': ставка}})
+                    else:  # Один из игроков выиграл
+                        winner = interaction.author
+                        loser = inter.author
+                        embed.add_field(name='Результат', value=f'Выпала {outcome}.', inline=False)
+                        embed.add_field(name='Выбор оппонента', value=f'{interaction.author.mention} выбрал {choice}.',
+                                        inline=False)
+                        embed.add_field(name='**Итоги:**',
+                                        value=f'{winner.mention} выиграл!\n{loser.mention} проигрывает свою ставку.',
+                                        inline=False)
+                        collusers.find_one_and_update({'id': winner.id}, {'$inc': {'balance': ставка * 2}})
+                else:
+                    embed.add_field(name='Результат', value=f'Выпала {outcome}.', inline=False)
+                    embed.add_field(name='Выбор оппонента', value=f'{interaction.author.mention} выбрал {choice}.',
+                                    inline=False)
+                    embed.add_field(name='**Итоги:**',
+                                    value=f'{inter.author.mention} выиграл!\n{interaction.author.mention} проигрывает свою ставку.',
+                                    inline=False)
+                    collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': ставка * 2}})
+
+            await inter.edit_original_response(embed=embed, view=None)
+
+        button_heads = disnake.ui.Button(label="Орел", style=disnake.ButtonStyle.primary)
+        button_tails = disnake.ui.Button(label="Решка", style=disnake.ButtonStyle.primary)
+
+        button_heads.callback = lambda i: button_callback(i, "Орел", embed)
+        button_tails.callback = lambda i: button_callback(i, "Решка", embed)
+
+        view = disnake.ui.View(timeout=300)
+        view.add_item(button_heads)
+        view.add_item(button_tails)
+
+        async def on_timeout():
+            embed.add_field(name="Игра отменена",
+                            value="Никто не принял вызов в течение 5 минут.\n **Ставка возвращена**.",
+                            inline=False)
+            view.clear_items()
+            await inter.edit_original_response(embed=embed, view=view)
+            collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': ставка}})
+
+        view.on_timeout = on_timeout
+
+        await inter.response.send_message(embed=embed, view=view)
+
+    def create_error_embed(self, error_message):
+        embed = disnake.Embed(title="Ошибка", description=error_message, color=0xff0000)
+        return embed
 
 def setup(bot):
     bot.add_cog(GamesCog(bot))
