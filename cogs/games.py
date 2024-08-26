@@ -23,7 +23,7 @@ def format_rubick_text(value):
     else:
         return f"`{value}` румбиков"
 def format_rumbick(value):
-    emoji = "<:rumbick:1271089081601753118>"
+    emoji = "<a:rumbick_gif:1276856664842047518>"
     return f"{value} {emoji}"
 
 def create_error_embed(message: str) -> disnake.Embed:
@@ -72,7 +72,7 @@ class GamesCog(commands.Cog):
 
                 embed = disnake.Embed(title='Камень-Ножницы-Бумага', color=0xff00fa, timestamp=datetime.now())
                 embed.set_thumbnail(
-                    url='https://media0.giphy.com/media/JoDQSE8d1tB2tsPAAg/200w.gif?cid=6c09b952xijiedj0le1rvko2nmee3rri4fzrvchqb4q7as94&ep=v1_gifs_search&rid=200w.gif&ct=g')
+                    url='https://media2.giphy.com/media/hp2sbbMqjelqqtIupy/giphy.gif?cid=6c09b952ip624esbxkhmfb2bcdogxpgffq1uxnxpui74ih80&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=s')
                 embed.set_author(name=inter.author.display_name, icon_url=inter.author.avatar.url)
                 embed.set_footer(text=f'Rock-Paper-Scissors', icon_url=inter.guild.icon.url)
                 embed.add_field(name='', value=f'**Ставка:** {bet}', inline=True)
@@ -82,7 +82,13 @@ class GamesCog(commands.Cog):
                 else:
                     embed.add_field(name='Вызов брошен:', value='Для всех участников', inline=False)
 
+                game_finished = False  # Flag to track if the game is finished
+
                 async def button_callback(interaction: disnake.MessageInteraction, choice: str, embed: disnake.Embed):
+                    nonlocal game_finished  # Access the outer scope variable
+                    if game_finished:
+                        return  # If the game is already finished, do nothing
+
                     if challenged_user and interaction.author.id != challenged_user.id:
                         error_message = f"{decline} `{interaction.author.display_name}`, Вы не можете участвовать в этой игре."
                         embed = create_error_embed(error_message)
@@ -105,100 +111,117 @@ class GamesCog(commands.Cog):
 
                     collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -cost}})
 
+                    # Показываем изображение после нажатия на кнопку
+                    embed.add_field(name="", value=f"{interaction.author.mention} принял вызов!", inline=True)
+                    embed.set_image(url='https://media.tenor.com/7HFPLm7Rl8oAAAAM/321-count-down.gif')  # Обновляем на изображение из ссылки
+                    await inter.edit_original_response(embed=embed, view=None)
+
+                    # Ожидаем 4 секунды перед показом результата
+                    await asyncio.sleep(4.3)
+
+                    # Определяем результат игры
+                    embed.set_image(url=None)
+                    embed.clear_fields()  # Очищаем предыдущие поля
+                    embed.add_field(name='', value=f'**Ставка** {bet}', inline=True)
+                    if challenged_user:
+                        embed.add_field(name='Вызов брошен:', value=f'Только для: {challenged_user.mention}',
+                                        inline=False)
+                    else:
+                        embed.add_field(name='Вызов брошен:', value='Для всех участников', inline=False)
+
+                    # Determine the outcome
                     if choice == "Камень":  # Камень
                         if figure == 'К':
-                            embed.add_field(name='**Итоги:**',
+                            embed.add_field(name='**Итоги**',
                                             value=f'Выбор у двух участников пал на камень, поэтому ничья.\n'
-                                                  f'Ставки возвращаются участникам.', inline=False)
+                                                  f'**Ставки возвращаются участникам.**', inline=False)
                             collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': cost}})
                             collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost}})
                         elif figure == 'Б':
-                            embed.add_field(name='**Итоги:**',
-                                            value=f'{author.mention} выбрал бумагу, а {interaction.author.mention} выбрал камень.\n'
-                                                  f'{author.display_name} получает выигрыш.', inline=False)
+                            embed.add_field(name='**Итоги**',
+                                            value=f'{author.mention} выбрал бумагу,\n а {interaction.author.mention} выбрал камень.', inline=False)
+                            embed.add_field(name="", value=f'**{author.display_name}** получает {cost * 2}{emoji}.')
                             collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost * 2}})
                         elif figure == 'Н':
-                            embed.add_field(name='**Итоги:**',
-                                            value=f'{interaction.author.mention} выбрал камень, а {author.mention} выбрал ножницы.\n'
-                                                  f'{interaction.author.display_name} получает выигрыш.', inline=False)
+                            embed.add_field(name='**Итоги**',
+                                            value=f'{interaction.author.mention} выбрал камень,\n а {author.mention} выбрал ножницы.', inline=False)
+                            embed.add_field(name='', value=f'**{interaction.author.display_name}** получает {cost * 2}{emoji}.')
                             collusers.find_one_and_update({'id': interaction.author.id},
                                                           {'$inc': {'balance': cost * 2}})
 
                     elif choice == "Бумага":  # Бумага
                         if figure == 'К':
-                            embed.add_field(name='**Итоги:**',
-                                            value=f'{author.mention} выбрал камень, а {interaction.author.mention} выбрал бумагу.\n'
-                                                  f'{interaction.author.display_name} получает выигрыш.', inline=False)
+                            embed.add_field(name='**Итоги**',
+                                            value=f'{author.mention} выбрал камень,\n а {interaction.author.mention} выбрал бумагу.', inline=False)
+                            embed.add_field(name="", value=f'**{interaction.author.display_name}** получает {cost * 2}{emoji}.')
                             collusers.find_one_and_update({'id': interaction.author.id},
                                                           {'$inc': {'balance': cost * 2}})
                         elif figure == 'Б':
-                            embed.add_field(name='**Итоги:**',
+                            embed.add_field(name='**Итоги**',
                                             value=f'Выбор у двух участников пал на бумагу, поэтому ничья.\n'
-                                                  f'Ставки возвращаются участникам.', inline=False)
+                                                  f'**Ставки возвращаются участникам.**', inline=False)
                             collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': cost}})
                             collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost}})
                         elif figure == 'Н':
-                            embed.add_field(name='**Итоги:**',
-                                            value=f'{author.mention} выбрал ножницы, а {interaction.author.mention} выбрал бумагу.\n'
-                                                  f'{author.display_name} получает выигрыш.', inline=False)
+                            embed.add_field(name='**Итоги**',
+                                            value=f'{author.mention} выбрал ножницы,\n а {interaction.author.mention} выбрал бумагу.', inline=False)
+                            embed.add_field(name="", value=f'**{author.display_name}** получает {cost * 2}{emoji}.')
                             collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost * 2}})
 
                     elif choice == "Ножницы":  # Ножницы
                         if figure == 'К':
-                            embed.add_field(name='**Итоги:**',
-                                            value=f'{author.mention} выбрал камень, а {interaction.author.mention} выбрал ножницы.\n'
-                                                  f'{author.display_name} получает выигрыш.', inline=False)
+                            embed.add_field(name='**Итоги**',
+                                            value=f'{author.mention} выбрал камень,\n а {interaction.author.mention} выбрал ножницы.', inline=False)
+                            embed.add_field(name="", value=f'**{author.display_name}** получает {cost * 2}{emoji}.')
                             collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost * 2}})
                         elif figure == 'Б':
-                            embed.add_field(name='**Итоги:**',
-                                            value=f'{interaction.author.mention} выбрал ножницы, а {author.mention} выбрал бумагу.\n'
-                                                  f'{interaction.author.display_name} получает выигрыш.', inline=False)
+                            embed.add_field(name='**Итоги**',
+                                            value=f'{interaction.author.mention} выбрал ножницы,\n а {author.mention} выбрал бумагу.', inline=False)
+                            embed.add_field(name="", value=f'**{interaction.author.display_name}** получает {cost * 2}{emoji}.')
                             collusers.find_one_and_update({'id': interaction.author.id},
                                                           {'$inc': {'balance': cost * 2}})
                         elif figure == 'Н':
-                            embed.add_field(name='**Итоги:**',
+                            embed.add_field(name='**Итоги**',
                                             value=f'Выбор у двух участников пал на ножницы, поэтому ничья.\n'
-                                                  f'Ставки возвращаются участникам.', inline=False)
+                                                  f'**Ставки возвращаются участникам.**', inline=False)
                             collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': cost}})
                             collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost}})
 
-
+                    game_finished = True  # Mark the game as finished
                     await inter.edit_original_response(embed=embed, view=None)
 
                 button_rock = disnake.ui.Button(label="🗿 Камень", style=disnake.ButtonStyle.primary)
                 button_paper = disnake.ui.Button(label="📃 Бумага", style=disnake.ButtonStyle.primary)
                 button_scissors = disnake.ui.Button(label="✂️ Ножницы", style=disnake.ButtonStyle.primary)
-
-                # Передаем embed при вызове button_callback
-                button_rock.callback = lambda i: button_callback(i, "Камень", embed)
-                button_paper.callback = lambda i: button_callback(i, "Бумага", embed)
-                button_scissors.callback = lambda i: button_callback(i, "Ножницы", embed)
-
-                # Create a view with a timeout of 5 minutes
                 view = disnake.ui.View(timeout=300)
                 view.add_item(button_rock)
                 view.add_item(button_paper)
                 view.add_item(button_scissors)
 
+                button_rock.callback = lambda interaction: button_callback(interaction, "Камень", embed)
+                button_paper.callback = lambda interaction: button_callback(interaction, "Бумага", embed)
+                button_scissors.callback = lambda interaction: button_callback(interaction, "Ножницы", embed)
+
                 async def on_timeout():
-                    # Add a new field to the existing embed
+                    if game_finished:
+                        return  # If the game is finished, do nothing
                     embed.add_field(name="Игра отменена",
                                     value="Никто не принял вызов в течение 5 минут.\n **Ставка возвращена**.",
                                     inline=False)
                     view.clear_items()  # Remove all buttons
+                    collusers.find_one_and_update({'id': author.id}, {'$inc': {'balance': cost}})
                     await message.edit(embed=embed, view=view)
-                    collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': cost}})
 
                 view.on_timeout = on_timeout
 
-                await message.edit(embed=embed, view=view, content=None)
+                await message.edit(content=None, embed=embed, view=view)
 
             else:
                 error_message = f"{decline} `{inter.author.display_name}`, Вы выбрали несуществующий ход."
                 embed = create_error_embed(error_message)
                 await inter.response.send_message(embed=embed, ephemeral=True)
 
-    @commands.slash_command(name='rps', description='Популярная игра, камень-ножницы-бумага')
+    @commands.slash_command(name='rps', description='Игра: Камень-Ножницы-Бумага', aliases=['rps', 'rpc', 'кнб', 'Камень Ножницы Бумага'])
     async def rps(self, inter: disnake.ApplicationCommandInteraction):
         components = disnake.ui.TextInput(
             label=f"Выбери свой ход:",
@@ -214,9 +237,9 @@ class GamesCog(commands.Cog):
             label=f"Ставка",
             custom_id="bet",
             style=disnake.TextInputStyle.short,
-            placeholder="Введите к-во Румбиков для ставки",
+            placeholder="Введите к-во Румбиков (минимум 10)",
             required=True,
-            min_length=1,
+            min_length=2,
             max_length=16,
         )
 
@@ -235,9 +258,9 @@ class GamesCog(commands.Cog):
             custom_id="knb",
             components=[components, betz, challenge_user_input]
         )
-
         await inter.response.send_modal(modal=modal)
-    @commands.slash_command(name='coinflip', description='Игра Орел или Решка')
+
+    @commands.slash_command(name='cf', description='Игра: Орел или Решка', aliases=['cf', 'Орел или Решка', 'Орел и Решка', 'коинфлип', 'кф'])
     async def coinflip(self, inter: disnake.ApplicationCommandInteraction, ставка: int,
                        участник: disnake.Member = None):
         decline = disnake.utils.get(inter.author.guild.emojis, name='773229388573310996')
@@ -245,7 +268,7 @@ class GamesCog(commands.Cog):
         # Проверка ставки
         if ставка < 10:
             error_message = f"{decline}  `{inter.author.display_name}`, Вы можете поставить не менее **10** румбиков."
-            embed = self.create_error_embed(error_message)
+            embed = create_error_embed(error_message)
             await inter.response.send_message(embed=embed, ephemeral=True)
             return
 
@@ -253,7 +276,7 @@ class GamesCog(commands.Cog):
         if balance < ставка:
             err = format_rumbick(ставка - balance)
             error_message = f"{decline}  `{inter.author.display_name}`, Вам не хватает {err}."
-            embed = self.create_error_embed(error_message)
+            embed = create_error_embed(error_message)
             await inter.response.send_message(embed=embed, ephemeral=True)
             return
 
@@ -276,13 +299,13 @@ class GamesCog(commands.Cog):
         async def button_callback(interaction: disnake.MessageInteraction, choice: str, embed: disnake.Embed):
             if участник and interaction.author.id != участник.id:
                 error_message = f"{decline} `{interaction.author.display_name}`, Вы не можете участвовать в этой игре."
-                embed = self.create_error_embed(error_message)
+                embed = create_error_embed(error_message)
                 await interaction.response.send_message(embed=embed, ephemeral=True)
                 return
 
             if inter.author.id == interaction.author.id:
                 error_message = f"{decline} `{interaction.author.display_name}`, Вы не можете играть сами с собой."
-                embed = self.create_error_embed(error_message)
+                embed = create_error_embed(error_message)
                 await interaction.response.send_message(embed=embed, ephemeral=True)
                 return
 
@@ -291,50 +314,55 @@ class GamesCog(commands.Cog):
             if balance_opponent < ставка:
                 err = format_rumbick(ставка - balance_opponent)
                 error_message = f"{decline} `{interaction.author.display_name}`, Вам не хватает {err}."
-                embed = self.create_error_embed(error_message)
+                embed = create_error_embed(error_message)
                 await interaction.response.send_message(embed=embed, ephemeral=True)
                 return
 
             # Снимаем ставку у оппонента
             collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -ставка}})
 
-            # Логика игры с шансом на ребро
+            # Показываем изображение после нажатия на кнопку
+            embed.add_field(name="", value=f"{interaction.author.mention} принял вызов!", inline=True)
+            embed.set_image(url='https://i.imgur.com/Rj9tvVw.gif')  # Обновляем на изображение из ссылки
+            await inter.edit_original_response(embed=embed, view=None)
+
+            # Ожидаем 22 секунды перед показом результата
+            await asyncio.sleep(12)
+
+            # Определяем результат игры
             outcome = random.choices(['Орел', 'Решка', 'Ребро'], [0.45, 0.45, 0.10])[0]
+            embed.clear_fields()  # Очищаем предыдущие поля
+            embed.add_field(name='Ставка', value=f'{format_rumbick(ставка)}', inline=True)
+            if участник:
+                embed.add_field(name='Вызов брошен:', value=f'Только для: {участник.mention}', inline=False)
+            else:
+                embed.add_field(name='Вызов брошен:', value='Для всех участников', inline=False)
+
             if outcome == 'Ребро':
-                embed.add_field(name='Результат', value='Монета упала на ребро! Ставки возвращаются.', inline=False)
+                embed.add_field(name='**Итоги**', value='Монета упала на ребро! Ставки возвращаются.', inline=False)
                 # Возвращаем ставки
                 collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': ставка}})
                 collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': ставка}})
             else:
+                embed.add_field(name='**Итоги**', value=f'Выпал (-а) ``{outcome}``.', inline=False)
+                embed.add_field(name="", value=f"{interaction.author.mention} выбрал ``{choice}``.")
                 if choice == outcome:
-                    if inter.author.id == interaction.author.id:  # Если выборы совпадают
-                        embed.add_field(name='Результат', value=f'Выпала {outcome}.', inline=False)
-                        embed.add_field(name='Выбор оппонента', value=f'{interaction.author.mention} выбрал {choice}.',
-                                        inline=False)
-                        embed.add_field(name='**Итоги:**',
-                                        value='Ставки возвращаются, оба игрока выбрали одно и то же.', inline=False)
-                        collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': ставка}})
-                        collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': ставка}})
-                    else:  # Один из игроков выиграл
-                        winner = interaction.author
-                        loser = inter.author
-                        embed.add_field(name='Результат', value=f'Выпала {outcome}.', inline=False)
-                        embed.add_field(name='Выбор оппонента', value=f'{interaction.author.mention} выбрал {choice}.',
-                                        inline=False)
-                        embed.add_field(name='**Итоги:**',
-                                        value=f'{winner.mention} выиграл!\n{loser.mention} проигрывает свою ставку.',
-                                        inline=False)
-                        collusers.find_one_and_update({'id': winner.id}, {'$inc': {'balance': ставка * 2}})
-                else:
-                    embed.add_field(name='Результат', value=f'Выпала {outcome}.', inline=False)
-                    embed.add_field(name='Выбор оппонента', value=f'{interaction.author.mention} выбрал {choice}.',
+                    embed.add_field(name='',
+                                    value=f'{interaction.author.mention} выиграл и получает **{ставка * 2}**{emoji}!',
                                     inline=False)
-                    embed.add_field(name='**Итоги:**',
-                                    value=f'{inter.author.mention} выиграл!\n{interaction.author.mention} проигрывает свою ставку.',
+                    collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': ставка * 2}})
+                else:
+                    embed.add_field(name='',
+                                    value=f'{inter.author.mention} выиграл и получает **{ставка * 2}**{emoji}!',
                                     inline=False)
                     collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': ставка * 2}})
 
-            await inter.edit_original_response(embed=embed, view=None)
+            # Убираем изображение и отображаем результат
+            embed.set_image(url=None)
+            await inter.edit_original_response(embed=embed)
+
+            # Stop the timeout after the game has ended
+            view.stop()
 
         button_heads = disnake.ui.Button(label="Орел", style=disnake.ButtonStyle.primary)
         button_tails = disnake.ui.Button(label="Решка", style=disnake.ButtonStyle.primary)
@@ -356,11 +384,11 @@ class GamesCog(commands.Cog):
 
         view.on_timeout = on_timeout
 
-        await inter.response.send_message(embed=embed, view=view)
+        if участник:
+            await inter.response.send_message(embed=embed, view=view, content=участник.mention)
+        else:
+            await inter.response.send_message(embed=embed, view=view)
 
-    def create_error_embed(self, error_message):
-        embed = disnake.Embed(title="Ошибка", description=error_message, color=0xff0000)
-        return embed
 
 def setup(bot):
     bot.add_cog(GamesCog(bot))
