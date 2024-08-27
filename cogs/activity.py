@@ -1,16 +1,26 @@
 import disnake
 from pymongo import MongoClient, errors
 from disnake.ext import commands, tasks
-from datetime import datetime
 import os
 import asyncio
 import time
+from disnake import RawReactionActionEvent
+import datetime
+import disnake
+from datetime import datetime, timedelta
+from main import cluster
+
+collusers = cluster.server.users
+collservers = cluster.server.servers
 
 class ActivityCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.message_count = {}
         self.update_leaderboard.start()
+        self.rep_up_id = 1234218072433365102
+        self.rep_down_id = 1234218095116288154
+        self.reaction_limit = 10  # Лимит реакций в месяц для каждого участника
 
     @tasks.loop(seconds=3600)
     async def update_leaderboard(self):
@@ -68,6 +78,66 @@ class ActivityCog(commands.Cog):
             self.message_count[message.author.id] += 1  # Если есть
         else:
             self.message_count[message.author.id] = 1  # Типо если нет чела в словарике
+
+    async def update_reputation(self, user_id, guild_id, amount):
+        collusers.update_one(
+            {"id": user_id, "guild_id": guild_id},
+            {"$inc": {"reputation": amount}}
+        )
+
+    async def check_reaction_limit(self, user_id, guild_id):
+        # Проверка лимита реакций для конкретного пользователя
+        user_data = collusers.find_one({"id": user_id, "guild_id": guild_id})
+        if not user_data:
+            return False
+
+        if user_data.get("reaction_count", 0) >= self.reaction_limit:
+            return True
+        return False
+
+    async def increment_reaction_count(self, user_id, guild_id):
+        collusers.update_one(
+            {"id": user_id, "guild_id": guild_id},
+            {"$inc": {"reaction_count": 1}}
+        )
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
+        if payload.emoji.id not in [self.rep_up_id, self.rep_down_id]:
+            return
+
+        channel = self.bot.get_channel(payload.channel_id)
+        message = await channel.fetch_message(payload.message_id)
+        author_id = message.author.id  # ID автора сообщения
+        guild_id = payload.guild_id
+        user_id = payload.user_id  # ID пользователя, который поставил реакцию
+
+        # Проверка лимита реакций для данного пользователя
+        if await self.check_reaction_limit(user_id, guild_id):
+            await message.remove_reaction(payload.emoji, payload.member)
+            return
+
+        await self.increment_reaction_count(user_id, guild_id)
+
+        if payload.emoji.id == self.rep_up_id:
+            await self.update_reputation(author_id, guild_id, 1)  # Изменяем репутацию автора сообщения
+        elif payload.emoji.id == self.rep_down_id:
+            await self.update_reputation(author_id, guild_id, -1)  # Изменяем репутацию автора сообщения
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_remove(self, payload: RawReactionActionEvent):
+        if payload.emoji.id not in [self.rep_up_id, self.rep_down_id]:
+            return
+
+        channel = self.bot.get_channel(payload.channel_id)
+        message = await channel.fetch_message(payload.message_id)
+        author_id = message.author.id  # ID автора сообщения
+        guild_id = payload.guild_id
+
+        if payload.emoji.id == self.rep_up_id:
+            await self.update_reputation(author_id, guild_id, -1)  # Возвращаем репутацию автора сообщения
+        elif payload.emoji.id == self.rep_down_id:
+            await self.update_reputation(author_id, guild_id, 1)  # Возвращаем репутацию автора сообщения
 
 
 def setup(bot):
