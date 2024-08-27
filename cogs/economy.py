@@ -86,7 +86,8 @@ class EconomyCog(commands.Cog):
                 money_to_give1 = money_to_give * multiplier
                 money_to_give2 = round(money_to_give1, 2)
                 collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'balance': money_to_give2}})
-                collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'message_count': 1}})
+                if message.channel.id == 489867322039992323:
+                    collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'message_count': 1}})
                 cooldowns[user_id] = now
                 print(money_to_give2)
                 print(money_to_give1)

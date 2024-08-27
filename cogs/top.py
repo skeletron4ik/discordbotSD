@@ -12,6 +12,7 @@ class TopEnum(disnake.enums.Enum):
     Войс = "Войс"
     Сообщения = 'Сообщения'
     Сделки = 'Сделки'
+    Репутация = 'Репутация'
 
 
 class TopCog(commands.Cog):
@@ -33,6 +34,9 @@ class TopCog(commands.Cog):
     def get_top_users_deals(self, skip=0, limit=10):
         top_records = collusers.find().sort('number_of_deal', -1).skip(skip).limit(limit)
         return [(record['id'], record['number_of_deal']) for record in top_records]
+    def get_top_users_reputation(self, skip=0, limit=10):
+        top_records = collusers.find().sort('reputation', -1).skip(skip).limit(limit)
+        return [(record['id'], record['reputation']) for record in top_records]
 
     def seconds_to_dhm(self, seconds):
         days = seconds // 86400  # 86400 секунд в одном дне
@@ -179,7 +183,32 @@ class TopCog(commands.Cog):
                                             inline=False)
                 else:
                     disnake.Embed(description='Не нашлось')
+            elif self.top_type == 'Репутация':
+                top_users = self.cog.get_top_users_reputation(skip, self.items_per_page)
+                embed = disnake.Embed(title="🏆 Топ участников по репутации", color=0xffff00,
+                                      timestamp=datetime.now())
+                embed.set_thumbnail(url='https://i.imgur.com/64ibjZo.gif')
+                if top_users:
+                    for idx, (user_id, deals) in enumerate(top_users, start=skip + 1):
+                        member = interaction.guild.get_member(user_id)
+                        position_emoji = self.cog.position_emoji(idx)
+                        emoji = "<a:time:1277018784900845672>"
+                        if deals == 0:
+                            for child in self.children:
+                                if isinstance(child, disnake.ui.Button) and child.custom_id == "next":
+                                    child.disabled = True
+                            await interaction.edit_original_message(view=self)
+                        if member and not deals == 0:
+                            embed.add_field(name=f"{position_emoji} ``#{idx}``. {member.display_name}",
+                                            value=f"Количество репутации: {deals}",
+                                            inline=False)
+                        elif not deals == 0:
+                            embed.add_field(name=f"``#{idx}``. ~~Неизвестный участник (ID: {user_id})~~",
+                                            value=f"Количество репутации: {deals}",
+                                            inline=False)
+
             self.original_message = await interaction.edit_original_message(embed=embed, view=self)
+
 
         async def previous_page(self, interaction: disnake.MessageInteraction):
             await interaction.response.defer()  # Изменение здесь
