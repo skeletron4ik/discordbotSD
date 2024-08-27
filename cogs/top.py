@@ -208,6 +208,9 @@ class TopCog(commands.Cog):
         await view.update_embed(inter)
 
 
+
+
+
 def setup(bot):
     bot.add_cog(TopCog(bot))
     print('TopCog is ready')
