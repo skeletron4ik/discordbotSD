@@ -14,6 +14,8 @@ collusers = cluster.server.users
 collservers = cluster.server.servers
 
 emoji = "<a:rumbick_gif:1276856664842047518>"
+orel = "<:orel:1277718817543553087>"
+reshka = "<:reshka_gif:1277718807292674058>"
 
 def format_rubick_text(value):
     if value == 1:
@@ -286,8 +288,8 @@ class GamesCog(commands.Cog):
         embed = disnake.Embed(title='Орел или Решка', color=0xff8800, timestamp=datetime.now())
         embed.set_author(name=inter.author.display_name, icon_url=inter.author.avatar.url)
         embed.set_thumbnail(
-            url='https://cdn.dribbble.com/users/1493264/screenshots/5573460/coin-flip-dribbble.gif')  # Замените на актуальную ссылку на изображение
-        embed.add_field(name='Ставка', value=f'{format_rumbick(ставка)}', inline=True)
+            url='https://media2.giphy.com/media/PLJ3gbNlkSVDL3IZlp/giphy.gif?cid=6c09b952v5aietkxv0s324l8lv2pgenw6x9k64bn0bbqggj1&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=s')  # Замените на актуальную ссылку на изображение
+        embed.add_field(name='', value=f'**Ставка:** {format_rumbick(ставка)}', inline=True)
 
         if участник:
             embed.add_field(name='Вызов брошен:', value=f'Только для: {участник.mention}', inline=False)
@@ -332,7 +334,7 @@ class GamesCog(commands.Cog):
             # Определяем результат игры
             outcome = random.choices(['Орел', 'Решка', 'Ребро'], [0.45, 0.45, 0.10])[0]
             embed.clear_fields()  # Очищаем предыдущие поля
-            embed.add_field(name='Ставка', value=f'{format_rumbick(ставка)}', inline=True)
+            embed.add_field(name='', value=f'**Ставка:** {format_rumbick(ставка)}', inline=True)
             if участник:
                 embed.add_field(name='Вызов брошен:', value=f'Только для: {участник.mention}', inline=False)
             else:
@@ -364,8 +366,8 @@ class GamesCog(commands.Cog):
             # Stop the timeout after the game has ended
             view.stop()
 
-        button_heads = disnake.ui.Button(label="Орел", style=disnake.ButtonStyle.primary)
-        button_tails = disnake.ui.Button(label="Решка", style=disnake.ButtonStyle.primary)
+        button_heads = disnake.ui.Button(label=f"🦅 Орел", style=disnake.ButtonStyle.primary)
+        button_tails = disnake.ui.Button(label=f"💲 Решка", style=disnake.ButtonStyle.primary)
 
         button_heads.callback = lambda i: button_callback(i, "Орел", embed)
         button_tails.callback = lambda i: button_callback(i, "Решка", embed)
