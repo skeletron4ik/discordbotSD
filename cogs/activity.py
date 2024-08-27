@@ -108,9 +108,13 @@ class ActivityCog(commands.Cog):
 
         channel = self.bot.get_channel(payload.channel_id)
         message = await channel.fetch_message(payload.message_id)
-        author_id = message.author.id  # ID автора сообщения
+        author_id = message.author.id  # ID автора сообщения (точно не чат гпт в переписке)
         guild_id = payload.guild_id
         user_id = payload.user_id  # ID пользователя, который поставил реакцию
+
+        guild = self.bot.get_guild(guild_id)
+        author = guild.get_member(author_id)
+        user = guild.get_member(user_id)
 
         # Проверка лимита реакций для данного пользователя
         if await self.check_reaction_limit(user_id, guild_id):
@@ -121,6 +125,8 @@ class ActivityCog(commands.Cog):
 
         if payload.emoji.id == self.rep_up_id:
             await self.update_reputation(author_id, guild_id, 1)  # Изменяем репутацию автора сообщения
+            collusers.find_one_and_update({'id': author.id, 'guild_id': guild.id},
+                                          {'$set': {'last_reputation': user.id}})
         elif payload.emoji.id == self.rep_down_id:
             await self.update_reputation(author_id, guild_id, -1)  # Изменяем репутацию автора сообщения
 
@@ -133,11 +139,46 @@ class ActivityCog(commands.Cog):
         message = await channel.fetch_message(payload.message_id)
         author_id = message.author.id  # ID автора сообщения
         guild_id = payload.guild_id
-
+        if await self.check_reaction_limit(payload.user_id, guild_id):
+            return
         if payload.emoji.id == self.rep_up_id:
             await self.update_reputation(author_id, guild_id, -1)  # Возвращаем репутацию автора сообщения
         elif payload.emoji.id == self.rep_down_id:
             await self.update_reputation(author_id, guild_id, 1)  # Возвращаем репутацию автора сообщения
+
+    @commands.slash_command(name='reputation', description='Репутация')
+    async def reputation(self, inter: disnake.ApplicationCommandInteraction, member: disnake.Member = None):
+        if disnake.InteractionNotResponded:
+            await inter.response.defer(ephemeral=True)
+        if member is None:
+            member = inter.author
+        rep = collusers.find_one({'id': member.id, 'guild_id': inter.guild.id})['reputation']
+        if collusers.count_documents({'id': inter.author.id, 'guild_id': inter.guild.id}) == 0:
+            last_rep = collusers.find_one({'id': member.id, 'guild_id': inter.guild.id})['last_reputation']
+            last_rep = inter.guild.get_member(last_rep)
+        else:
+            last_rep = 'Нет'
+        embed = disnake.Embed(
+            title="Репутация пользователя",
+            description=f"Информация о репутации для {member.mention}",
+            color=disnake.Color.blue()  # Цвет полосы слева
+        )
+
+        embed.set_thumbnail(url=member.avatar.url)  # Установка аватарки пользователя
+
+        embed.add_field(name="Пользователь", value=member.display_name, inline=True)
+        embed.add_field(name="Репутация", value=f"⭐ {rep}", inline=True)
+
+        embed.add_field(name="\u200B", value="\u200B")  # Пустое поле для разделения
+        embed.add_field(
+            name="Последняя полученная репутация",
+            value=f"⭐ {last_rep.display_name}",
+            inline=False
+        )
+
+        embed.set_footer(text="Используйте эмодзи для управления репутацией")
+
+        await inter.edit_original_message(embed=embed)
 
 
 def setup(bot):
