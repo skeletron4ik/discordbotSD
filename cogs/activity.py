@@ -13,6 +13,7 @@ from main import cluster
 collusers = cluster.server.users
 collservers = cluster.server.servers
 
+
 class ActivityCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -148,7 +149,7 @@ class ActivityCog(commands.Cog):
 
     @commands.slash_command(name='reputation', description='Репутация')
     async def reputation(self, inter: disnake.ApplicationCommandInteraction, member: disnake.Member = None):
-        if disnake.InteractionNotResponded:
+        if disnake.InteractionResponse:
             await inter.response.defer(ephemeral=True)
         if member is None:
             member = inter.author
@@ -156,6 +157,7 @@ class ActivityCog(commands.Cog):
         if collusers.count_documents({'id': inter.author.id, 'guild_id': inter.guild.id}) == 0:
             last_rep = collusers.find_one({'id': member.id, 'guild_id': inter.guild.id})['last_reputation']
             last_rep = inter.guild.get_member(last_rep)
+            last_rep = last_rep.display_name
         else:
             last_rep = 'Нет'
         embed = disnake.Embed(
@@ -172,13 +174,14 @@ class ActivityCog(commands.Cog):
         embed.add_field(name="\u200B", value="\u200B")  # Пустое поле для разделения
         embed.add_field(
             name="Последняя полученная репутация",
-            value=f"⭐ {last_rep.display_name}",
+            value=f"⭐ {last_rep}",
             inline=False
         )
 
         embed.set_footer(text="Используйте эмодзи для управления репутацией")
 
         await inter.edit_original_message(embed=embed)
+
 
 
 def setup(bot):
