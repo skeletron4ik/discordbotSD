@@ -13,6 +13,8 @@ collusers = cluster.server.users
 collservers = cluster.server.servers
 collbans = cluster.server.bans
 
+emoji = "<a:rumbick_gif:1276856664842047518>"
+
 
 class InfoCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -33,8 +35,8 @@ class InfoCog(commands.Cog):
         embed = disnake.Embed(title=f"Информация об участнике ``{участник.name}``:", url="",
                               description="", color=0x00b7ff, timestamp=datetime.now())
         embed.set_author(name=f"{участник.display_name}",
-                         icon_url=f"{участник.avatar}")
-        embed.set_thumbnail(url="https://media0.giphy.com/media/epyCv3K3uvRXw4LaPY/giphy.gif")
+                         icon_url=f"https://media0.giphy.com/media/epyCv3K3uvRXw4LaPY/giphy.gif")
+        embed.set_thumbnail(url=f"{участник.avatar}")
 
         def get_user_info(member):
             try:
@@ -56,14 +58,72 @@ class InfoCog(commands.Cog):
                 time_in_voice = user_data.get('time_in_voice', 0)
                 balance = round(user_data.get('balance', 0), 2)
                 number_of_deal = user_data.get('number_of_deal', 0)
+                reputation = user_data.get('reputation', 0)  # Get reputation
 
-                return warns_count, ban, mute, highest_role, registration_time, join_time, temporary_roles, number_of_roles, message_count, time_in_voice, balance, number_of_deal
+                return warns_count, ban, mute, highest_role, registration_time, join_time, temporary_roles, number_of_roles, message_count, time_in_voice, balance, number_of_deal, reputation
             except Exception as e:
                 print(f"Error getting user info: {e}")
-                return (0, 'Неизвестно', 'Неизвестно', None, 'Неизвестно', 'Неизвестно', [], 0, 0, 0, 0, 0)
+                return (0, 'Неизвестно', 'Неизвестно', None, 'Неизвестно', 'Неизвестно', [], 0, 0, 0, 0, 0, 0)
 
-        warns_count, ban, mute, highest_role, registration_time, join_time, temporary_roles, number_of_roles, message_count, time_in_voice, balance, number_of_deal = get_user_info(
+        warns_count, ban, mute, highest_role, registration_time, join_time, temporary_roles, number_of_roles, message_count, time_in_voice, balance, number_of_deal, reputation = get_user_info(
             участник)
+
+        def get_reputation_title(reputation):
+            if 0 <= reputation < 20:
+                return "Нормальный"
+            elif 20 <= reputation <= 49:
+                return "Хороший"
+            elif 50 <= reputation <= 99:
+                return "Очень хороший"
+            elif 100 <= reputation <= 159:
+                return "Замечательный"
+            elif 160 <= reputation <= 229:
+                return "Прекрасный"
+            elif 230 <= reputation <= 309:
+                return "Уважаемый"
+            elif 310 <= reputation <= 399:
+                return "Потрясающий"
+            elif reputation >= 400:
+                return "Живая Легенда"
+            elif -10 >= reputation >= -19:
+                return "Сомнительный"
+            elif -20 >= reputation >= -29:
+                return "Плохой"
+            elif -30 >= reputation >= -39:
+                return "Очень плохой"
+            elif -40 >= reputation >= -49:
+                return "Ужасный"
+            elif -50 >= reputation >= -59:
+                return "Отвратительный"
+            elif -60 >= reputation >= -79:
+                return "Презираемый"
+            elif -80 >= reputation >= -99:
+                return "Изгой"
+            elif reputation <= -100:
+                return "Враг общества"
+            else:
+                return "Неизвестный"
+
+        reputation_title = get_reputation_title(reputation)
+
+        def format_time(seconds):
+            days, seconds = divmod(seconds, 86400)
+            hours, seconds = divmod(seconds, 3600)
+            minutes, seconds = divmod(seconds, 60)
+
+            time_components = []
+            if days > 0:
+                time_components.append(f'{int(days)} д')
+            if hours > 0:
+                time_components.append(f'{int(hours)} ч')
+            if minutes > 0:
+                time_components.append(f'{int(minutes)} мин')
+            if seconds > 0 or not time_components:
+                time_components.append(f'{int(seconds)} сек')
+
+            return ', '.join(time_components)
+
+        formatted_total_time = format_time(time_in_voice)
 
         def format_minutes(minutes):
             if 11 <= minutes % 100 <= 19:
@@ -107,13 +167,19 @@ class InfoCog(commands.Cog):
                             value=f'**🌎 Присоединился:\n** <t:{int(join_time.timestamp())}:F> (<t:{int(join_time.timestamp())}:R>)',
                             inline=True)
             embed.add_field(name='', value='', inline=False)
-            embed.add_field(name=f'', value=f'**🖊️ Количество сообщений:\n** ``{message_count}``', inline=True)
+            if reputation >= 0:
+                rep_emoji = "<:rep_up:1278690709855010856>"
+            else:
+                rep_emoji = "<:rep_down:1278690717652357201>"
+            embed.add_field(name=f'', value=f'**⭐ Репутация:** ``{reputation}`` {rep_emoji} - ``{reputation_title}``',inline=False)  # Add reputation field
+            embed.add_field(name=f'', value=f'**🖊️ Сообщений:\n** ``{message_count}``', inline=True)
             embed.add_field(name=f'',
-                            value=f'**🎤 Всего в голосовом канале:\n** ``{time_in_voice // 60} {format_minutes(time_in_voice // 60)}``',
+                            value=f'**🎤 Голосовая активность:\n** ``{formatted_total_time}``',
+                            # Using formatted time
                             inline=True)
             embed.add_field(name='', value='', inline=False)
-            embed.add_field(name=f'', value=f'**💸 Баланс:** ``{balance}``◊', inline=True)
-            embed.add_field(name=f'', value=f'**💼 Количество сделок:** ``{number_of_deal}``', inline=True)
+            embed.add_field(name=f'', value=f'**💸 Баланс:** ``{balance}``{emoji}', inline=True)
+            embed.add_field(name=f'', value=f'**💼 Сделок:** ``{number_of_deal}``', inline=True)
             embed.add_field(name=f'', value=f'-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-', inline=False)
             embed.add_field(name=f'', value=f'**⚠️ Предупреждений:\n** ``{warns_count}``', inline=True)
             embed.add_field(name=f'', value=f'**🔒 Бан:\n** ``{ban}``', inline=True)

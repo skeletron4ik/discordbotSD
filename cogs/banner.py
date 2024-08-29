@@ -24,9 +24,8 @@ class BannerCog(commands.Cog):
         self.banner_change.start()
 
 
-    @tasks.loop(seconds=120)
+    @tasks.loop(minutes=5)
     async def banner_change(self):
-        print('bannerchange')
         memb_count = self.guild.member_count
         if self.member_count != memb_count or len(self.guild.premium_subscribers) != self.booster_count or self.level_count != self.guild.premium_subscription_count:
             member_count, booster_count, level_count = self.guild.member_count, len(self.guild.premium_subscribers), self.guild.premium_subscription_count
@@ -34,7 +33,6 @@ class BannerCog(commands.Cog):
             self.member_count = member_count
             self.booster_count = booster_count
             self.level_count = level_count
-            print('i11n11 ')
             img = Image.open("./resource/960x540.jpg").convert("RGBA")
 
             # get a font
@@ -53,9 +51,6 @@ class BannerCog(commands.Cog):
 
             # Установка баннера
             await self.guild.edit(banner=buffer.read())
-
-
-
 
 
 def setup(bot):

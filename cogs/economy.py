@@ -46,6 +46,8 @@ class EconomyCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: disnake.Message):
+        excluded_channels = {1070322967634006057, 532628352927006737, 944562833901899827, 1270673733178101801}
+
         if message.author.bot:
             if message.channel.id == 1070322967634006057:
                 if message.embeds:
@@ -71,6 +73,14 @@ class EconomyCog(commands.Cog):
                                          icon_url=author_interaction.avatar.url)
                         embed.set_author(name=message.author.guild.name, icon_url=message.author.guild.icon.url)
         else:
+            # Update message count
+            if message.channel.id not in excluded_channels:
+                collusers.find_one_and_update(
+                    {'id': message.author.id, 'guild_id': message.guild.id},
+                    {'$inc': {'message_count': 1}},
+                    upsert=True  # Ensure the document is created if it doesn't exist
+                )
+
             now = datetime.now()
             user_id = message.author.id
             if len(message.content) > 3:
@@ -86,11 +96,7 @@ class EconomyCog(commands.Cog):
                 money_to_give1 = money_to_give * multiplier
                 money_to_give2 = round(money_to_give1, 2)
                 collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'balance': money_to_give2}})
-                if message.channel.id == 489867322039992323:
-                    collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'message_count': 1}})
                 cooldowns[user_id] = now
-                print(money_to_give2)
-                print(money_to_give1)
 
     @commands.slash_command(name='balance', description='Показывает баланс участника',
                             aliases=['баланс', 'счет', 'остаток', 'credit', 'amount', 'sum'])
@@ -1127,13 +1133,6 @@ class EconomyCog(commands.Cog):
             await inter.author.edit(nick=nickname)
             await inter.response.send_message('Никнейм успешно изменён.', ephemeral=True)
 
-
-
-    @commands.slash_command(name='embed')
-    async def embed(self, inter: disnake.ApplicationCommandInteraction):
-        embed = disnake.Embed(description=f'**Успешный Up!**\n'
-                                          f'Время фиксации апа:')
-        await inter.response.send_message(embed=embed)
 
     @commands.user_command(name='balance', dm_permission=False, nsfw=True)
     async def balinuser(self, inter: disnake.ApplicationCommandInteraction, user: disnake.User):

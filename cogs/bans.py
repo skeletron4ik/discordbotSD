@@ -16,7 +16,7 @@ class BansCog(commands.Cog):
     def get_rule_info(self, причина):
         return get_rule_info(причина)
 
-    @tasks.loop(seconds=210)
+    @tasks.loop(seconds=300)
     async def check_ban(self):
         current_timestamp = int(datetime.now().timestamp())
         expired_roles = collusers.find({"ban_timestamp": {"$lte": current_timestamp}})

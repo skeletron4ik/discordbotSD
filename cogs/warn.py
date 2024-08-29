@@ -28,7 +28,7 @@ class WarnsCog(commands.Cog):
         else:
             print(f'Канал с ID {channel_id} не найден.')
 
-    @tasks.loop(seconds=210)  # Проверка каждые 30 секунд
+    @tasks.loop(seconds=300)  # Проверка каждые 300 секунд
     async def check_warns(self):
         # Получение текущего времени
         current_timestamp = int(datetime.now().timestamp())
