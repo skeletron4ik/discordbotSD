@@ -60,7 +60,7 @@ class TopCog(commands.Cog):
             return ""
 
     def get_reputation_title(self, reputation):
-        if 0 <= reputation < 20:
+        if -9 <= reputation < 20:
             return "Нормальный"
         elif 20 <= reputation <= 49:
             return "Хороший"
@@ -164,7 +164,7 @@ class TopCog(commands.Cog):
                         if member and not time_in_voice == 0:
                             days, hours, minutes = self.cog.seconds_to_dhm(time_in_voice)
                             embed.add_field(name=f"{position_emoji} ``#{idx}``. {member.display_name}",
-                                            value=f"Время в войсе: {days} д. {hours} ч. {minutes} м. {emoji}",
+                                            value=f"Время в войсе: ``{days} д. {hours} ч. {minutes} м.`` {emoji}",
                                             inline=False)
                         elif not time_in_voice == 0:
                             days, hours, minutes = self.cog.seconds_to_dhm(time_in_voice)
