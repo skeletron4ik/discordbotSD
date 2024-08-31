@@ -26,7 +26,8 @@ class BannerCog(commands.Cog):
 
     @tasks.loop(minutes=5)
     async def banner_change(self):
-        memb_count = self.guild.member_count
+        guild = self.bot.get_guild(489867322039992320)
+        memb_count = guild.member_count
         if self.member_count != memb_count or len(self.guild.premium_subscribers) != self.booster_count or self.level_count != self.guild.premium_subscription_count:
             member_count, booster_count, level_count = self.guild.member_count, len(self.guild.premium_subscribers), self.guild.premium_subscription_count
             print(member_count, booster_count, level_count)

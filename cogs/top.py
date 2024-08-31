@@ -59,7 +59,6 @@ class TopCog(commands.Cog):
         else:
             return ""
 
-
     def get_reputation_title(self, reputation):
         if 0 <= reputation < 20:
             return "Нормальный"
@@ -98,7 +97,7 @@ class TopCog(commands.Cog):
 
     class TopView(disnake.ui.View):
         def __init__(self, cog, top_type: TopEnum, page=1):
-            super().__init__(timeout=60)
+            super().__init__(timeout=None)
             self.cog = cog
             self.top_type = top_type
             self.page = page
@@ -224,12 +223,20 @@ class TopCog(commands.Cog):
                 embed.set_thumbnail(url='https://i.imgur.com/64ibjZo.gif')
                 if top_users:
                     for idx, (user_id, reputation) in enumerate(top_users, start=skip + 1):
+                        print(reputation)
                         member = interaction.guild.get_member(user_id)
                         position_emoji = self.cog.position_emoji(idx)
                         if reputation >= 0:
-                            emoji="<:rep_up:1278690709855010856>"
+                            emoji = "<:rep_up:1278690709855010856>"
                         else:
-                            emoji="<:rep_down:1278690717652357201>"
+                            emoji = "<:rep_down:1278690717652357201>"
+
+                        if reputation == 0:
+                            for child in self.children:
+                                if isinstance(child, disnake.ui.Button) and child.custom_id == "next":
+                                    child.disabled = True
+                            await interaction.edit_original_message(view=self)
+
                         if member and not reputation == 0:
                             title = self.cog.get_reputation_title(reputation)
                             embed.add_field(name=f"{position_emoji} ``#{idx}``. {member.display_name}",
@@ -242,6 +249,7 @@ class TopCog(commands.Cog):
             await interaction.edit_original_message(embed=embed, view=self)
 
         async def previous_page(self, interaction: disnake.Interaction):
+            await interaction.response.defer()  # Изменение здесь
             self.page -= 1
             if self.page <= 1:
                 self.page = 1
@@ -254,6 +262,7 @@ class TopCog(commands.Cog):
             await self.update_embed(interaction)
 
         async def next_page(self, interaction: disnake.Interaction):
+            await interaction.response.defer()  # Изменение здесь
             self.page += 1
             await self.update_embed(interaction)
 
@@ -264,9 +273,6 @@ class TopCog(commands.Cog):
             await inter.response.defer(ephemeral=True)
         view = self.TopView(self, тип)
         await view.update_embed(inter)
-
-
-
 
 
 def setup(bot):
