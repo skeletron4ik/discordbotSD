@@ -6,6 +6,9 @@ import os
 import asyncio
 import time
 from dotenv import load_dotenv
+import sys
+from disnake.errors import HTTPException
+
 
 load_dotenv()
 bot = commands.Bot(command_prefix="!", intents=disnake.Intents.all(), reload=True)
@@ -34,6 +37,17 @@ rules = {
 
 def get_rule_info(rule_code):
     return rules.get(rule_code, rule_code)
+
+async def safe_api_call(api_function, *args, **kwargs):
+    try:
+        return await api_function(*args, **kwargs)
+    except HTTPException as e:
+        if e.status == 429:
+            retry_after = int(e.response.headers.get("Retry-After", 5))  # Задержка по умолчанию 5 секунд
+            await asyncio.sleep(retry_after)
+            return await safe_api_call(api_function, *args, **kwargs)
+        else:
+            raise
 
 
 @bot.event
@@ -158,4 +172,9 @@ for file in os.listdir("./cogs"):
     if file.endswith(".py"):
         bot.load_extension(f"cogs.{file[:-3]}")
 
-bot.run(os.getenv('TOKEN'))
+try:
+    bot.run(os.getenv('TOKEN'))
+except disnake.errors.HTTPException:
+    print("\n\n\nBLOCKED BY RATE LIMITS\nRESTARTING NOW\n\n\n")
+    sys("python main.py")
+    sys('kill 1')

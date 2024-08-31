@@ -78,7 +78,7 @@ class Role(commands.Cog):
         else:
             raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
-    @tasks.loop(seconds=210)  # Проверка каждые 3.5 минуты
+    @tasks.loop(seconds=300)  # Проверка каждые 5 минут
     async def check_temp_roles(self):
         current_time = int(datetime.now().timestamp())
         expired_roles = collusers.find({"role_ids.expires_at": {"$lte": current_time}})
@@ -121,7 +121,8 @@ class Role(commands.Cog):
         # Проверяем, является ли пользователь администратором или модератором
         return any(role.permissions.administrator or role.id == self.moderator_role_id for role in user.roles)
 
-    @commands.slash_command(name="role-give", description="Выдает роль участнику")
+    @commands.slash_command(name="role-give", description="Выдает роль участнику", dm_permission=False)
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
     async def rolegive(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member,
                        роль: disnake.Role, время: str = None):
         if inter.type == disnake.InteractionType.application_command:
@@ -284,7 +285,8 @@ class Role(commands.Cog):
                 embed.set_footer(text="Ошибка")
                 await inter.edit_original_response(embed=embed)
 
-    @commands.slash_command(name="role-remove", description="Удаляет роль у участника")
+    @commands.slash_command(name="role-remove", description="Удаляет роль у участника", dm_permission=False)
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
     async def roleremove(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member,
                          роль: disnake.Role):
         if inter.type == disnake.InteractionType.application_command:

@@ -120,7 +120,8 @@ class BansCog(commands.Cog):
         else:
             raise ValueError(f"Invalid time unit: {unit}")
 
-    @commands.slash_command(name="ban", description="Блокирует доступ к серверу")
+    @commands.slash_command(name="ban", description="Блокирует доступ к серверу", dm_permission=False)
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
     async def ban(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member, длительность: str, причина="Не указана"):
         if inter.type == disnake.InteractionType.application_command:
             await inter.response.defer()
@@ -196,7 +197,8 @@ class BansCog(commands.Cog):
         embed.set_footer(text=f"ID участника: {участник.id}")
         await channel.send(embed=embed)
 
-    @commands.slash_command(name='unban', description='Позволяет снять блокировку с пользователя.')
+    @commands.slash_command(name='unban', description='Позволяет снять блокировку с пользователя.', dm_permission=False)
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
     async def unban(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member):
         if inter.type == disnake.InteractionType.application_command:
             await inter.response.defer()

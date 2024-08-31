@@ -98,8 +98,9 @@ class EconomyCog(commands.Cog):
                 collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'balance': money_to_give2}})
                 cooldowns[user_id] = now
 
-    @commands.slash_command(name='balance', description='Показывает баланс участника',
+    @commands.slash_command(name='balance', description='Показывает баланс участника', dm_permission=False,
                             aliases=['баланс', 'счет', 'остаток', 'credit', 'amount', 'sum'])
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
     async def balance(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
         await inter.response.defer()
 
@@ -122,8 +123,9 @@ class EconomyCog(commands.Cog):
         else:
             await inter.edit_original_response(content="Не удалось найти данные пользователя.", ephemeral=True)
 
-    @commands.slash_command(name='pay', description='Перевод румбиков другому участнику',
+    @commands.slash_command(name='pay', description='Перевод румбиков другому участнику', dm_permission=False,
                             aliases=['перевод', 'give', 'transfer'])
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
     async def pay(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, количество: int):
         # Проверка на минимальную сумму перевода
         if количество < 10:
@@ -202,7 +204,8 @@ class EconomyCog(commands.Cog):
             embed = create_error_embed(error_message)
             await inter.followup.send(embed=embed, ephemeral=True)
 
-    @commands.slash_command(name='change-balance', description="Изменяет баланс участника", aliases=['деньги', 'givemoney', 'setmoney'])
+    @commands.slash_command(name='change-balance', description="Изменяет баланс участника", dm_permission=False, aliases=['деньги', 'givemoney', 'setmoney'])
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
     async def money(
             self,
             inter: disnake.ApplicationCommandInteraction,
@@ -270,8 +273,9 @@ class EconomyCog(commands.Cog):
         await channel.send(embed=log_embed)
 
 
-    @commands.slash_command(name='store', description='Магазин ролей и специальных возможностей за Румбики',
+    @commands.slash_command(name='store', description='Магазин ролей и специальных возможностей за Румбики', dm_permission=False,
                             aliases=['shop', 'магазин', 'лавка', 'рынок'])
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
     async def store(self, inter: disnake.ApplicationCommandInteraction):
         if inter.type == disnake.InteractionType.application_command:
             try:
@@ -973,7 +977,8 @@ class EconomyCog(commands.Cog):
             await send_message_on_booster_end("Глобальный", current_multiplier)  # передаем текущий множитель
             return
 
-    @commands.slash_command(name='booster', description='Включает бустер румбиков')
+    @commands.slash_command(name='booster', description='Включает бустер румбиков', dm_permission=False)
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
     async def booster(self, inter: disnake.ApplicationCommandInteraction, множитель: int, длительность: str,
                       ивент: str = ''):
         try:
@@ -1065,7 +1070,8 @@ class EconomyCog(commands.Cog):
         else:
             raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
-    @commands.slash_command(name="boosters", description="Показывает текущие активные бустеры")
+    @commands.slash_command(name="boosters", description="Показывает текущие активные бустеры", dm_permission=False)
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
     async def boosters(self, inter: disnake.ApplicationCommandInteraction):
         server_id = inter.guild_id
         server_data = collservers.find_one({'_id': server_id})
@@ -1135,6 +1141,7 @@ class EconomyCog(commands.Cog):
 
 
     @commands.user_command(name='balance', dm_permission=False, nsfw=True)
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
     async def balinuser(self, inter: disnake.ApplicationCommandInteraction, user: disnake.User):
         await self.balance(inter, user)
 

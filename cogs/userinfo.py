@@ -20,7 +20,8 @@ class InfoCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.slash_command(name='user-info', description='Выводит основную информацию об участнике')
+    @commands.slash_command(name='user-info', description='Выводит основную информацию об участнике', dm_permission=False)
+    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
     async def user(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
         if inter.type == disnake.InteractionType.application_command:
             try:
