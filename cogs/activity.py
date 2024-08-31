@@ -22,7 +22,7 @@ class ActivityCog(commands.Cog):
         self.update_leaderboard.start()
         self.rep_up_id = 1234218072433365102
         self.rep_down_id = 1234218095116288154
-        self.reaction_limit = 10  # Лимит реакций в месяц для каждого участника
+        self.reaction_limit = 5  # Лимит реакций в день для каждого участника
         self.reset_reaction_count.start()
 
     @tasks.loop(seconds=3600)
@@ -184,7 +184,7 @@ class ActivityCog(commands.Cog):
 
         # Function to determine reputation title
         def get_reputation_title(reputation):
-            if 0 <= reputation < 20:
+            if -9 <= reputation < 20:
                 return "Нормальный"
             elif 20 <= reputation <= 49:
                 return "Хороший"
