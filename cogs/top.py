@@ -98,7 +98,7 @@ class TopCog(commands.Cog):
 
     class TopView(disnake.ui.View):
         def __init__(self, cog, top_type: TopEnum, page=1):
-            super().__init__(timeout=300)
+            super().__init__(timeout=60)
             self.cog = cog
             self.top_type = top_type
             self.page = page

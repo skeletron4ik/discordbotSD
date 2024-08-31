@@ -4,7 +4,7 @@ import disnake
 from disnake.ext import commands, tasks
 from datetime import datetime, timedelta
 from pymongo import MongoClient
-from main import rules # список правил
+from main import rules  # список правил
 
 
 class MuteCog(commands.Cog):
