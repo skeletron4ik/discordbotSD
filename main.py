@@ -49,6 +49,28 @@ async def safe_api_call(api_function, *args, **kwargs):
         else:
             raise
 
+@commands.Cog.listener()
+async def on_slash_command_error(self, inter, error):
+    if isinstance(error, commands.CommandOnCooldown):
+        # Создаем Embed сообщение для кулдауна
+        embed = disnake.Embed(
+            title="Подождите немного!",
+            description=f"Эта команда на кулдауне. Попробуйте снова через {error.retry_after:.2f} секунд.",
+            color=disnake.Color.red()
+        )
+        embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+        await inter.response.send_message(embed=embed, ephemeral=True)
+    else:
+        # Обработка других ошибок (опционально)
+        embed = disnake.Embed(
+            title="Ошибка!",
+            description="Произошла ошибка при выполнении команды.",
+            color=disnake.Color.red()
+        )
+        embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+        await inter.response.send_message(embed=embed, ephemeral=True)
+        # Логирование ошибки в консоль
+        raise error
 
 @bot.event
 async def on_ready():
