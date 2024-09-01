@@ -8,6 +8,7 @@ import time
 from dotenv import load_dotenv
 import sys
 from disnake.errors import HTTPException
+from disnake.utils import format_dt
 
 
 load_dotenv()
@@ -49,14 +50,15 @@ async def safe_api_call(api_function, *args, **kwargs):
         else:
             raise
 
-@commands.Cog.listener()
-async def on_slash_command_error(self, inter, error):
+@bot.event
+async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, error):
     if isinstance(error, commands.CommandOnCooldown):
+        seconds_remaining = round(error.retry_after)
         # Создаем Embed сообщение для кулдауна
         embed = disnake.Embed(
             title="Подождите немного!",
-            description=f"Эта команда на кулдауне. Попробуйте снова через {error.retry_after:.2f} секунд.",
-            color=disnake.Color.red()
+            description=f"Эта команда находится в кулдауне. Попробуйте снова через **{seconds_remaining} секунд.**",
+            color=0xff0000, timestamp=datetime.now()
         )
         embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
         await inter.response.send_message(embed=embed, ephemeral=True)
@@ -64,8 +66,8 @@ async def on_slash_command_error(self, inter, error):
         # Обработка других ошибок (опционально)
         embed = disnake.Embed(
             title="Ошибка!",
-            description="Произошла ошибка при выполнении команды.",
-            color=disnake.Color.red()
+            description="Произошла ошибка при выполнении команды. Попробуйте снова.",
+            color=0xff0000, timestamp=datetime.now()
         )
         embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
         await inter.response.send_message(embed=embed, ephemeral=True)
@@ -134,11 +136,11 @@ async def on_member_join(member):
     values = {
         "id": member.id,
         "guild_id": member.guild.id,
-        "nickname": member.display_name,  # Store initial nickname
-        "user_name": member.name,  # Store actual username
+        "nickname": member.display_name,
+        "user_name": member.name,
         "balance": 0,
-        "reputation": 0,  # Новое поле для репутации
-        "reaction_count": 0,  # Поле для отслеживания количества реакций пользователя
+        "reputation": 0,
+        "reaction_count": 0,
         "number_of_deal": 0,
         "message_count": 0,
         "time_in_voice": 0,
@@ -154,18 +156,37 @@ async def on_member_join(member):
     if collusers.count_documents({"id": member.id, "guild_id": member.guild.id}) == 0:
         collusers.insert_one(values)
 
-    # Send a welcome embed message
-    channel = member.guild.get_channel(944562833901899827)
+    # Отправка приветственного эмбед-сообщения
+    channel = member.guild.get_channel(1279702475095412808)
     if channel:
         embed = disnake.Embed(
             title="Новый участник!",
-            description=f"{member.mention} присоединился на сервер.",
+            description=f"{member.display_name} ({member.mention}) присоединился на сервер.",
             color=disnake.Color.green(),
             timestamp=datetime.now()
         )
+        # Используем относительное время для даты создания аккаунта
         embed.add_field(
             name="Дата регистрации аккаунта:",
-            value=f"{member.created_at.strftime('%d.%m.%Y %H:%M:%S')}",
+            value=f"{format_dt(member.created_at, style='R')}",
+            inline=False
+        )
+        await channel.send(embed=embed)
+
+@bot.event
+async def on_member_remove(member):
+    channel = member.guild.get_channel(1279702475095412808)
+    if channel:
+        embed = disnake.Embed(
+            title="Участник покинул сервер",
+            description=f"{member.display_name} ({member.mention}) покинул сервер.",
+            color=disnake.Color.red(),
+            timestamp=datetime.now()
+        )
+        # Используем относительное время для даты присоединения к серверу
+        embed.add_field(
+            name="Дата присоединения к серверу:",
+            value=f"{format_dt(member.joined_at, style='R')}",
             inline=False
         )
         await channel.send(embed=embed)
