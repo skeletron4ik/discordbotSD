@@ -34,6 +34,4 @@ All commands
 
 6. run the bot: `python main.py`
 
-   Я хочу огромный жёлтый хуй
-
 ---
