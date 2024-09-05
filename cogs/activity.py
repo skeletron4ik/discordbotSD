@@ -86,7 +86,8 @@ class ActivityCog(commands.Cog):
     async def update_reputation(self, user_id, guild_id, amount):
         collusers.update_one(
             {"id": user_id, "guild_id": guild_id},
-            {"$inc": {"reputation": amount}}
+            {"$inc": {"reputation": amount}},
+            {'$set': {'last_reputation': user_id}}
         )
 
     async def check_reaction_limit(self, user_id, guild_id):
@@ -98,8 +99,8 @@ class ActivityCog(commands.Cog):
     async def increment_reaction_count(self, user_id, guild_id):
         collusers.update_one(
             {"id": user_id, "guild_id": guild_id},
-            {"$inc": {"reaction_count": 1}}
-        )
+            {"$inc": {"reaction_count": 1}},
+            {'$set': {'last_reputation': user_id}})
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
