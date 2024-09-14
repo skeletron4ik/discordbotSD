@@ -21,7 +21,7 @@ class InfoCog(commands.Cog):
         self.bot = bot
 
     @commands.slash_command(name='user-info', description='Выводит основную информацию об участнике', dm_permission=False)
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def user(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
         if inter.type == disnake.InteractionType.application_command:
             try:
@@ -37,7 +37,7 @@ class InfoCog(commands.Cog):
                               description="", color=0x00b7ff, timestamp=datetime.now())
         embed.set_author(name=f"{участник.display_name}",
                          icon_url=f"https://media0.giphy.com/media/epyCv3K3uvRXw4LaPY/giphy.gif")
-        embed.set_thumbnail(url=f"{участник.avatar}")
+        embed.set_thumbnail(url=участник.avatar.url if участник.avatar else участник.default_avatar.url)
 
         def get_user_info(member):
             try:
@@ -181,12 +181,18 @@ class InfoCog(commands.Cog):
             embed.add_field(name='', value='', inline=False)
             embed.add_field(name=f'', value=f'**💸 Баланс:** ``{balance}``{emoji}', inline=True)
             embed.add_field(name=f'', value=f'**💼 Сделок:** ``{number_of_deal}``', inline=True)
-            embed.add_field(name=f'', value=f'-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-', inline=False)
-            embed.add_field(name=f'', value=f'**⚠️ Предупреждений:\n** ``{warns_count}``', inline=True)
-            embed.add_field(name=f'', value=f'**🔒 Бан:\n** ``{ban}``', inline=True)
-            embed.add_field(name='', value='', inline=False)
-            embed.add_field(name=f'', value=f'**🙊 Мут:\n** ``{mute}``', inline=True)
-            embed.add_field(name=f'', value=f'**🕒 Временных ролей:\n** ``{number_of_roles}``', inline=True)
+
+            # Проверка перед выводом секции с предупреждениями, баном, мутом и временными ролями
+            if warns_count != "Не имеется" or ban != "Не заблокирован" or mute != "Не замучен" or number_of_roles != "Не имеется":
+                embed.add_field(name=f'', value=f'-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-', inline=False)
+            if warns_count != "Не имеется":
+                embed.add_field(name=f'', value=f'**⚠️ Предупреждений:\n** ``{warns_count}``', inline=True)
+            if ban != "Не заблокирован":
+                embed.add_field(name=f'', value=f'**🔒 Бан:\n** ``{ban}``', inline=True)
+            if mute != "Не замучен":
+                embed.add_field(name=f'', value=f'**🙊 Мут:\n** ``{mute}``', inline=True)
+            if number_of_roles != "Не имеется":
+                embed.add_field(name=f'', value=f'**🕒 Временных ролей:\n** ``{number_of_roles}``', inline=True)
 
             if temporary_roles:
                 for role_info in temporary_roles:

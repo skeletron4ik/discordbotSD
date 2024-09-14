@@ -47,8 +47,8 @@ class ActivityCog(commands.Cog):
             embed.add_field(name='', value=f'<t:{tstamp - 3600}:t> - <t:{tstamp}:t>', inline=False)
             await channel.send(embed=embed)
 
-    @commands.slash_command(name='topuser', description='Показывает самого активного участника за час.', dm_permission=False)
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.slash_command(name='topuser', description='Показывает самого активного участника за последний час', dm_permission=False)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def topuser(self, inter: disnake.ApplicationCommandInteraction):
         if inter.type == disnake.InteractionType.application_command:
             try:
@@ -86,8 +86,7 @@ class ActivityCog(commands.Cog):
     async def update_reputation(self, user_id, guild_id, amount):
         collusers.update_one(
             {"id": user_id, "guild_id": guild_id},
-            {"$inc": {"reputation": amount}},
-            {'$set': {'last_reputation': user_id}}
+            {"$inc": {"reputation": amount}}
         )
 
     async def check_reaction_limit(self, user_id, guild_id):
@@ -99,11 +98,11 @@ class ActivityCog(commands.Cog):
     async def increment_reaction_count(self, user_id, guild_id):
         collusers.update_one(
             {"id": user_id, "guild_id": guild_id},
-            {"$inc": {"reaction_count": 1}},
-            {'$set': {'last_reputation': user_id}})
+            {"$inc": {"reaction_count": 1}}
+        )
 
     @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
+    async def on_raw_reaction_add(self, payload: disnake.RawReactionActionEvent):
         if payload.emoji.id not in [self.rep_up_id, self.rep_down_id]:
             return
 
@@ -129,11 +128,15 @@ class ActivityCog(commands.Cog):
         await self.increment_reaction_count(user_id, guild_id)
 
         if payload.emoji.id == self.rep_up_id:
+            # Увеличиваем репутацию на 1 и сохраняем, кто поставил реакцию
             await self.update_reputation(author_id, guild_id, 1)
             collusers.find_one_and_update({'id': author.id, 'guild_id': guild.id},
                                           {'$set': {'last_reputation': user.id}})
         elif payload.emoji.id == self.rep_down_id:
+            # Уменьшаем репутацию на 1 и также сохраняем, кто поставил реакцию
             await self.update_reputation(author_id, guild_id, -1)
+            collusers.find_one_and_update({'id': author.id, 'guild_id': guild.id},
+                                          {'$set': {'last_reputation': user.id}})
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: RawReactionActionEvent):
@@ -168,8 +171,8 @@ class ActivityCog(commands.Cog):
             )
             print("Сброс 'Reaction counts' в 00:00 по Киеву")
 
-    @commands.slash_command(name='reputation', description='Репутация', dm_permission=False)
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.slash_command(name='reputation', description='Выводит репутацию участника', dm_permission=False)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def reputation(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
         if disnake.InteractionResponse:
             await inter.response.defer(ephemeral=True)
@@ -229,7 +232,7 @@ class ActivityCog(commands.Cog):
             last_rep_id = user_data.get('last_reputation', None)
             if last_rep_id:
                 last_rep_member = inter.guild.get_member(last_rep_id)
-                last_rep = last_rep_member.display_name if last_rep_member else 'Неизвестный пользователь'
+                last_rep = last_rep_member.mention if last_rep_member else 'Неизвестный пользователь'
             else:
                 last_rep = 'Нет'
         else:
@@ -248,21 +251,16 @@ class ActivityCog(commands.Cog):
             description=f"Информация о репутации {участник.mention}",
             color=embed_color,
         )
-
-        embed.set_thumbnail(url=участник.avatar.url)  # Установка аватарки пользователя
-
+        embed.set_thumbnail(url=участник.display_avatar.url)
         embed.add_field(name="⭐ Репутация", value=f"{rep} {rep_emoji}", inline=True)
         embed.add_field(name="Титул", value=reputation_title, inline=True)
-
         embed.add_field(name="\u200B", value="\u200B")  # Пустое поле для разделения
         embed.add_field(
-            name="Последняя полученная репутация",
+            name="Последнее изменение репутации от",
             value=f"⭐ {last_rep}",
             inline=False
         )
-
         embed.set_footer(text="Используйте эмодзи для управления репутацией", icon_url=inter.guild.icon.url)
-
         await inter.edit_original_message(embed=embed)
 
 

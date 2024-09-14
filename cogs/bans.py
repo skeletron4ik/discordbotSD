@@ -121,7 +121,7 @@ class BansCog(commands.Cog):
             raise ValueError(f"Invalid time unit: {unit}")
 
     @commands.slash_command(name="ban", description="Блокирует доступ к серверу", dm_permission=False)
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def ban(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member, длительность: str, причина="Не указана"):
         if inter.type == disnake.InteractionType.application_command:
             await inter.response.defer()
@@ -158,7 +158,7 @@ class BansCog(commands.Cog):
                 colour=0xff0000,
                 timestamp=datetime.now())
 
-            embed.set_author(name=f"{inter.author.name}", icon_url=f"{inter.author.avatar}")
+            embed.set_author(name=f"{inter.author.name}", icon_url=f"{inter.author.display_avatar.url}")
 
             embed.set_thumbnail(
                 url="https://media1.giphy.com/media/tMf6IV7q9m3pbKPybv/giphy.gif?cid=6c09b952x9el5v0keemitb9f7pe09b04fetyq2ft84dhizs1&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=s")
@@ -198,7 +198,7 @@ class BansCog(commands.Cog):
         await channel.send(embed=embed)
 
     @commands.slash_command(name='unban', description='Позволяет снять блокировку с пользователя.', dm_permission=False)
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def unban(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member):
         if inter.type == disnake.InteractionType.application_command:
             await inter.response.defer()
@@ -225,7 +225,7 @@ class BansCog(commands.Cog):
             timestamp=datetime.now())
 
         embed.set_author(name=f"{inter.author.name}",
-                         icon_url=f"{inter.author.avatar}")
+                         icon_url=f"{inter.author.display_avatar.url}")
 
         embed.set_thumbnail(
             url="https://www.emojiall.com/images/240/telegram/2705.gif")

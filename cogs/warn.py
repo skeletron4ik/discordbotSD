@@ -28,7 +28,7 @@ class WarnsCog(commands.Cog):
         else:
             print(f'Канал с ID {channel_id} не найден.')
 
-    @tasks.loop(seconds=300)  # Проверка каждые 300 секунд
+    @tasks.loop(seconds=250)  # Проверка каждые 250 секунд
     async def check_warns(self):
         # Получение текущего времени
         current_timestamp = int(datetime.now().timestamp())
@@ -95,8 +95,8 @@ class WarnsCog(commands.Cog):
     async def before_check_warns(self):
         await self.bot.wait_until_ready()  # Ожидание готовности бота перед запуском цикла
 
-    @commands.slash_command(name="warn", description="Выдает предупреждение(-я).", dm_permission=False)
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.slash_command(name="warn", description="Выдает предупреждение(-я) участнику", dm_permission=False)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def warn(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member, количество: int,
                    причина="Не указана", длительность: str = None):
         if inter.type == disnake.InteractionType.application_command:
@@ -246,7 +246,7 @@ class WarnsCog(commands.Cog):
                 timestamp=datetime.now()
             )
             embed.set_author(name=f"{inter.author.name}",
-                             icon_url=f"{inter.author.avatar}")
+                             icon_url=f"{inter.author.display_avatar.url}")
             embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
             embed.set_footer(text="Предупреждение")
             try:
@@ -334,7 +334,7 @@ class WarnsCog(commands.Cog):
                     timestamp=datetime.now()
                 )
                 embed.set_author(name=f"{inter.author.name}",
-                                 icon_url=f"{inter.author.avatar}")
+                                 icon_url=f"{inter.author.display_avatar.url}")
                 embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
                 embed.set_footer(text="Права модератора сняты")
                 await channel.send(embed=embed)
@@ -411,8 +411,8 @@ class WarnsCog(commands.Cog):
 
                 return
 
-    @commands.slash_command(name='unwarn', description='Позволяет снять предупреждение с игрока', dm_permission=False)
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.slash_command(name='unwarn', description='Позволяет снять предупреждение с участника', dm_permission=False)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def unwarn(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member,
                      предупреждение: int):
         if inter.type == disnake.InteractionType.application_command:
@@ -445,7 +445,7 @@ class WarnsCog(commands.Cog):
                     collusers.Update_one({"id": участник.id, "guild_id": inter.guild.id}, {"$set": {"ban": "False"}})
 
                 embed = disnake.Embed(description=f"Предупреждение ``#{предупреждение}`` участника {участник.mention} было снято.", colour=0x00ff40, timestamp=datetime.now())
-                embed.set_author(name=f"{inter.author.name}", icon_url=f"{inter.author.avatar}")
+                embed.set_author(name=f"{inter.author.name}", icon_url=f"{inter.author.display_avatar.url}")
                 embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
                 embed.set_footer(text="Анварн")
                 try:
@@ -493,7 +493,7 @@ class WarnsCog(commands.Cog):
                     color=0xffff00,
                     timestamp=datetime.now()
                 )
-                embed.set_author(name=f"{участник.name}", icon_url=f"{участник.avatar}")
+                embed.set_author(name=f"{участник.name}", icon_url=f"{участник.display_avatar.url}")
                 embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
                 await inter.response.send_message(embed=embed, ephemeral=True)
                 return
@@ -507,7 +507,7 @@ class WarnsCog(commands.Cog):
                 color=0xffff00,
                 timestamp=datetime.now()
             )
-            embed.set_author(name=f"{участник.name}", icon_url=f"{участник.avatar}")
+            embed.set_author(name=f"{участник.name}", icon_url=f"{участник.display_avatar.url}")
             embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
 
             if warns_count < 1:

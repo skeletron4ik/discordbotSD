@@ -75,7 +75,7 @@ class GamesCog(commands.Cog):
                 embed = disnake.Embed(title='Камень-Ножницы-Бумага', color=0xff00fa, timestamp=datetime.now())
                 embed.set_thumbnail(
                     url='https://media2.giphy.com/media/hp2sbbMqjelqqtIupy/giphy.gif?cid=6c09b952ip624esbxkhmfb2bcdogxpgffq1uxnxpui74ih80&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=s')
-                embed.set_author(name=inter.author.display_name, icon_url=inter.author.avatar.url)
+                embed.set_author(name=inter.author.display_name, icon_url=inter.author.display_avatar.url)
                 embed.set_footer(text=f'Rock-Paper-Scissors', icon_url=inter.guild.icon.url)
                 embed.add_field(name='', value=f'**Ставка:** {bet}', inline=True)
 
@@ -224,7 +224,7 @@ class GamesCog(commands.Cog):
                 await inter.response.send_message(embed=embed, ephemeral=True)
 
     @commands.slash_command(name='rps', description='Игра: Камень-Ножницы-Бумага', aliases=['rps', 'rpc', 'кнб', 'Камень Ножницы Бумага'], dm_permission=False)
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def rps(self, inter: disnake.ApplicationCommandInteraction):
         components = disnake.ui.TextInput(
             label=f"Выбери свой ход:",
@@ -264,7 +264,7 @@ class GamesCog(commands.Cog):
         await inter.response.send_modal(modal=modal)
 
     @commands.slash_command(name='cf', description='Игра: Орел или Решка', dm_permission=False, aliases=['cf', 'Орел или Решка', 'Орел и Решка', 'коинфлип', 'кф'])
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def coinflip(self, inter: disnake.ApplicationCommandInteraction, ставка: int,
                        участник: disnake.Member = None):
         decline = disnake.utils.get(inter.author.guild.emojis, name='773229388573310996')
@@ -288,7 +288,7 @@ class GamesCog(commands.Cog):
         collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': -ставка}})
 
         embed = disnake.Embed(title='Орел или Решка', color=0xff8800, timestamp=datetime.now())
-        embed.set_author(name=inter.author.display_name, icon_url=inter.author.avatar.url)
+        embed.set_author(name=inter.author.display_name, icon_url=inter.author.display_avatar.url)
         embed.set_thumbnail(
             url='https://media2.giphy.com/media/PLJ3gbNlkSVDL3IZlp/giphy.gif?cid=6c09b952v5aietkxv0s324l8lv2pgenw6x9k64bn0bbqggj1&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=s')  # Замените на актуальную ссылку на изображение
         embed.add_field(name='', value=f'**Ставка:** {format_rumbick(ставка)}', inline=True)

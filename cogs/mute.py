@@ -76,8 +76,8 @@ class MuteCog(commands.Cog):
         else:
             raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
-    @commands.slash_command(name='mute', description='Позволяет замутить участника.', dm_permission=False)
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.slash_command(name='mute', description='Запрещает писать в чат и подключаться к голосовым каналам участнику', dm_permission=False)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def mute(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, время: str, причина='Не указана'):
         if inter.type == disnake.InteractionType.application_command:
             await inter.response.defer()
@@ -100,8 +100,8 @@ class MuteCog(commands.Cog):
                 timestamp=datetime.now()
             )
 
-            embed.set_author(name=f"{inter.author.name}",
-                             icon_url=f"{inter.author.avatar}")
+            embed.set_author(name=f"{inter.author.display_name}",
+                             icon_url=f"{inter.author.display_avatar.url}")
 
             embed.set_thumbnail(
                 url="https://media4.giphy.com/media/4A2MFWNlGaGUJcyhlE/giphy.gif")
@@ -142,6 +142,110 @@ class MuteCog(commands.Cog):
             embed.add_field(name="Причина:", value=причина, inline=True)
             embed.set_footer(text=f"ID участника: {участник.id}")
             await channel.send(embed=embed)
+
+    @commands.slash_command(name='unmute',
+                            description='Снимает запрет писать в чат и подключаться к голосовым каналам у участника',
+                            dm_permission=False)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    async def unmute(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member):
+        if inter.type == disnake.InteractionType.application_command:
+            await inter.response.defer()
+
+            # Проверяем, есть ли у участника действующий mute (timeout)
+            if участник.timeout is None:
+                await inter.send(f"Участник {участник.mention} не находится в мьюте.", ephemeral=True)
+                return
+
+            # Снимаем тайм-аут с участника
+            await участник.timeout(duration=None)
+
+            # Создание embed для уведомления о разбане в чате
+            embed = disnake.Embed(
+                description=f"Участнику {участник.mention} разрешено писать в чат и подключаться к голосовым каналам.",
+                colour=0x00ff00,
+                timestamp=datetime.now()
+            )
+
+            embed.set_author(name=f"{inter.author.display_name}",
+                             icon_url=f"{inter.author.display_avatar.url}")
+
+            embed.set_thumbnail(
+                url="https://media4.giphy.com/media/4A2MFWNlGaGUJcyhlE/giphy.gif")
+
+            embed.set_footer(text="Размут")
+
+            try:
+                await inter.edit_original_response(embed=embed)
+            except:
+                await inter.response.send_message(embed=embed)
+
+            # Отправляем сообщение участнику в ЛС
+            embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
+                                  description="", color=0x00ff00, timestamp=datetime.now())
+            embed.set_author(name="Вы были размучены!", icon_url=inter.guild.icon.url)
+            embed.set_thumbnail(
+                url="https://media4.giphy.com/media/4A2MFWNlGaGUJcyhlE/giphy.gif")
+            embed.add_field(name="",
+                            value=f"Вам снова разрешено писать в чат и подключаться к голосовым каналам на сервере **{inter.guild.name}**!",
+                            inline=False)
+            embed.add_field(name="Модератор:", value=f"{inter.author.mention}", inline=False)
+            embed.set_footer(text="Пожалуйста, соблюдайте правила сервера!")
+            await участник.send(embed=embed)
+
+            # Логирование действия размута в канал логов
+            channel = await self.bot.fetch_channel(944562833901899827)  # Канал для логов
+
+            embed = disnake.Embed(title="", url="",
+                                  description="", color=0x00ff00, timestamp=datetime.now())
+            embed.add_field(name="", value=f"Участник {участник.name} ({участник.mention}) был размучен!",
+                            inline=False)
+            embed.set_thumbnail(
+                url="https://media4.giphy.com/media/4A2MFWNlGaGUJcyhlE/giphy.gif")
+            embed.add_field(name="Модератор:", value=f"*{inter.author.name}* ({inter.author.mention})", inline=True)
+            embed.add_field(name="Участник:", value=f"*{участник}* ({участник.mention})", inline=True)
+            embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
+            embed.set_footer(text=f"ID участника: {участник.id}")
+            await channel.send(embed=embed)
+
+    @commands.slash_command(name='mutes', description='Выводит список участников в мьюте и оставшееся время', dm_permission=False)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    async def mutes(self, inter: disnake.ApplicationCommandInteraction):
+        await inter.response.defer()
+
+        # Получаем список всех участников сервера
+        guild = inter.guild
+        muted_members = []
+
+        # Проходим по всем участникам сервера
+        for member in guild.members:
+            if member.is_timed_out():
+                # Вычисляем оставшееся время до снятия тайм-аута
+                remaining_time = member.timed_out_until - datetime.now()
+                formatted_time = f"<t:{int(member.timed_out_until.timestamp())}:R>"  # Формат для <t:timestamp:R>
+                muted_members.append((member, formatted_time))
+
+        if muted_members:
+            # Создание Embed для вывода информации о замученных участниках
+            embed = disnake.Embed(
+                title="Список участников в мьюте",
+                colour=0xff8800,
+                timestamp=datetime.now()
+            )
+
+            for member, remaining_time in muted_members:
+                embed.add_field(
+                    name=f"{member.display_name} ({member.mention})",
+                    value=f"Осталось времени: {remaining_time}",
+                    inline=False
+                )
+
+            embed.set_footer(text=f"Запрошено {inter.author.display_name}", icon_url=inter.author.display_avatar.url)
+            await inter.edit_original_response(embed=embed)
+
+        else:
+            await inter.edit_original_response(content="В данный момент на сервере нет участников в мьюте.")
+
+
 
 
 def setup(bot):

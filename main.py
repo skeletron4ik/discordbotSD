@@ -50,6 +50,7 @@ async def safe_api_call(api_function, *args, **kwargs):
         else:
             raise
 
+
 @bot.event
 async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, error):
     if isinstance(error, commands.CommandOnCooldown):
@@ -58,21 +59,36 @@ async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, e
         embed = disnake.Embed(
             title="Подождите немного!",
             description=f"Эта команда находится в кулдауне. Попробуйте снова через **{seconds_remaining} секунд.**",
-            color=0xff0000, timestamp=datetime.now()
+            color=0xff0000,
+            timestamp=datetime.now()
         )
         embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-        await inter.response.send_message(embed=embed, ephemeral=True)
+
+        # Проверяем, был ли ответ уже отправлен
+        if inter.response.is_done():
+            await inter.edit_original_response(embed=embed)
+        else:
+            await inter.response.send_message(embed=embed, ephemeral=True)
+
     else:
-        # Обработка других ошибок (опционально)
+        # Обработка других ошибок
         embed = disnake.Embed(
             title="Ошибка!",
             description="Произошла ошибка при выполнении команды. Попробуйте снова.",
-            color=0xff0000, timestamp=datetime.now()
+            color=0xff0000,
+            timestamp=datetime.now()
         )
         embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-        await inter.response.send_message(embed=embed, ephemeral=True)
+
+        # Проверяем, был ли ответ уже отправлен
+        if inter.response.is_done():
+            await inter.edit_original_response(embed=embed)
+        else:
+            await inter.response.send_message(embed=embed, ephemeral=True)
+
         # Логирование ошибки в консоль
         raise error
+
 
 @bot.event
 async def on_ready():

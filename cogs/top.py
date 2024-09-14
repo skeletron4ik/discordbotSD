@@ -267,7 +267,7 @@ class TopCog(commands.Cog):
             await self.update_embed(interaction)
 
     @commands.slash_command(name='top', description='Топ пользователи', dm_permission=False)
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def top(self, inter: disnake.ApplicationCommandInteraction,
                   тип: TopEnum = commands.Param(description="Выберите тип топа")):
         if disnake.InteractionResponse:

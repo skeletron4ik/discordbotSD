@@ -37,8 +37,6 @@ def create_error_embed(message: str) -> disnake.Embed:
     embed.set_footer(text='Ошибка')
     return embed
 
-
-
 class EconomyCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -87,12 +85,12 @@ class EconomyCog(commands.Cog):
 
                 if user_id in cooldowns:
                     last_used = cooldowns[user_id]
-                    if now - last_used < timedelta(minutes=1):
-                        time_left = timedelta(minutes=1) - (now - last_used)
+                    if now - last_used < timedelta(seconds=15):
+                        time_left = timedelta(seconds=15) - (now - last_used)
                         return
 
                 multiplier = collservers.find_one({'_id': message.author.guild.id})['multiplier']
-                money_to_give = random.uniform(0.1, 1)
+                money_to_give = random.uniform(0.1, 0.5)
                 money_to_give1 = money_to_give * multiplier
                 money_to_give2 = round(money_to_give1, 2)
                 collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'balance': money_to_give2}})
@@ -100,7 +98,7 @@ class EconomyCog(commands.Cog):
 
     @commands.slash_command(name='balance', description='Показывает баланс участника', dm_permission=False,
                             aliases=['баланс', 'счет', 'остаток', 'credit', 'amount', 'sum'])
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def balance(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
         await inter.response.defer()
 
@@ -113,7 +111,7 @@ class EconomyCog(commands.Cog):
             balance_formatted = format_rumbick(balance)
 
             embed = disnake.Embed(title=f'', color=0x00ff00)
-            embed.set_author(name=f"{участник.display_name}", icon_url=f"{участник.avatar.url}")
+            embed.set_author(name=f"{участник.display_name}", icon_url=участник.display_avatar.url)
             embed.set_thumbnail(
                 url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
             embed.add_field(name='Баланс:', value=f'{balance_formatted}', inline=False)
@@ -125,7 +123,7 @@ class EconomyCog(commands.Cog):
 
     @commands.slash_command(name='pay', description='Перевод румбиков другому участнику', dm_permission=False,
                             aliases=['перевод', 'give', 'transfer'])
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def pay(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, количество: int):
         # Проверка на минимальную сумму перевода
         if количество < 10:
@@ -180,7 +178,7 @@ class EconomyCog(commands.Cog):
 
             embed = disnake.Embed(title=f'Сделка `{inter.author.display_name}` ⇾ `{участник.display_name}`',
                                   color=0x00ff00)
-            embed.set_author(name=f"{участник.display_name}", icon_url=f"{участник.avatar.url}")
+            embed.set_author(name=f"{участник.display_name}", icon_url=участник.display_avatar.url)
             embed.set_thumbnail(
                 url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
             embed.add_field(name='Отправитель', value=f'{inter.author.mention}', inline=True)
@@ -205,7 +203,7 @@ class EconomyCog(commands.Cog):
             await inter.followup.send(embed=embed, ephemeral=True)
 
     @commands.slash_command(name='change-balance', description="Изменяет баланс участника", dm_permission=False, aliases=['деньги', 'givemoney', 'setmoney'])
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def money(
             self,
             inter: disnake.ApplicationCommandInteraction,
@@ -221,11 +219,11 @@ class EconomyCog(commands.Cog):
             new_balance = round(current_balance + количество, 2)
             collusers.find_one_and_update({'id': участник.id}, {'$inc': {'balance': количество}})
             embed = disnake.Embed(title=f'', color=0x00ff00)
-            embed.set_author(name=f"{inter.user.display_name}", icon_url=f"{inter.user.avatar.url}")
+            embed.set_author(name=f"{inter.user.display_name}", icon_url=inter.user.display_avatar.url)
             embed.set_thumbnail(
                 url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
             embed.add_field(name='', value=f'Вы **добавили** {количество}{emoji} к балансу {участник.mention}, теперь его текущий баланс {new_balance}{emoji}', inline=False)
-            embed.set_footer(text=f'Баланс участника {участник.display_name} изменен', icon_url=участник.avatar.url)
+            embed.set_footer(text=f'Баланс участника {участник.display_name} изменен', icon_url=inter.author.display_avatar.url)
             embed.timestamp = datetime.now()
             await inter.response.send_message(embed=embed, ephemeral=True)
 
@@ -233,12 +231,12 @@ class EconomyCog(commands.Cog):
             new_balance = round(current_balance - количество, 2)
             collusers.find_one_and_update({'id': участник.id}, {'$inc': {'balance': -количество}})
             embed = disnake.Embed(title=f'', color=0x00ff00)
-            embed.set_author(name=f"{inter.user.display_name}", icon_url=f"{inter.user.avatar.url}")
+            embed.set_author(name=f"{inter.user.display_name}", icon_url=inter.user.display_avatar.url)
             embed.set_thumbnail(
                 url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
             embed.add_field(name='', value=f'Вы **отняли** {количество}{emoji} от баланса {участник.mention}, теперь его текущий баланс {new_balance}{emoji}',
                             inline=False)
-            embed.set_footer(text=f'Баланс участника {участник.display_name} изменен', icon_url=участник.avatar.url)
+            embed.set_footer(text=f'Баланс участника {участник.display_name} изменен', icon_url=участник.display_avatar.url)
             embed.timestamp = datetime.now()
             await inter.response.send_message(embed=embed, ephemeral=True)
 
@@ -246,12 +244,12 @@ class EconomyCog(commands.Cog):
             new_balance = round(количество, 2)
             collusers.find_one_and_update({'id': участник.id}, {'$set': {'balance': количество}})
             embed = disnake.Embed(title=f'', color=0x00ff00)
-            embed.set_author(name=f"{inter.user.display_name}", icon_url=f"{inter.user.avatar.url}")
+            embed.set_author(name=f"{inter.user.display_name}", icon_url=inter.user.display_avatar.url)
             embed.set_thumbnail(
                 url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
             embed.add_field(name='', value=f'Вы **установили** баланс {участник.mention} на {количество}{emoji}  ',
                             inline=False)
-            embed.set_footer(text=f'Баланс участника {участник.display_name} изменен', icon_url=участник.avatar.url)
+            embed.set_footer(text=f'Баланс участника {участник.display_name} изменен', icon_url=участник.display_avatar.url)
             embed.timestamp = datetime.now()
             await inter.response.send_message(embed=embed, ephemeral=True)
 
@@ -268,14 +266,13 @@ class EconomyCog(commands.Cog):
         log_embed.add_field(name='', value='', inline=False)
         log_embed.add_field(name='Баланс до изменения:', value=f'{current_balance}{emoji}', inline=True)
         log_embed.add_field(name='Текущий баланс:', value=f'{new_balance}{emoji}', inline=True)
-        log_embed.set_footer(text=f'ID Участника: {участник.id}', icon_url=участник.avatar.url)
+        log_embed.set_footer(text=f'ID Участника: {участник.id}', icon_url=участник.display_avatar.url)
         log_embed.timestamp = datetime.now()
         await channel.send(embed=log_embed)
 
-
     @commands.slash_command(name='store', description='Магазин ролей и специальных возможностей за Румбики', dm_permission=False,
                             aliases=['shop', 'магазин', 'лавка', 'рынок'])
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def store(self, inter: disnake.ApplicationCommandInteraction):
         if inter.type == disnake.InteractionType.application_command:
             try:
@@ -451,7 +448,7 @@ class EconomyCog(commands.Cog):
                                         inline=True)
                     log_embed.add_field(name="Канал:", value=f"{interaction.channel.mention}", inline=True)
                     log_embed.add_field(name="Длительность:", value=f"(<t:{new_expiry}:R>)", inline=True)
-                    log_embed.set_footer(text=f"ID участника: {interaction.author.id}")
+                    log_embed.set_footer(text=f'ID Участника: {interaction.author.id}', icon_url=interaction.author.display_avatar.url)
                     await channel.send(embed=log_embed)
 
                 async def button_callback(interaction: disnake.MessageInteraction):
@@ -784,8 +781,8 @@ class EconomyCog(commands.Cog):
                             f'Общее время в войсе: `{formatted_time_in_voice}`'
                         )
                     )
+                    embed.set_author(name=member.display_name, icon_url=member.display_avatar.url)
                     embed.set_footer(text=f"ID: {member.id}", icon_url=member.guild.icon.url)
-                    embed.set_author(name=member.display_name, icon_url=member.avatar.url)
                     thread = member.guild.get_thread(1270673733178101801)
                     await thread.send(embed=embed)
                     total_time[member.id] = 0
@@ -849,8 +846,8 @@ class EconomyCog(commands.Cog):
                             f'Общее время в войсе: `{formatted_time_in_voice}`'
                         )
                     )
+                    embed.set_author(name=member.display_name, icon_url=member.display_avatar.url)
                     embed.set_footer(text=f"ID: {member.id}", icon_url=member.guild.icon.url)
-                    embed.set_author(name=member.display_name, icon_url=member.avatar.url)
                     thread = member.guild.get_thread(1270673733178101801)
                     await thread.send(embed=embed)
                     total_time[member.id] = 0
@@ -874,7 +871,7 @@ class EconomyCog(commands.Cog):
         else:
             raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
-    @tasks.loop(seconds=300)
+    @tasks.loop(seconds=200)
     async def check_booster(self):
         server_id = 489867322039992320
         server_data = collservers.find_one({'_id': server_id})
@@ -978,7 +975,7 @@ class EconomyCog(commands.Cog):
             return
 
     @commands.slash_command(name='booster', description='Включает бустер румбиков', dm_permission=False)
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def booster(self, inter: disnake.ApplicationCommandInteraction, множитель: int, длительность: str,
                       ивент: str = ''):
         try:
@@ -1041,7 +1038,7 @@ class EconomyCog(commands.Cog):
             color=0xfa00ff,
             timestamp=datetime.now()
         )
-        log_embed.set_author(name=f"{inter.author.display_name}", icon_url=f"{inter.author.avatar.url}")
+        log_embed.set_author(name=f"{inter.author.display_name}", icon_url=inter.author.display_avatar.url)
         log_embed.set_thumbnail(url='https://i.imgur.com/vlX2dxG.gif')
         log_embed.set_footer(text=f'Активация ивентового бустера', icon_url=inter.guild.icon.url)
         # Если указано название ивента, добавляем его в embed
@@ -1071,7 +1068,7 @@ class EconomyCog(commands.Cog):
             raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
     @commands.slash_command(name="boosters", description="Показывает текущие активные бустеры", dm_permission=False)
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def boosters(self, inter: disnake.ApplicationCommandInteraction):
         server_id = inter.guild_id
         server_data = collservers.find_one({'_id': server_id})
@@ -1141,7 +1138,7 @@ class EconomyCog(commands.Cog):
 
 
     @commands.user_command(name='balance', dm_permission=False, nsfw=True)
-    @commands.cooldown(rate=1, per=30, type=commands.BucketType.user)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def balinuser(self, inter: disnake.ApplicationCommandInteraction, user: disnake.User):
         await self.balance(inter, user)
 
