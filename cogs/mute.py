@@ -165,13 +165,8 @@ class MuteCog(commands.Cog):
                 colour=0x00ff00,
                 timestamp=datetime.now()
             )
-
-            embed.set_author(name=f"{inter.author.display_name}",
-                             icon_url=f"{inter.author.display_avatar.url}")
-
-            embed.set_thumbnail(
-                url="https://media4.giphy.com/media/4A2MFWNlGaGUJcyhlE/giphy.gif")
-
+            embed.set_author(name=f"{inter.author.display_name}", icon_url=f"{inter.author.display_avatar.url}")
+            embed.set_thumbnail(url="https://media4.giphy.com/media/4A2MFWNlGaGUJcyhlE/giphy.gif")
             embed.set_footer(text="Размут")
 
             try:
@@ -183,24 +178,18 @@ class MuteCog(commands.Cog):
             embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
                                   description="", color=0x00ff00, timestamp=datetime.now())
             embed.set_author(name="Вы были размучены!", icon_url=inter.guild.icon.url)
-            embed.set_thumbnail(
-                url="https://media4.giphy.com/media/4A2MFWNlGaGUJcyhlE/giphy.gif")
-            embed.add_field(name="",
-                            value=f"Вам снова разрешено писать в чат и подключаться к голосовым каналам на сервере **{inter.guild.name}**!",
-                            inline=False)
+            embed.set_thumbnail(url="https://media4.giphy.com/media/4A2MFWNlGaGUJcyhlE/giphy.gif")
+            embed.add_field(name="", value=f"Вам снова разрешено писать в чат и подключаться к голосовым каналам на сервере **{inter.guild.name}**!", inline=False)
             embed.add_field(name="Модератор:", value=f"{inter.author.mention}", inline=False)
             embed.set_footer(text="Пожалуйста, соблюдайте правила сервера!")
             await участник.send(embed=embed)
 
             # Логирование действия размута в канал логов
             channel = await self.bot.fetch_channel(944562833901899827)  # Канал для логов
-
             embed = disnake.Embed(title="", url="",
                                   description="", color=0x00ff00, timestamp=datetime.now())
-            embed.add_field(name="", value=f"Участник {участник.name} ({участник.mention}) был размучен!",
-                            inline=False)
-            embed.set_thumbnail(
-                url="https://media4.giphy.com/media/4A2MFWNlGaGUJcyhlE/giphy.gif")
+            embed.add_field(name="", value=f"Участник {участник.name} ({участник.mention}) был размучен!", inline=False)
+            embed.set_thumbnail(url="https://media4.giphy.com/media/4A2MFWNlGaGUJcyhlE/giphy.gif")
             embed.add_field(name="Модератор:", value=f"*{inter.author.name}* ({inter.author.mention})", inline=True)
             embed.add_field(name="Участник:", value=f"*{участник}* ({участник.mention})", inline=True)
             embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
