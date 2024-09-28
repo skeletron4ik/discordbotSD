@@ -52,7 +52,7 @@ class EconomyCog(commands.Cog):
                     message_embed = str(message.embeds[0].description)
                     author_interaction = None  # Ensure author_interaction is defined
 
-                    if 'Bump done!' in message_embed or 'Время фиксации апа:' in message_embed or 'Ви успішно лайкнули сервер.' in message_embed or 'Вы успешно лайкнули сервер.' in message_embed:
+                    if 'Bump done!' in message_embed or 'Время фиксации апа:' in message_embed or 'Ви успішно лайкнули сервер.' in message_embed or 'Вы успешно лайкнули сервер.' in message_embed or 'You successfully liked the server.' in message_embed or 'Успешный Up!' in message_embed:
                         author_interaction = message.interaction.author
 
                     elif 'Server bumped by' in message_embed:
@@ -70,6 +70,8 @@ class EconomyCog(commands.Cog):
                         embed.set_footer(text=f'Bumped by {author_interaction.display_name}',
                                          icon_url=author_interaction.avatar.url)
                         embed.set_author(name=message.author.guild.name, icon_url=message.author.guild.icon.url)
+                        channel = self.bot.get_channel(1070322967634006057)
+                        await channel.send(embed=embed)
         else:
             # Update message count
             if message.channel.id not in excluded_channels:
