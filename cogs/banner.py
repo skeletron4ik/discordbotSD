@@ -24,12 +24,13 @@ class BannerCog(commands.Cog):
         self.banner_change.start()
 
 
-    @tasks.loop(minutes=5)
+    @tasks.loop(minutes=3)
     async def banner_change(self):
+        print('banner change')
         guild = self.bot.get_guild(489867322039992320)
         memb_count = guild.member_count
         if self.member_count != memb_count or len(self.guild.premium_subscribers) != self.booster_count or self.level_count != self.guild.premium_subscription_count:
-            member_count, booster_count, level_count = self.guild.member_count, len(self.guild.premium_subscribers), self.guild.premium_subscription_count
+            member_count, booster_count, level_count = self.guild.member_count, self.guild.premium_subscription_count, self.guild.premium_tier
             print(member_count, booster_count, level_count)
             self.member_count = member_count
             self.booster_count = booster_count
@@ -43,7 +44,7 @@ class BannerCog(commands.Cog):
             d = ImageDraw.Draw(img)
 
             d.text((595, 370), str(member_count), font=fnt, fill=(255, 255, 255), align='center')
-            d.text((225, 375), str(booster_count), font=fnt, fill=(255, 255, 255), align='center')
+            d.text((200, 375), str(booster_count), font=fnt, fill=(255, 255, 255), align='center')
             d.text((350, 375), str(level_count), font=font, fill=(255, 255, 255), align='center')
 
             buffer = BytesIO()
