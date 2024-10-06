@@ -196,44 +196,6 @@ class MuteCog(commands.Cog):
             embed.set_footer(text=f"ID участника: {участник.id}")
             await channel.send(embed=embed)
 
-    @commands.slash_command(name='mutes', description='Выводит список участников в мьюте и оставшееся время', dm_permission=False)
-    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
-    async def mutes(self, inter: disnake.ApplicationCommandInteraction):
-        await inter.response.defer()
-
-        # Получаем список всех участников сервера
-        guild = inter.guild
-        muted_members = []
-
-        # Проходим по всем участникам сервера
-        for member in guild.members:
-            if member.is_timed_out():
-                # Вычисляем оставшееся время до снятия тайм-аута
-                remaining_time = member.timed_out_until - datetime.now()
-                formatted_time = f"<t:{int(member.timed_out_until.timestamp())}:R>"  # Формат для <t:timestamp:R>
-                muted_members.append((member, formatted_time))
-
-        if muted_members:
-            # Создание Embed для вывода информации о замученных участниках
-            embed = disnake.Embed(
-                title="Список участников в мьюте",
-                colour=0xff8800,
-                timestamp=datetime.now()
-            )
-
-            for member, remaining_time in muted_members:
-                embed.add_field(
-                    name=f"{member.display_name} ({member.mention})",
-                    value=f"Осталось времени: {remaining_time}",
-                    inline=False
-                )
-
-            embed.set_footer(text=f"Запрошено {inter.author.display_name}", icon_url=inter.author.display_avatar.url)
-            await inter.edit_original_response(embed=embed)
-
-        else:
-            await inter.edit_original_response(content="В данный момент на сервере нет участников в мьюте.")
-
 
 
 

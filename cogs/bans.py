@@ -263,6 +263,64 @@ class BansCog(commands.Cog):
         embed.set_footer(text=f"ID участника: {участник.id}")
         await channel.send(embed=embed)
 
+    @commands.slash_command(name="bans", description="Показывает список забаненных участников и время до разбана",
+                            dm_permission=False)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    async def bans(self, inter: disnake.GuildCommandInteraction):
+        await inter.response.defer(ephemeral=True)
+
+        # Получаем список забаненных участников из базы данных
+        banned_users = list(collusers.find({'ban': 'True', 'guild_id': inter.guild.id}))
+
+        # Проверяем, есть ли забаненные участники
+        if not banned_users:
+            embed = disnake.Embed(description="На данный момент нет забаненных участников.", color=0xff0000)
+            embed.set_footer(text="Список грешников пуст", icon_url=inter.guild.icon.url)
+            embed.set_thumbnail(
+                url="https://media1.giphy.com/media/tMf6IV7q9m3pbKPybv/giphy.gif?cid=6c09b952x9el5v0keemitb9f7pe09b04fetyq2ft84dhizs1&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=s")
+            await inter.edit_original_response(embed=embed)
+            return
+
+        embed = disnake.Embed(title="Забаненные участники", color=0xff0000, timestamp=datetime.now())
+        embed.set_thumbnail(
+            url="https://media1.giphy.com/media/tMf6IV7q9m3pbKPybv/giphy.gif?cid=6c09b952x9el5v0keemitb9f7pe09b04fetyq2ft84dhizs1&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=s")
+        embed.set_footer(text="Список грешников", icon_url=inter.guild.icon.url)
+
+        # Счетчик для нумерации участников
+        count = 1
+
+        # Проходим по каждому забаненному участнику и добавляем его в embed
+        for user in banned_users:
+            member = inter.guild.get_member(user['id'])
+            if member is None:
+                continue
+
+            ban_timestamp = user.get('ban_timestamp', 0)
+            remaining_time = ban_timestamp - int(datetime.now().timestamp())
+            if remaining_time <= 0:
+                # Если срок бана истек, снимаем бан и обновляем информацию в базе
+                await member.remove_roles(disnake.utils.get(inter.guild.roles, id=1229075137374978119))  # роль бана
+                collusers.update_one({'id': user['id'], 'guild_id': inter.guild.id},
+                                     {'$unset': {'ban': "", 'ban_timestamp': "", 'ban_reason': ""}})
+                continue
+
+            # Формируем строку с оставшимся временем
+            remaining = f"<t:{ban_timestamp}:R>"
+            reason = user.get('ban_reason', 'Не указана')
+
+            embed.add_field(name=f"",
+                            value=f"``{count}.`` **{member.display_name}** ({member.mention})\n"
+                                  f"Причина: ``{reason}``\nИстекает: {remaining}",
+                            inline=False)
+
+            # Увеличиваем счетчик
+            count += 1
+
+        if len(embed.fields) == 0:
+            embed.description = "Все забаненные участники были разбанены."
+
+        await inter.edit_original_response(embed=embed)
+
 
 def setup(bot):
     bot.add_cog(BansCog(bot))
