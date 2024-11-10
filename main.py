@@ -173,7 +173,7 @@ async def on_member_join(member):
         collusers.insert_one(values)
 
     # Отправка приветственного эмбед-сообщения
-    channel = member.guild.get_channel(1279702475095412808)
+    channel = member.guild.get_thread(1279702475095412808)
     if channel:
         embed = disnake.Embed(
             title="Новый участник!",
@@ -191,7 +191,7 @@ async def on_member_join(member):
 
 @bot.event
 async def on_member_remove(member):
-    channel = member.guild.get_channel(1279702475095412808)
+    channel = member.guild.get_thread(1279702475095412808)
     if channel:
         embed = disnake.Embed(
             title="Участник покинул сервер",
