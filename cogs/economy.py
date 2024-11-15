@@ -282,6 +282,7 @@ class EconomyCog(commands.Cog):
             except:
                 return
         diamond = inter.guild.get_role(1044314368717897868)
+        gold = inter.guild.get_role(1303396950481174611)
         user_data = collusers.find_one({"id": inter.author.id})
         if user_data:
             balance = round(user_data.get('balance', 0), 2)
@@ -293,13 +294,16 @@ class EconomyCog(commands.Cog):
         embed.set_thumbnail(url='https://i.gifer.com/origin/63/6309237109affef229b14c3c5dc7308b_w200.gif')
         embed.add_field(name='Для просмотра дополнительной информации и цен о товаре, выберете его в выпадающем меню выбора товаров!', value=f'', inline=False)
         embed.add_field(name=f'**1. 💎 Diamond**',
-                        value=f'Даёт эксклюзивные возможности. Подробнее с возможностями можно ознакомиться при выборе товара.\n**Цена покупки:** ``399``{emoji} | ``699``{emoji} | ``949``{emoji}\n **Содержит в себе:** Роль - {diamond.mention}',
+                        value=f'Даёт эксклюзивные возможности (все возможности роли ⭐️ Gold и больше). Подробнее с возможностями можно ознакомиться при выборе товара.\n**Цена покупки:** ``399``{emoji} | ``699``{emoji} | ``949``{emoji}\n **Содержит в себе:** Роль - {diamond.mention}',
                         inline=False)
-        embed.add_field(name=f'**2. 🙋‍♂️ Смена никнейма**',
+        embed.add_field(name=f'**2. ⭐️ Gold**',
+                        value=f'Даёт эксклюзивные возможности. Подробнее с возможностями можно ознакомиться при выборе товара.\n**Цена покупки:** ``199``{emoji} | ``349``{emoji} | ``499``{emoji}\n **Содержит в себе:** Роль - {gold.mention}',
+                        inline=False)
+        embed.add_field(name=f'**3. 🙋‍♂️ Смена никнейма**',
                         value=f'Даёт единоразовую возможность сменить свой отображаемый никнейм на сервере.\n**Цена покупки:** ``49``{emoji}\n**Содержит в себе:** Возможность смены __отображаемого__ никнейма на сервере.',
                         inline=False)
-        embed.add_field(name=f'**3. 🚀 Глобальный бустер румбиков x2**',
-                        value=f'Вдвое увеличивает зароботок с активнисти в голосовых каналах и текстовых чатах.\n**Цена покупки:** ``299``{emoji} | ``799``{emoji} | ``1299``{emoji}\n**Содержит в себе:** Глобальный бустер румбиков x2.',
+        embed.add_field(name=f'**4. 🚀 Глобальный бустер румбиков x2**',
+                        value=f'Вдвое увеличивает зароботок с активнисти в голосовых каналах и текстовых чатах.\n**Цена покупки:** ``199``{emoji} | ``499``{emoji} | ``999``{emoji}\n**Содержит в себе:** Глобальный бустер румбиков x2.',
                         inline=False)
         embed.add_field(name='', value='')
         embed.add_field(name='', value=f'**Ваш текущий баланс:** {balance_formatted}', inline=False)
@@ -307,11 +311,12 @@ class EconomyCog(commands.Cog):
 
         options = [
             disnake.SelectOption(label=f"💎 Diamond", description="Даёт эксклюзивные возможности", value="1"),
+            disnake.SelectOption(label=f"⭐️ Gold", description="Даёт эксклюзивные возможности", value="2"),
             disnake.SelectOption(label="🙋‍♂️ Возможность сменить никнейм",
                                  description="Вы получаете возможность один раз сменить никнейм",
-                                 value="2"),
+                                 value="3"),
             disnake.SelectOption(label="🚀 Глобальный бустер румбиков x2",
-                                 description="Увеличивает зароботок Румбиков вдвое", value="3"),
+                                 description="Увеличивает зароботок Румбиков вдвое", value="4"),
         ]
 
         # Создаем select menu
@@ -335,7 +340,7 @@ class EconomyCog(commands.Cog):
                                  value='```🟢 Отдельное отображение от остальных участников\n🟢 Голосовой канал, в который могут заходить только участники с этой ролью\n🟢 Доступ к Журналу аудита\n🟢 Возможность изменять свой никнейм\n🟢 На Вас не работает автомодерация сообщений\n🟢 Отключен кулдаун между использованиям команд\n🟢 При нарушениях длительность Ваших предупреждений уменьшается на 10 дней\n🟢 Комиссия 0% на перевод Румбиков```')
                 embed1.add_field(name='', value='')
                 embed1.add_field(name='**Стоимость**',
-                                 value=f'* {diamond.mention}\n * {diamond.mention} (на 30 дней) - 399{emoji}\n * {diamond.mention} (на 60 дней) - ~~799~~ 699{emoji} **Скидка -15%**\n * {diamond.mention} (на 90 дней) - ~~1199~~ 949{emoji} **Скидка -20%**',
+                                 value=f'* {diamond.mention}\n * {diamond.mention} (на 30 дней) - 399{emoji}\n * {diamond.mention} (на 60 дней) - ~~800~~ 699{emoji} **На 15% выгоднее!**\n * {diamond.mention} (на 90 дней) - ~~1200~~ 949{emoji} **На 20% выгоднее!**',
                                  inline=False)
                 embed1.add_field(name='Обратите внимание:',
                                  value=f'Если у вас уже есть роль {diamond.mention}, при повторной покупке её срок действия будет продлён.',
@@ -476,7 +481,159 @@ class EconomyCog(commands.Cog):
 
                 await interaction.response.send_message(embed=embed1, ephemeral=True, view=view)
 
-            if select_menu.values[0] == "2":
+            if select_menu.values[0] == "2":  # gold
+                embed1 = disnake.Embed(color=0x4169E1)
+                embed1.set_author(name=f'Выберите длительность {gold.name}', icon_url=inter.guild.icon.url)
+                embed1.set_thumbnail(url='https://i.gifer.com/origin/63/6309237109affef229b14c3c5dc7308b_w200.gif')
+                embed1.add_field(name='',
+                                 value=f'{gold.mention} - Привилегия на сервере, открывает недоступные для обычных пользователей функции.',
+                                 inline=False)
+                embed1.add_field(name='',
+                                 value='```🟢 Отдельное отображение от остальных участников\n🟢 Голосовой канал, в который могут заходить только участники с этой ролью\n🟢 Доступ к Журналу аудита\n🟢 Возможность изменять свой никнейм\n🟢 На Вас не работает автомодерация сообщений\n🟢 Отключен кулдаун между использованиям команд\n🟢 При нарушениях длительность Ваших предупреждений уменьшается на 10 дней\n🟢 Комиссия 0% на перевод Румбиков```')
+                embed1.add_field(name='', value='')
+                embed1.add_field(name='**Стоимость**',
+                                 value=f'* {gold.mention}\n * {gold.mention} (на 30 дней) - 199{emoji}\n * {gold.mention} (на 60 дней) - ~~400~~ 349{emoji} **На 15% выгоднее!**\n * {gold.mention} (на 90 дней) - ~~600~~ 499{emoji} **На 20% выгоднее!**',
+                                 inline=False)
+                embed1.add_field(name='Обратите внимание:',
+                                 value=f'Если у вас уже есть роль {gold.mention}, при повторной покупке её срок действия будет продлён.',
+                                 inline=False)
+                embed1.add_field(name='', value='')
+                embed1.add_field(name='', value=f'**Ваш текущий баланс:** {balance_formatted}', inline=False)
+
+                components = [
+                    disnake.ui.Button(label=f"⭐️ Купить на 30 дней", style=disnake.ButtonStyle.secondary,
+                                      emoji=diamond.emoji, custom_id='30'),
+                    disnake.ui.Button(label=f"⭐️ Купить на 60 дней", style=disnake.ButtonStyle.primary,
+                                      emoji=diamond.emoji, custom_id='60'),
+                    disnake.ui.Button(label=f"⭐️ Купить на 90 дней", style=disnake.ButtonStyle.green,
+                                      emoji=diamond.emoji, custom_id='90')
+                ]
+
+                # Обрабатываем нажатие кнопки
+                async def process_role(interaction, cost, duration, role_id, ephemeral=False):
+                    user_id = interaction.author.id
+                    guild_id = interaction.author.guild.id
+                    gold_role_id = 1303396950481174611  # Specific ID for the "Gold" role
+
+                    # Проверяем баланс
+                    user_data = collusers.find_one({'id': user_id})
+                    if user_data['balance'] < cost:
+                        error_message = "У вас не хватает румбиков для покупки."
+                        embed = create_error_embed(error_message)
+                        await interaction.send(embed=embed, ephemeral=ephemeral)
+                        return
+
+                    # Обновляем баланс и сделки
+                    collusers.update_many({'id': user_id}, {'$inc': {'number_of_deal': 1}})
+                    collusers.find_one_and_update({'id': user_id}, {'$inc': {'balance': -cost}})
+
+                    # Получаем роль по ID (Diamond)
+                    role = disnake.utils.get(interaction.guild.roles, id=role_id)
+                    if role is None:
+                        error_message = "Роль не найдена. Пожалуйста свяжитесь с Администратором."
+                        embed = create_error_embed(error_message)
+                        await inter.response.send_message(embed=embed, ephemeral=True)
+                        return
+
+                    # Получаем пользователя (author of interaction)
+                    member = interaction.author
+
+                    # Вычисляем новый срок длительности роли
+                    new_expiry = int((datetime.now() + timedelta(seconds=duration)).timestamp())
+
+                    # Проверяем наличие роли Diamond у участника
+                    if role.id == gold_role_id and role in member.roles:
+                        # Retrieve the current expiry time for the role from the database
+                        role_info = collusers.find_one(
+                            {"id": user_id, "guild_id": guild_id, "role_ids.role_ids": role.id},
+                            {"role_ids.$": 1}
+                        )
+                        if role_info and "role_ids" in role_info:
+                            current_expiry = role_info["role_ids"][0]["expires_at"]
+                            remaining_time = max(0, current_expiry - int(datetime.now().timestamp()))
+                            new_expiry = int(datetime.now().timestamp()) + remaining_time + duration
+
+                        # Обновляем срок длительности роли в базе
+                        collusers.update_one(
+                            {"id": user_id, "guild_id": guild_id, "role_ids.role_ids": role.id},
+                            {"$set": {"role_ids.$.expires_at": new_expiry}}
+                        )
+                        embed = disnake.Embed(
+                            description=f"**Срок действия роли {role.name} продлен до:** <t:{new_expiry}:R>.\n ",
+                            colour=0x00ff00,
+                            timestamp=datetime.now()
+                        )
+                        embed.set_author(name="Срок действия роли продлен!",
+                                         icon_url="https://i.imgur.com/vlX2dxG.gif")
+                        embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
+                        embed.set_footer(text="Продление прошло успешно",
+                                         icon_url=interaction.guild.icon.url)
+                        await interaction.send(embed=embed, ephemeral=ephemeral)
+
+                    else:
+                        # Выдаем роль участнику
+                        await interaction.author.add_roles(role)
+                        embed = disnake.Embed(
+                            description=f"**Вы приобрели роль {role.name}, которая заканчивается: <t:{new_expiry}:R>.\n Теперь Вам доступны следующие функции:**\n```🟢 Отдельное отображение от остальных участников\n🟢 Голосовой канал, в который могут заходить только участники с этой ролью\n🟢 Доступ к Журналу аудита\n🟢 Возможность изменять свой никнейм\n🟢 На Вас не работает автомодерация сообщений\n🟢 Отключен кулдаун между использованиям команд\n🟢 При нарушениях длительность Ваших предупреждений уменьшается на 10 дней\n🟢 Комиссия 0% на перевод Румбиков```",
+                            colour=0x00ff00,
+                            timestamp=datetime.now()
+                        )
+                        embed.set_author(name="Вы успешно приобрели роль Gold!",
+                                         icon_url="https://i.imgur.com/vlX2dxG.gif")
+                        embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
+                        embed.set_footer(text="Покупка прошла успешно",
+                                         icon_url=interaction.guild.icon.url)
+                        await interaction.send(embed=embed, ephemeral=ephemeral)
+
+                        # Обновляем базу с новой длительностью роли
+                        collusers.update_one(
+                            {"id": user_id, "guild_id": guild_id},
+                            {
+                                "$push": {"role_ids": {"role_ids": role.id, "expires_at": new_expiry}},
+                                "$inc": {"number_of_roles": 1}
+                            },
+                            upsert=True
+                        )
+
+                    # Создаем и отправлем embed в логи
+                    channel = await self.bot.fetch_channel(944562833901899827)
+                    log_embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
+                    log_embed.add_field(name="",
+                                        value=f"Участник **{interaction.author.name}** ({interaction.author.mention}) получил роль ``{role.name}``",
+                                        inline=False)
+                    log_embed.set_thumbnail(
+                        url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
+                    log_embed.add_field(name="Модератор:", value=f"**Магазин** ({interaction.author.mention})",
+                                        inline=True)
+                    log_embed.add_field(name="Канал:", value=f"{interaction.channel.mention}", inline=True)
+                    log_embed.add_field(name="Длительность:", value=f"(<t:{new_expiry}:R>)", inline=True)
+                    log_embed.set_footer(text=f'ID Участника: {interaction.author.id}', icon_url=interaction.author.display_avatar.url)
+                    await channel.send(embed=log_embed)
+
+                async def button_callback(interaction: disnake.MessageInteraction):
+                    button_id = interaction.component.custom_id
+                    gold_role_id = 1303396950481174611  # ID роли "Gold"
+
+                    if button_id == '30':
+                        await process_role(interaction, cost=199, duration=2678400, role_id=gold_role_id,
+                                           ephemeral=True)
+                    elif button_id == '60':
+                        await process_role(interaction, cost=349, duration=5097600, role_id=gold_role_id,
+                                           ephemeral=True)
+                    elif button_id == '90':
+                        await process_role(interaction, cost=499, duration=7776000, role_id=gold_role_id,
+                                           ephemeral=True)
+
+                for button in components:
+                    button.callback = button_callback
+
+                view = disnake.ui.View(timeout=None)
+                for button in components:
+                    view.add_item(button)
+
+                await interaction.response.send_message(embed=embed1, ephemeral=True, view=view)
+
+            if select_menu.values[0] == "3":
                 nikname_price = 49
                 if collusers.find_one({'id': inter.author.id})['balance'] < nikname_price:
                     error_message = "У вас не хватает румбиков для покупки."
@@ -503,11 +660,11 @@ class EconomyCog(commands.Cog):
                 await interaction.response.send_modal(modal=modal)
 
 
-            if select_menu.values[0] == "3":
+            if select_menu.values[0] == "4":
                 global_booster_price_map = {
-                    '1_day': 299,
-                    '3_days': 799,
-                    '7_days': 1299
+                    '1_day': 199,
+                    '3_days': 499,
+                    '7_days': 999
                 }
 
                 options = [
@@ -656,7 +813,7 @@ class EconomyCog(commands.Cog):
                 embed.add_field(name='Выберите желаемую длительность для активации глобального бустера румбиков x2:',
                                 value='', inline=False)
                 embed.add_field(name='**Стоимость:**',
-                                value=f'* Глобальный бустер х2\n * Бустер (на 1 день) - 299{emoji}\n * Бустер (на 3 дня) - ~~900~~ 799{emoji} **Скидка -11%**\n * Бустер (на 7 дней) - ~~2100~~ 1299{emoji} **Скидка -37%**',
+                                value=f'* Глобальный бустер х2\n * Бустер (на 1 день) - 199{emoji}\n * Бустер (на 3 дня) - ~~600~~ 499{emoji} **На 17% выгоднее!**\n * Бустер (на 7 дней) - ~~1400~~ 999{emoji} **На 29% выгоднее!**',
                                 inline=False)
                 embed.add_field(name='Обратите внимание:',
                                 value=f'Если глобальный бустер румбиков уже активен, при повторной покупке его срок действия будет продлён.',

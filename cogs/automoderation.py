@@ -16,8 +16,8 @@ collservers = cluster.server.servers
 user_last_messages = {}
 flood_threshold = 20
 
-def create_log_embed(bot, channel, участник, message, dur, reason):
 
+def create_log_embed(bot, участник, message, dur, reason):
     embed = disnake.Embed(title="", url="",
                           description="", color=0xff8800, timestamp=datetime.now())
     embed.add_field(name="", value=f"Участник {участник.name} ({участник.mention}) был замучен!",
@@ -32,15 +32,17 @@ def create_log_embed(bot, channel, участник, message, dur, reason):
     embed.set_footer(text=f"ID участника: {участник.id}")
     return embed
 
+
 def create_error_embed(message: str) -> disnake.Embed:
     embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
-    embed.add_field(name='Ваше сообщение удалено', value=f'Причина: {message}')
-    embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+    embed.add_field(name='Ваше сообщение удалено', value=f'**Причина:** {message}')
+    embed.set_thumbnail(url="https://i.imgur.com/bugnSyX.gif")
     embed.set_footer(text='Автомодерация')
     return embed
+
+
 def check_flood(user_id, message_text):
     current_time = time.time()  # Текущее время в секундах
-    print('qqq')
     if user_id in user_last_messages:
         last_message_time, last_message_text, message_count = user_last_messages[user_id]
 
@@ -61,19 +63,41 @@ def check_flood(user_id, message_text):
     user_last_messages[user_id] = (current_time, message_text, message_count)
     return False  # Флуд не обнаружен
 
+
+user_message_times = {}
+
+
+def check_spam(user_id):
+    current_time = time.time()
+    if user_id not in user_message_times:
+        user_message_times[user_id] = []
+
+    # Очищаем сообщения старше 10 секунд
+    user_message_times[user_id] = [
+        timestamp for timestamp in user_message_times[user_id] if current_time - timestamp < 10
+    ]
+
+    # Добавляем текущее сообщение
+    user_message_times[user_id].append(current_time)
+
+    # Если сообщений больше 5 за 10 секунд — это спам
+    return len(user_message_times[user_id]) > 3
+
+
 class AutoModerationCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.user_data = {}
         self.update.start()
         self.mute_duration = [
-            (2, timedelta(minutes=10)),
-            (3, timedelta(minutes=30)),
-            (4, timedelta(minutes=60)),
-            (5, timedelta(hours=2)),
-            (6, timedelta(hours=4)),
-            (7, timedelta(hours=6)),
-            (8, timedelta(hours=10)),
+            (2, timedelta(minutes=1)),
+            (3, timedelta(minutes=10)),
+            (4, timedelta(minutes=30)),
+            (5, timedelta(hours=1)),
+            (6, timedelta(hours=2)),
+            (7, timedelta(hours=4)),
+            (8, timedelta(hours=8)),
+            (9, timedelta(hours=14))
         ]
 
     @tasks.loop(hours=24)
@@ -88,35 +112,27 @@ class AutoModerationCog(commands.Cog):
         member = message.guild.get_member(message.author.id)
         channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
         upper_letter = 0
-        booster = message.guild.get_role(757930494301044737)
-        diamond = message.guild.get_role(1044314368717897868)
-
-        if booster in member.roles or diamond in member.roles:
-            return
+        roles = [
+            message.guild.get_role(518505773022838797),  # admin
+            message.guild.get_role(580790278697254913),  # chief
+            message.guild.get_role(702593498901381184),  # moder
+            message.guild.get_role(757930494301044737),  # booster
+            message.guild.get_role(1044314368717897868),  # diamond
+            # message.guild.get_role(1303396950481174611),  # gold
+        ]
 
         if message.author.bot:
             return
-
-        if 'https://youtu.be' in message.content or 'https://www.youtube.com' in message.content or 'https://youtube.com' in message.content or 'https://discord.gg' in message.content or 'discord.gg' in message.content and not message.channel.id == 1044571685900259389:
-            await message.delete()
-            if message.author.id in self.user_data:
-                self.user_data[message.author.id] += 1
-            else:
-                self.user_data[message.author.id] = 1
-            print(self.user_data)
-            for count, timedelta_dur in self.mute_duration:
-                if count == self.user_data[message.author.id]:
-                    await message.author.timeout(duration=timedelta_dur)
-                    log_embed = create_log_embed(self.bot, channel, message.author, message.channel, timedelta_dur, 'Ссылки или приглашения.')
-                    await channel.send(embed=log_embed)
-            embed = create_error_embed('Ссылки или приглашения.')
-            message_reply = await message.channel.send(content=message.author.mention, embed=embed, delete_after=10)
-
-        if message.channel.id != 489867322039992323 and message.channel.id != 633033345600847872 and message.channel.id != 1279413707981455422:
+        # Проверяем, есть ли у пользователя хотя бы одна из этих ролей
+        if any(role in member.roles for role in roles):
             return
 
-        if check_flood(message.author.id, message.content):
-            await message.delete()
+        # Проверка на слишком частые сообщения (спам)
+        if check_spam(message.author.id):
+            try:
+                await message.delete()
+            except:
+                return
             if message.author.id in self.user_data:
                 self.user_data[message.author.id] += 1
             else:
@@ -125,20 +141,65 @@ class AutoModerationCog(commands.Cog):
             for count, timedelta_dur in self.mute_duration:
                 if count == self.user_data[message.author.id]:
                     await message.author.timeout(duration=timedelta_dur)
-                    log_embed = create_log_embed(self.bot, channel, message.author, message.channel, timedelta_dur, 'Флуд')
+                    log_embed = create_log_embed(self.bot, message.author, message, timedelta_dur,
+                                                 'Слишком частые сообщения')
                     await channel.send(embed=log_embed)
-            embed = create_error_embed('Флуд.')
-            message_reply = await message.channel.send(content=message.author.mention,embed=embed, delete_after=10)
+            embed = create_error_embed('Слишком частые сообщения')
+            await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
+
+        forbidden_links = [
+            'https://youtu.be', 'https://www.youtube.com',
+            'https://youtube.com', 'https://discord.gg', 'discord.gg'
+        ]
+
+        if any(link in message.content for link in forbidden_links) and message.channel.id != 1044571685900259389:
+            try:
+                await message.delete()
+            except:
+                return
+
+            if message.author.id in self.user_data:
+                self.user_data[message.author.id] += 1
+            else:
+                self.user_data[message.author.id] = 1
+            print(self.user_data)
+            for count, timedelta_dur in self.mute_duration:
+                if count == self.user_data[message.author.id]:
+                    await message.author.timeout(duration=timedelta_dur)
+                    log_embed = create_log_embed(self.bot, message.author, message, timedelta_dur,
+                                                 'Ссылки или приглашения')
+                    await channel.send(embed=log_embed)
+            embed = create_error_embed('Ссылки или приглашения')
+            await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
+
+        if check_flood(message.author.id, message.content):
+            try:
+                await message.delete()
+            except:
+                return
+            if message.author.id in self.user_data:
+                self.user_data[message.author.id] += 1
+            else:
+                self.user_data[message.author.id] = 1
+            print(self.user_data)
+            for count, timedelta_dur in self.mute_duration:
+                if count == self.user_data[message.author.id]:
+                    await message.author.timeout(duration=timedelta_dur)
+                    log_embed = create_log_embed(self.bot, message.author, message, timedelta_dur,
+                                                 'Флуд одинаковыми сообщениями')
+                    await channel.send(embed=log_embed)
+            embed = create_error_embed('Флуд одинаковыми сообщениями')
+            await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
 
         letters_of_words = list(message.content)
         for letter in letters_of_words:
             if letter.istitle():
                 upper_letter += 1
-        if upper_letter >= 8:
+        message_blank = message.content.replace(" ", "")
+        if upper_letter >= 20 and (upper_letter / len(message_blank)) >= 0.8:
             await message.delete()
-            embed = create_error_embed('Капс.')
-            print(upper_letter, message.content, letters_of_words)
-            message_reply = await message.channel.send(embed=embed, delete_after=10)
+            embed = create_error_embed('Чрезмерное использование верхнего регистра')
+            await message.channel.send(embed=embed, delete_after=120)
 
 
 def setup(bot):
