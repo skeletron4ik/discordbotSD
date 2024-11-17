@@ -150,7 +150,8 @@ class EconomyCog(commands.Cog):
             580790278697254913,  # Гл. Модератор
             702593498901381184,  # Модератор
             1044314368717897868,  # Diamond
-            757930494301044737  # Server Booster
+            757930494301044737,  # Server Booster
+            1303396950481174611  # Gold
         }
 
         balance = collusers.find_one({"id": inter.author.id})['balance']
@@ -164,7 +165,7 @@ class EconomyCog(commands.Cog):
                 amount_after_commission = количество
                 commission_amount = 0
             else:
-                commission = 0.05  # 5% комиссии
+                commission = 0.1  # 10% комиссии
                 amount_after_commission = количество * (1 - commission)
                 commission_amount = количество - amount_after_commission
 
@@ -188,7 +189,7 @@ class EconomyCog(commands.Cog):
             embed.add_field(name='Сумма сделки:', value=f'{formatted_amount}', inline=True)
 
             if commission_amount > 0:
-                embed.add_field(name='Комиссия:', value=f'5% ({formatted_commission_amount})', inline=True)
+                embed.add_field(name='Комиссия:', value=f'10% ({formatted_commission_amount})', inline=True)
                 embed.add_field(name='Итоговая сумма:', value=f'{formatted_amount_after_commission}', inline=True)
             else:
                 embed.add_field(name='Комиссия:', value=f'0%', inline=True)

@@ -9,6 +9,7 @@ import random
 import math
 import re
 from main import cluster
+import emoji
 
 collusers = cluster.server.users
 collservers = cluster.server.servers
@@ -17,17 +18,17 @@ user_last_messages = {}
 flood_threshold = 20
 
 
-def create_log_embed(bot, участник, message, dur, reason):
+def create_log_embed(bot, участник, message, mute_end_time, reason):
     embed = disnake.Embed(title="", url="",
                           description="", color=0xff8800, timestamp=datetime.now())
     embed.add_field(name="", value=f"Участник {участник.name} ({участник.mention}) был замучен!",
                     inline=False)
     embed.set_thumbnail(
         url="https://media4.giphy.com/media/4A2MFWNlGaGUJcyhlE/giphy.gif")
-    embed.add_field(name="Модератор:", value=f"*{bot.user.name}* ({bot.user.mention})", inline=True)
-    embed.add_field(name="Участник:", value=f"*{участник}* ({участник.mention})", inline=True)
+    embed.add_field(name="Автомодерация:", value=f"**{bot.user.name}** ({bot.user.mention})", inline=True)
+    embed.add_field(name="Участник:", value=f"**{участник}** ({участник.mention})", inline=True)
     embed.add_field(name="Канал:", value=f"{message.channel.mention}", inline=True)
-    embed.add_field(name="Время:", value=f"{dur}", inline=True)
+    embed.add_field(name="Время:", value=f"(<t:{int(mute_end_time.timestamp())}:F>)", inline=True)
     embed.add_field(name="Причина:", value=reason, inline=True)
     embed.set_footer(text=f"ID участника: {участник.id}")
     return embed
@@ -81,8 +82,22 @@ def check_spam(user_id):
     user_message_times[user_id].append(current_time)
 
     # Если сообщений больше 5 за 10 секунд — это спам
-    return len(user_message_times[user_id]) > 3
+    return len(user_message_times[user_id]) > 5
 
+def count_emojis(text):
+    """Подсчитывает количество эмодзи в тексте."""
+    return sum(1 for char in text if char in emoji.EMOJI_DATA)
+
+def check_excessive_mentions(message: disnake.Message, limit: int = 6) -> bool:
+    """
+    Проверяет, превышает ли сообщение допустимое количество упоминаний.
+
+    :param message: Объект сообщения.
+    :param limit: Максимально допустимое количество упоминаний (по умолчанию 5).
+    :return: True, если количество упоминаний превышает лимит, иначе False.
+    """
+    total_mentions = len(message.mentions) + len(message.role_mentions)
+    return total_mentions > limit
 
 class AutoModerationCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -91,13 +106,13 @@ class AutoModerationCog(commands.Cog):
         self.update.start()
         self.mute_duration = [
             (2, timedelta(minutes=1)),
-            (3, timedelta(minutes=10)),
-            (4, timedelta(minutes=30)),
-            (5, timedelta(hours=1)),
-            (6, timedelta(hours=2)),
-            (7, timedelta(hours=4)),
-            (8, timedelta(hours=8)),
-            (9, timedelta(hours=14))
+            (3, timedelta(minutes=5)),
+            (4, timedelta(minutes=15)),
+            (5, timedelta(minutes=40)),
+            (6, timedelta(hours=1)),
+            (7, timedelta(hours=3)),
+            (8, timedelta(hours=5)),
+            (9, timedelta(hours=15))
         ]
 
     @tasks.loop(hours=24)
@@ -137,14 +152,15 @@ class AutoModerationCog(commands.Cog):
                 self.user_data[message.author.id] += 1
             else:
                 self.user_data[message.author.id] = 1
-            print(self.user_data)
             for count, timedelta_dur in self.mute_duration:
                 if count == self.user_data[message.author.id]:
+                    mute_end_time = datetime.now() + timedelta_dur  # Время окончания мьюта
                     await message.author.timeout(duration=timedelta_dur)
-                    log_embed = create_log_embed(self.bot, message.author, message, timedelta_dur,
+                    log_embed = create_log_embed(self.bot, message.author, message, mute_end_time,
                                                  'Слишком частые сообщения')
                     await channel.send(embed=log_embed)
-            embed = create_error_embed('Слишком частые сообщения')
+
+            embed = create_error_embed('Слишком частые сообщения.\nТссссс... Зачем Вы ускоряетесь? Люди даже читать не успевают!')
             await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
 
         forbidden_links = [
@@ -162,14 +178,14 @@ class AutoModerationCog(commands.Cog):
                 self.user_data[message.author.id] += 1
             else:
                 self.user_data[message.author.id] = 1
-            print(self.user_data)
             for count, timedelta_dur in self.mute_duration:
                 if count == self.user_data[message.author.id]:
+                    mute_end_time = datetime.now() + timedelta_dur  # Время окончания мьюта
                     await message.author.timeout(duration=timedelta_dur)
-                    log_embed = create_log_embed(self.bot, message.author, message, timedelta_dur,
+                    log_embed = create_log_embed(self.bot, message.author, message, mute_end_time,
                                                  'Ссылки или приглашения')
                     await channel.send(embed=log_embed)
-            embed = create_error_embed('Ссылки или приглашения')
+            embed = create_error_embed('Ссылки или приглашения.\nРеклама — не здесь, а где-то там, но точно не тут, не в этом чатике, а в другом месте, там, где рекламируют!')
             await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
 
         if check_flood(message.author.id, message.content):
@@ -181,14 +197,14 @@ class AutoModerationCog(commands.Cog):
                 self.user_data[message.author.id] += 1
             else:
                 self.user_data[message.author.id] = 1
-            print(self.user_data)
             for count, timedelta_dur in self.mute_duration:
                 if count == self.user_data[message.author.id]:
+                    mute_end_time = datetime.now() + timedelta_dur  # Время окончания мьюта
                     await message.author.timeout(duration=timedelta_dur)
-                    log_embed = create_log_embed(self.bot, message.author, message, timedelta_dur,
+                    log_embed = create_log_embed(self.bot, message.author, message, mute_end_time,
                                                  'Флуд одинаковыми сообщениями')
                     await channel.send(embed=log_embed)
-            embed = create_error_embed('Флуд одинаковыми сообщениями')
+            embed = create_error_embed('Флуд одинаковыми сообщениями.\n Мы поняли, поняли, зачем еще 10 раз повторять?')
             await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
 
         letters_of_words = list(message.content)
@@ -198,8 +214,43 @@ class AutoModerationCog(commands.Cog):
         message_blank = message.content.replace(" ", "")
         if upper_letter >= 20 and (upper_letter / len(message_blank)) >= 0.8:
             await message.delete()
-            embed = create_error_embed('Чрезмерное использование верхнего регистра')
+            embed = create_error_embed('Чрезмерное использование верхнего регистра.\n ЗАЧЕМ ВЫ КРИЧИТЕ? Зачем нарушаете тишину?')
             await message.channel.send(embed=embed, delete_after=120)
+
+        # Порог для количества эмодзи
+        EMOJI_THRESHOLD = 15
+
+        # Проверка на количество эмодзи
+        emoji_count = count_emojis(message.content)
+
+        if emoji_count > EMOJI_THRESHOLD:
+            try:
+                await message.delete()  # Удаляем сообщение
+            except:
+                return
+
+            embed = create_error_embed(f'f"Слишком много эмодзи ({emoji_count}/{EMOJI_THRESHOLD}).\nПонимаю, вы эмоциональный человек, но давайте немного сократим их количество, чтобы сохранить сообщения читабельными."')
+            await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
+
+        # Проверка на чрезмерное количество упоминаний
+        mention_limit = 6
+        if check_excessive_mentions(message, mention_limit):
+            try:
+                await message.delete()
+            except Exception as e:
+                print(f"Ошибка удаления сообщения: {e}")
+                return
+
+            embed = create_error_embed(
+                f"Слишком много упоминаний ({len(message.mentions) + len(message.role_mentions)} из {mention_limit} допустимых).\n Ну, давате еще весь сервер тут пинганите..."
+            )
+            await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
+
+        max_word_length = 50
+        if any(len(word) > max_word_length for word in message.content.split()):
+            await message.delete()
+            embed = create_error_embed("Подозрительно длинное слово.\n Это новое слово, которое попадет в книгу рекородов Гинесса как 'Самое длинное слово'? Или это флуд символами? А возможно у Вас не работает пробел?")
+            await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
 
 
 def setup(bot):
