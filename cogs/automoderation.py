@@ -10,6 +10,7 @@ import math
 import re
 from main import cluster
 import emoji
+from ai.ai import generate_response
 
 collusers = cluster.server.users
 collservers = cluster.server.servers
@@ -159,8 +160,8 @@ class AutoModerationCog(commands.Cog):
                     log_embed = create_log_embed(self.bot, message.author, message, mute_end_time,
                                                  'Слишком частые сообщения')
                     await channel.send(embed=log_embed)
-
-            embed = create_error_embed('Слишком частые сообщения.\nТссссс... Зачем Вы ускоряетесь? Люди даже читать не успевают!')
+            response = await generate_response(prompt=message.content, instructions='Ты модератор и должен обязательно на русском написать, что пользователь часто отправляет сообщения, адресуя это ему.', error='Слишком частые сообщения.\nТссссс... Зачем Вы ускоряетесь? Люди даже читать не успевают!')
+            embed = create_error_embed(response)
             await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
 
         forbidden_links = [
@@ -185,7 +186,10 @@ class AutoModerationCog(commands.Cog):
                     log_embed = create_log_embed(self.bot, message.author, message, mute_end_time,
                                                  'Ссылки или приглашения')
                     await channel.send(embed=log_embed)
-            embed = create_error_embed('Ссылки или приглашения.\nРеклама — не здесь, а где-то там, но точно не тут, не в этом чатике, а в другом месте, там, где рекламируют!')
+            response = await generate_response(prompt=message.content,
+                                               instructions='Ты модератор и должен обязательно на русском написать, что пользователь отправляет ссылки или приглашения адресуя, это ему.',
+                                               error='Ссылки или приглашения.\nРеклама — не здесь, а где-то там, но точно не тут, не в этом чатике, а в другом месте, там, где рекламируют!')
+            embed = create_error_embed(response)
             await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
 
         if check_flood(message.author.id, message.content):
@@ -204,7 +208,10 @@ class AutoModerationCog(commands.Cog):
                     log_embed = create_log_embed(self.bot, message.author, message, mute_end_time,
                                                  'Флуд одинаковыми сообщениями')
                     await channel.send(embed=log_embed)
-            embed = create_error_embed('Флуд одинаковыми сообщениями.\n Мы поняли, поняли, зачем еще 10 раз повторять?')
+            response = await generate_response(prompt=message.content,
+                                               instructions='Ты модератор и должен обязательно на русском написать, что пользователь флудит одинаковыми сообщениями, адресуя это ему.',
+                                               error='Флуд одинаковыми сообщениями.\n Мы поняли, поняли, зачем еще 10 раз повторять?')
+            embed = create_error_embed(response)
             await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
 
         letters_of_words = list(message.content)
@@ -214,7 +221,10 @@ class AutoModerationCog(commands.Cog):
         message_blank = message.content.replace(" ", "")
         if upper_letter >= 20 and (upper_letter / len(message_blank)) >= 0.8:
             await message.delete()
-            embed = create_error_embed('Чрезмерное использование верхнего регистра.\n ЗАЧЕМ ВЫ КРИЧИТЕ? Зачем нарушаете тишину?')
+            response = await generate_response(prompt=message.content,
+                                               instructions='Ты модератор и должен обязательно на русском написать, что пользователь использует слишком много верхнего регистра, адресуя это ему.',
+                                               error='Чрезмерное использование верхнего регистра.\n ЗАЧЕМ ВЫ КРИЧИТЕ? Зачем нарушаете тишину?')
+            embed = create_error_embed(response)
             await message.channel.send(embed=embed, delete_after=120)
 
         # Порог для количества эмодзи
@@ -228,13 +238,18 @@ class AutoModerationCog(commands.Cog):
                 await message.delete()  # Удаляем сообщение
             except:
                 return
-
-            embed = create_error_embed(f'f"Слишком много эмодзи ({emoji_count}/{EMOJI_THRESHOLD}).\nПонимаю, вы эмоциональный человек, но давайте немного сократим их количество, чтобы сохранить сообщения читабельными."')
+            response = await generate_response(prompt=message.content,
+                                               instructions='Ты модератор и должен обязательно на русском написать, '
+                                                            'что пользователь использует отправляет слишком много эмодзи, адресуя это ему.',
+                                               error=f'f"Слишком много эмодзи ({emoji_count}/{EMOJI_THRESHOLD}).\n'
+                                                     f'Понимаю, вы эмоциональный человек, но давайте немного сократим '
+                                                     f'их количество, чтобы сохранить сообщения читабельными."')
+            embed = create_error_embed(response)
             await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
 
         # Проверка на чрезмерное количество упоминаний
         mention_limit = 6
-        if check_excessive_mentions(message, mention_limit):
+        if check_excessive_mentions(message, mention_limit) and not 'https://' in message.content:
             try:
                 await message.delete()
             except Exception as e:
@@ -249,7 +264,13 @@ class AutoModerationCog(commands.Cog):
         max_word_length = 50
         if any(len(word) > max_word_length for word in message.content.split()):
             await message.delete()
-            embed = create_error_embed("Подозрительно длинное слово.\n Это новое слово, которое попадет в книгу рекородов Гинесса как 'Самое длинное слово'? Или это флуд символами? А возможно у Вас не работает пробел?")
+            response = await generate_response(prompt=message.content,
+                                               instructions='Ты модератор и должен обязательно на русском написать, '
+                                                            'что пользователь отправляет слишком длинное слово, которое не существует, адресуя это ему.',
+                                               error="Подозрительно длинное слово.\n Это новое слово, которое попадет "
+                                                     "в книгу рекородов Гинесса как 'Самое длинное слово'? Или это "
+                                                     "флуд символами? А возможно у Вас не работает пробел?")
+            embed = create_error_embed(response)
             await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
 
 
