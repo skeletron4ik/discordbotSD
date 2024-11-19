@@ -70,7 +70,7 @@ class InfoCog(commands.Cog):
             участник)
 
         def get_reputation_title(reputation):
-            if 0 <= reputation < 20:
+            if -9 <= reputation < 20:
                 return "Нормальный"
             elif 20 <= reputation <= 49:
                 return "Хороший"
