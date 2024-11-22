@@ -101,6 +101,7 @@ async def on_ready():
                 "nickname": member.display_name,  # Store initial nickname
                 "user_name": member.name,  # Store actual username
                 "balance": 0,
+                "keys": 0,
                 "reputation": 0,  # Новое поле для репутации
                 "reaction_count": 0,  # Поле для отслеживания количества реакций пользователя
                 "number_of_deal": 0,
@@ -155,6 +156,7 @@ async def on_member_join(member):
         "nickname": member.display_name,
         "user_name": member.name,
         "balance": 0,
+        "keys": 0,
         "reputation": 0,
         "reaction_count": 0,
         "number_of_deal": 0,

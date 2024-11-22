@@ -17,7 +17,7 @@ cooldowns = {}
 voice_timestamps = {}
 mute_timestamps = {}
 total_time = {}
-emoji = "<a:rumbick_gif:1276856664842047518>"
+emoji = "<a:rumbick:1271085088142262303>"
 
 def format_duration(value):
     if value == 1:
@@ -27,7 +27,7 @@ def format_duration(value):
     else:
         return f"`{value}` румбиков"
 def format_rumbick(value):
-    emoji = "<a:rumbick_gif:1276856664842047518>"
+    emoji = "<a:rumbick:1271085088142262303>"
     return f"{value}{emoji}"
 
 def create_error_embed(message: str) -> disnake.Embed:
@@ -151,8 +151,8 @@ class EconomyCog(commands.Cog):
             702593498901381184,  # Модератор
             1044314368717897868,  # Diamond
             757930494301044737,  # Server Booster
-            1303396950481174611  # Gold
         }
+        role_gold = 1303396950481174611  # Gold
 
         balance = collusers.find_one({"id": inter.author.id})['balance']
 
@@ -164,8 +164,14 @@ class EconomyCog(commands.Cog):
             if is_sender_excluded:
                 amount_after_commission = количество
                 commission_amount = 0
+            elif role_gold in [role.id for role in inter.author.roles]:
+                commission = 0.05  # 5% комиссии
+                human_commision = 5
+                amount_after_commission = количество * (1 - commission)
+                commission_amount = количество - amount_after_commission
             else:
                 commission = 0.1  # 10% комиссии
+                human_commision = 10
                 amount_after_commission = количество * (1 - commission)
                 commission_amount = количество - amount_after_commission
 
@@ -175,9 +181,9 @@ class EconomyCog(commands.Cog):
             collusers.find_one_and_update({'id': участник.id}, {'$inc': {'number_of_deal': 1}})
             collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
 
-            formatted_amount = format_rumbick(количество)
-            formatted_amount_after_commission = format_rumbick(amount_after_commission)
-            formatted_commission_amount = format_rumbick(commission_amount)
+            formatted_amount = format_rumbick(round(количество, 2))
+            formatted_amount_after_commission = format_rumbick(round(amount_after_commission, 2))
+            formatted_commission_amount = format_rumbick(round(commission_amount, 2))
 
             embed = disnake.Embed(title=f'Сделка `{inter.author.display_name}` ⇾ `{участник.display_name}`',
                                   color=0x00ff00)
@@ -189,7 +195,7 @@ class EconomyCog(commands.Cog):
             embed.add_field(name='Сумма сделки:', value=f'{formatted_amount}', inline=True)
 
             if commission_amount > 0:
-                embed.add_field(name='Комиссия:', value=f'10% ({formatted_commission_amount})', inline=True)
+                embed.add_field(name='Комиссия:', value=f'{human_commision}% ({formatted_commission_amount})', inline=True)
                 embed.add_field(name='Итоговая сумма:', value=f'{formatted_amount_after_commission}', inline=True)
             else:
                 embed.add_field(name='Комиссия:', value=f'0%', inline=True)
@@ -306,6 +312,10 @@ class EconomyCog(commands.Cog):
         embed.add_field(name=f'**4. 🚀 Глобальный бустер румбиков x2**',
                         value=f'Вдвое увеличивает зароботок с активнисти в голосовых каналах и текстовых чатах.\n**Цена покупки:** ``199``{emoji} | ``499``{emoji} | ``999``{emoji}\n**Содержит в себе:** Глобальный бустер румбиков x2.',
                         inline=False)
+        embed.add_field(name=f'**5. 🔑 Мистический ключ**',
+                        value=f'Покрытый загадочными рунами, этот ключ открывает мистический ящик с редкими сокровищами. Готов ли ты узнать, что внутри?\n**Цена покупки:** от ``49``{emoji} за штуку'
+                              f'\n**Содержит в себе:** Возможность открыть **загадочный ящик** с помощью команды ``/mysterybox``. Кто знает, что скрывается внутри?',
+                        inline=False)
         embed.add_field(name='', value='')
         embed.add_field(name='', value=f'**Ваш текущий баланс:** {balance_formatted}', inline=False)
 
@@ -318,6 +328,7 @@ class EconomyCog(commands.Cog):
                                  value="3"),
             disnake.SelectOption(label="🚀 Глобальный бустер румбиков x2",
                                  description="Увеличивает зароботок Румбиков вдвое", value="4"),
+            disnake.SelectOption(label=f"🔑 Мистический ключ", description="Даёт возможность открыть загадочный ящик", value="5")
         ]
 
         # Создаем select menu
@@ -335,10 +346,24 @@ class EconomyCog(commands.Cog):
                 embed1.set_author(name=f'Выберите длительность {diamond.name}', icon_url=inter.guild.icon.url)
                 embed1.set_thumbnail(url='https://i.gifer.com/origin/63/6309237109affef229b14c3c5dc7308b_w200.gif')
                 embed1.add_field(name='',
-                                 value=f'{diamond.mention} - Привилегия на сервере, открывает недоступные для обычных пользователей функции.',
+                                 value=f'{diamond.mention} - Роль-привилегия, предоставляющая уникальные возможности для самых активных и преданных участников. С этой ролью вы получите полный доступ к эксклюзивным функциям сервера.',
                                  inline=False)
-                embed1.add_field(name='',
-                                 value='```🟢 Отдельное отображение от остальных участников\n🟢 Голосовой канал, в который могут заходить только участники с этой ролью\n🟢 Доступ к Журналу аудита\n🟢 Возможность изменять свой никнейм\n🟢 На Вас не работает автомодерация сообщений\n🟢 Отключен кулдаун между использованиям команд\n🟢 При нарушениях длительность Ваших предупреждений уменьшается на 10 дней\n🟢 Комиссия 0% на перевод Румбиков```')
+                embed1.add_field(
+                    name="**Привилегии:**",
+                    value=(
+                         "```"
+                        "✅ 👤 Уникальное отображение в списке участников\n"
+                        "✅ ⭐️ Уникальная иконка возле ника\n"
+                        "✅ 🔒 Эксклюзивный доступ к VIP-каналу\n"
+                        "✅ 📜 Полный доступ к Журналу аудита\n"
+                        "✅ ✏️ Неограниченное и бесплатное изменение никнейма\n"
+                        "✅ 🛡️ Полное игнорирование системы автомодерации\n"
+                        "✅ ⏱️ Убран кулдаун между использованием команд\n"
+                        "✅ 📆 Сокращение срока предупреждений на 10 дней при нарушениях\n"
+                        "✅ 💸 Нулевая комиссия при переводе Румбиков\n"
+                        "✅ 🏷️ Возможность установить статус канала"
+                        "```"
+                    ), inline=False)
                 embed1.add_field(name='', value='')
                 embed1.add_field(name='**Стоимость**',
                                  value=f'* {diamond.mention}\n * {diamond.mention} (на 30 дней) - 399{emoji}\n * {diamond.mention} (на 60 дней) - ~~800~~ 699{emoji} **На 15% выгоднее!**\n * {diamond.mention} (на 90 дней) - ~~1200~~ 949{emoji} **На 20% выгоднее!**',
@@ -487,11 +512,24 @@ class EconomyCog(commands.Cog):
                 embed1.set_author(name=f'Выберите длительность {gold.name}', icon_url=inter.guild.icon.url)
                 embed1.set_thumbnail(url='https://i.gifer.com/origin/63/6309237109affef229b14c3c5dc7308b_w200.gif')
                 embed1.add_field(name='',
-                                 value=f'{gold.mention} - Привилегия на сервере, открывает недоступные для обычных пользователей функции.',
+                                 value=f'{diamond.mention} - Роль-привилегия, предоставляющая уникальные возможности для самых активных и преданных участников. С этой ролью вы получите ограниченный доступ к эксклюзивным функциям сервера.',
                                  inline=False)
-                embed1.add_field(name='',
-                                 value='```🟢 Отдельное отображение от остальных участников\n🟢 Голосовой канал, в который могут заходить только участники с этой ролью\n🟢 Доступ к Журналу аудита\n🟢 Возможность изменять свой никнейм\n🟢 На Вас не работает автомодерация сообщений\n🟢 Отключен кулдаун между использованиям команд\n🟢 При нарушениях длительность Ваших предупреждений уменьшается на 10 дней\n🟢 Комиссия 0% на перевод Румбиков```')
-                embed1.add_field(name='', value='')
+                embed1.add_field(
+                    name="**Привилегии:**",
+                    value=(
+                        "```"
+                        "✅ 👤 Уникальное отображение в списке участников\n"
+                        "✅ ⭐️ Уникальная иконка возле ника\n"
+                        "✅ 🔒 Эксклюзивный доступ к VIP-каналу\n"
+                        "❌ 📜 Полный доступ к Журналу аудита\n"
+                        "❌ ✏️ Неограниченное и бесплатное изменение никнейма\n"
+                        "❌ 🛡️ Полное игнорирование системы автомодерации\n"
+                        "✅ ⏱️ Убран кулдаун между использованием команд\n"
+                        "❌ 📆 Сокращение срока предупреждений на 10 дней при нарушениях\n"
+                        "✅ 💸 Комиссия при переводе Румбиков снижена до 5%\n"
+                        "✅ 🏷️ Возможность установить статус канала"
+                        "```"
+                    ), inline=False)
                 embed1.add_field(name='**Стоимость**',
                                  value=f'* {gold.mention}\n * {gold.mention} (на 30 дней) - 199{emoji}\n * {gold.mention} (на 60 дней) - ~~400~~ 349{emoji} **На 15% выгоднее!**\n * {gold.mention} (на 90 дней) - ~~600~~ 499{emoji} **На 20% выгоднее!**',
                                  inline=False)
@@ -823,6 +861,106 @@ class EconomyCog(commands.Cog):
                 embed.add_field(name='', value=f'**Ваш текущий баланс:** {balance_formatted}', inline=False)
                 await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
+            if select_menu.values[0] == "5":
+                user_data = collusers.find_one({'id': inter.author.id})
+                keys_count = user_data.get('keys', 0)
+                embed1 = disnake.Embed(color=0x4169E1)
+                embed1.set_author(name=f'Выберите количество ключей', icon_url=inter.guild.icon.url)
+                embed1.set_thumbnail(url='https://i.gifer.com/origin/63/6309237109affef229b14c3c5dc7308b_w200.gif')
+                embed1.add_field(name='',
+                                 value=f'Мистический ключ - этот таинственный ключ покрыт древними рунами, мерцающими в полумраке. Никто не знает, откуда он появился, но говорят, что он способен открыть **мистический ящик**, хранящий в себе невероятные секреты и редкие сокровища. Отважишься ли ты узнать, что скрывается внутри?',
+                                 inline=False)
+                embed1.add_field(name='Что можеть выпасть?',
+                                 value='```🟢 Румбики\n 🟢 Diamond\n 🟢 Gold\n```')
+                embed1.add_field(name='', value='')
+                embed1.add_field(name='**Стоимость:**',
+                                 value=f'* 🔑️ Ключ\n * от **1🔑️+** = 49{emoji}\n * от **5🔑️+** = ~~250~~ 236{emoji} **На 5% выгоднее!**\n * от **10🔑️+** = ~~500~~ 449{emoji} **На 10% выгоднее!**\n * от **50🔑️+** = ~~2500~~ 2125{emoji} **На 15% выгоднее!**\n * от **100🔑️+** = ~~5000~~ 3999{emoji} **На 20% выгоднее!**\n * от **200🔑️+** = ~~10000~~ 6999{emoji} **На 30% выгоднее!**',
+                                 inline=False)
+                embed1.add_field(name='Обратите внимание:',
+                                 value=f'Чем больше ключей вы покупаете - тем выгоднее!',
+                                 inline=False)
+                embed1.add_field(name='', value='')
+                embed1.add_field(name='', value=f'**Количество ключей:** {keys_count}🔑', inline=False)
+                embed1.add_field(name='', value=f'**Ваш текущий баланс:** {balance_formatted}', inline=False)
+
+                components = [
+                    disnake.ui.Button(label=f"Выбрать количество для покупки", style=disnake.ButtonStyle.blurple,
+                                      emoji="🔑", custom_id='30'),
+                ]
+
+                # Убедитесь, что класс KeyModal объявлен заранее
+                class KeyModal(disnake.ui.Modal):
+                    def __init__(self):
+                        components = [
+                            disnake.ui.TextInput(
+                                label="Введите количество ключей",
+                                placeholder="Чем больше - тем выгоднее!",
+                                custom_id="key_amount",
+                                style=disnake.TextInputStyle.short,
+                            )
+                        ]
+                        super().__init__(title="Покупка ключей", custom_id="key_modal", components=components)
+
+                    async def callback(self, interaction: disnake.ModalInteraction):
+                        key_amount = int(interaction.text_values["key_amount"])
+                        price = calculate_discounted_price(key_amount)
+
+                        if collusers.find_one({'id': interaction.author.id})['balance'] < price:
+                            error_message = "У вас не хватает румбиков для покупки."
+                            embed = create_error_embed(error_message)
+                            await interaction.send(embed=embed, ephemeral=True)
+                            return
+                        else:
+                            collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
+                            collusers.find_one_and_update({'id': interaction.author.id},
+                                                          {'$inc': {'balance': -price}})
+                            collusers.update_many({'id': inter.author.id}, {'$inc': {'keys': key_amount}})
+                            embed = disnake.Embed(
+                                description=f"Вы приобрели **{key_amount}**🔑 ключей за **{price}**{emoji}\n Используйте команду ``/mysterybox``, чтобы открыть **мистический сундук**.",
+                                colour=0x00ff00,
+                                timestamp=datetime.now()
+                            )
+                            embed.set_author(name="Вы успешно приобрели Ключи!",
+                                             icon_url="https://i.imgur.com/vlX2dxG.gif")
+                            embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
+                            embed.set_footer(text="Покупка прошла успешно",
+                                             icon_url=interaction.guild.icon.url)
+
+                            await interaction.send(embed=embed, ephemeral=True)
+
+                async def button_callback(inter: disnake.MessageInteraction):
+                    # Убираем defer
+                    await inter.response.send_modal(KeyModal())
+
+                # Присваиваем callback к кнопке
+                components[0].callback = button_callback
+
+                # Отправляем сообщение
+                view = disnake.ui.View()
+                for component in components:
+                    view.add_item(component)
+
+                await interaction.response.send_message(embed=embed1, view=view, ephemeral=True)
+
+            def calculate_discounted_price(key_amount):
+                base_price = 50  # Цена за 1 ключ без скидки
+
+                if 1 <= key_amount <= 4:
+                    return key_amount * base_price - 1  # Без скидки
+                elif 5 <= key_amount <= 9:
+                    discount = 0.05  # 5% скидка
+                elif 10 <= key_amount <= 49:
+                    discount = 0.10  # 10% скидка
+                elif 50 <= key_amount <= 99:
+                    discount = 0.15  # 15% скидка
+                elif 100 <= key_amount <= 199:
+                    discount = 0.20  # 20% скидка
+                else:  # 200 и более
+                    discount = 0.30  # 30% скидка
+
+                discounted_price_per_key = base_price * (1 - discount)
+                return round(key_amount * discounted_price_per_key - 1)  # Округляем до ближайшего целого
+
         select_menu.callback = select_callback
 
         # Создаем view и добавляем в него select menu
@@ -832,7 +970,6 @@ class EconomyCog(commands.Cog):
         # Отправляем сообщение с view
 
         await inter.edit_original_response(embed=embed, view=view)
-
 
 
     @commands.Cog.listener()

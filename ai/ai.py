@@ -3,7 +3,7 @@ from os import getenv
 from dotenv import load_dotenv
 from sys import exit
 
-client = AsyncGroq(api_key=getenv("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"))
+client = AsyncGroq(api_key="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")
 model = "llama3-70b-8192"
 
 
