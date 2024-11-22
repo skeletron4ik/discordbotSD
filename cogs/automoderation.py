@@ -20,7 +20,7 @@ flood_threshold = 20
 
 
 def create_log_embed(bot, участник, message, mute_end_time, reason):
-    embed = disnake.Embed(title="", url="",
+    embed = disnake.Embed(title="   ", url="",
                           description="", color=0xff8800, timestamp=datetime.now())
     embed.add_field(name="", value=f"Участник {участник.name} ({участник.mention}) был замучен!",
                     inline=False)
@@ -262,7 +262,7 @@ class AutoModerationCog(commands.Cog):
             await message.channel.send(content=message.author.mention, embed=embed, delete_after=120)
 
         max_word_length = 50
-        if any(len(word) > max_word_length for word in message.content.split()):
+        if any(len(word) > max_word_length for word in message.content.split() and not 'https://' in message.content):
             await message.delete()
             response = await generate_response(prompt=message.content,
                                                instructions='Ты модератор и должен обязательно на русском написать, '

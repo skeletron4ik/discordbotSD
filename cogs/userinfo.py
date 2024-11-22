@@ -16,11 +16,22 @@ collbans = cluster.server.bans
 emoji = "<a:rumbick_gif:1276856664842047518>"
 
 
+def check_value(inter):
+    result = collusers.update_one(
+        {"id": inter.author.id, "guild_id": inter.guild.id, "settings": {"$exists": False}},
+        {"$set": {}}
+    )
+    collusers.update_one(
+        {"id": inter.author.id, "guild_id": inter.guild.id, 'settings.reputation_notification': {"$exists": False}},
+        {"$set": {"settings.reputation_notification": True}})
+
+
 class InfoCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.slash_command(name='user-info', description='Выводит основную информацию об участнике', dm_permission=False)
+    @commands.slash_command(name='user-info', description='Выводит основную информацию об участнике',
+                            dm_permission=False)
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def user(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
         if inter.type == disnake.InteractionType.application_command:
@@ -32,6 +43,7 @@ class InfoCog(commands.Cog):
 
         if участник is None:
             участник = inter.author
+            settings = True
 
         embed = disnake.Embed(title=f"Информация об участнике ``{участник.name}``:", url="",
                               description="", color=0x00b7ff, timestamp=datetime.now())
@@ -151,6 +163,82 @@ class InfoCog(commands.Cog):
                 current_game = activity.name
                 break
 
+        check_value(inter)
+        query = {"id": inter.author.id, "guild_id": inter.guild_id}
+
+        projection = {'_id': 0, "settings.reputation_notification": 1}
+
+        result = collusers.find_one(query, projection)
+        result = result["settings"]["reputation_notification"]
+        print(result)
+        if result:
+            options = [
+                disnake.SelectOption(label=f"🟢 Оповещение об изменении репутации",
+                                     description="Оповещение об изменении репутации. Статус: 🟢", value="1"),
+            ]
+        else:
+            options = [
+                disnake.SelectOption(label=f"🔴 Оповещение об из менении репутации",
+                                     description="Оповещение об изменении репутации. Статус: 🔴", value="1"),
+            ]
+
+        # Создаем select menu
+        select_menu = disnake.ui.Select(
+            placeholder="Поменять настройки...",
+            min_values=1,
+            max_values=1,
+            options=options,
+        )
+
+        async def select_callback(interaction: disnake.MessageInteraction):
+            await interaction.response.defer(ephemeral=True)
+            result2 = collusers.find_one(query, projection)
+            result2 = result2["settings"]["reputation_notification"]
+            if select_menu.values[0] == "1":
+                if interaction.author.id != inter.author.id:
+                    await interaction.followup.send('проверка на долбоеба не пройдена', ephemeral=True)
+                if result2:
+                    collusers.update_one(
+                        {"id": interaction.author.id, "guild_id": interaction.guild.id},
+                        {"$set": {"settings.reputation_notification": False}})
+                    await interaction.followup.send('вы изменили настройку (выключено)', ephemeral=True)
+                else:
+                    collusers.update_one(
+                        {"id": interaction.author.id, "guild_id": interaction.guild.id},
+                        {"$set": {"settings.reputation_notification": True}})
+                    await interaction.followup.send('вы изменили настройку (включено)', ephemeral=True)
+
+
+                result1 = collusers.find_one(query, projection)
+                result1 = result1["settings"]["reputation_notification"]
+
+                if result1:
+                    options1 = [
+                        disnake.SelectOption(label=f"🟢 Оповещение об изменении репутации",
+                                             description="Оповещение об изменении репутации. Статус: 🟢", value="1"),
+                    ]
+                else:
+                    options1 = [
+                        disnake.SelectOption(label=f"🔴 Оповещение об из менении репутации",
+                                             description="Оповещение об изменении репутации. Статус: 🔴", value="1"),
+                    ]
+
+                # Создаем select menu
+                select_menu1 = disnake.ui.Select(
+                    placeholder="Поменять настройки...",
+                    min_values=1,
+                    max_values=1,
+                    options=options1,
+                )
+
+                select_menu1.callback = select_callback
+
+                # Создаем view и добавляем в него select menu
+                view1 = disnake.ui.View()
+                view1.add_item(select_menu1)
+
+                await inter.edit_original_response(embed=embed, view=view1)
+
         try:
             embed.add_field(name=f'',
                             value=f'**Основная роль:** {highest_role.mention if highest_role else "``Неизвестно``"}',
@@ -172,7 +260,8 @@ class InfoCog(commands.Cog):
                 rep_emoji = "<:rep_up:1278690709855010856>"
             else:
                 rep_emoji = "<:rep_down:1278690717652357201>"
-            embed.add_field(name=f'', value=f'**⭐ Репутация:** ``{reputation}`` {rep_emoji} - ``{reputation_title}``',inline=False)  # Add reputation field
+            embed.add_field(name=f'', value=f'**⭐ Репутация:** ``{reputation}`` {rep_emoji} - ``{reputation_title}``',
+                            inline=False)  # Add reputation field
             embed.add_field(name=f'', value=f'**🖊️ Сообщений:\n** ``{message_count}``', inline=True)
             embed.add_field(name=f'',
                             value=f'**🎤 Голосовая активность:\n** ``{formatted_total_time}``',
@@ -184,7 +273,8 @@ class InfoCog(commands.Cog):
 
             # Проверка перед выводом секции с предупреждениями, баном, мутом и временными ролями
             if warns_count != "Не имеется" or ban != "Не заблокирован" or mute != "Не замучен" or number_of_roles != "Не имеется":
-                embed.add_field(name=f'', value=f'-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-', inline=False)
+                embed.add_field(name=f'', value=f'-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-',
+                                inline=False)
             if warns_count != "Не имеется":
                 embed.add_field(name=f'', value=f'**⚠️ Предупреждений:\n** ``{warns_count}``', inline=True)
             if ban != "Не заблокирован":
@@ -207,10 +297,29 @@ class InfoCog(commands.Cog):
                         )
             embed.set_footer(text=f'ID: {участник.id}')
 
-            await inter.edit_original_response(embed=embed)
+            if участник != True:
+                select_menu.callback = select_callback
+
+                # Создаем view и добавляем в него select menu
+                view = disnake.ui.View()
+                view.add_item(select_menu)
+
+                await inter.edit_original_response(embed=embed, view=view)
+            else:
+                await inter.edit_original_response(embed=embed)
         except Exception as e:
             print(f"Error editing response: {e}")
-            await inter.response.send_message(embed=embed, ephemeral=True)
+
+            if участник is None:
+                select_menu.callback = select_callback
+
+                # Создаем view и добавляем в него select menu
+                view = disnake.ui.View()
+                view.add_item(select_menu)
+
+                await inter.response.send_message(embed=embed, ephemeral=True, view=view)
+            else:
+                await inter.response.send_message(embed=embed, ephemeral=True)
 
 
 def setup(bot):

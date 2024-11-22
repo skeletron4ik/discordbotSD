@@ -15,6 +15,16 @@ collusers = cluster.server.users
 collservers = cluster.server.servers
 
 
+def check_value(inter, guild):
+    result = collusers.update_one(
+        {"id": inter, "guild_id": guild, "settings": {"$exists": False}},
+        {"$set": {}}
+    )
+    collusers.update_one(
+        {"id": inter, "guild_id": guild},
+        {"$set": {"settings.reputation_notification": True}})
+
+
 class ActivityCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -47,7 +57,8 @@ class ActivityCog(commands.Cog):
             embed.add_field(name='', value=f'<t:{tstamp - 3600}:t> - <t:{tstamp}:t>', inline=False)
             await channel.send(embed=embed)
 
-    @commands.slash_command(name='topuser', description='Показывает самого активного участника за последний час', dm_permission=False)
+    @commands.slash_command(name='topuser', description='Показывает самого активного участника за последний час',
+                            dm_permission=False)
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def topuser(self, inter: disnake.ApplicationCommandInteraction):
         if inter.type == disnake.InteractionType.application_command:
@@ -112,6 +123,8 @@ class ActivityCog(commands.Cog):
         guild_id = payload.guild_id
         user_id = payload.user_id
 
+        check_value(author_id, guild_id)
+
         if author_id == user_id:
             # Удалить реакцию, если пользователь пытается повысить/понизить репутацию самому себе
             await message.remove_reaction(payload.emoji, payload.member)
@@ -120,6 +133,13 @@ class ActivityCog(commands.Cog):
         guild = self.bot.get_guild(guild_id)
         author = guild.get_member(author_id)
         user = guild.get_member(user_id)
+        query = {"id": author_id, "guild_id": guild_id}
+
+        projection = {'_id': 0, "settings.reputation_notification": 1}
+
+        result = collusers.find_one(query, projection)
+        if result:
+            await author.send(f'вам добавили репутацию через сообщение {message.jump_url}')
 
         if await self.check_reaction_limit(user_id, guild_id):
             await message.remove_reaction(payload.emoji, payload.member)
@@ -148,10 +168,21 @@ class ActivityCog(commands.Cog):
         author_id = message.author.id
         guild_id = payload.guild_id
         user_id = payload.user_id
-
+        guild = self.bot.get_guild(guild_id)
+        user = guild.get_member(user_id)
+        check_value(author_id, guild_id)
+        user_reaction = guild.get_member(author_id)
         if author_id == user_id:
             # Если пользователь удаляет реакцию на своё собственное сообщение, ничего не делаем
             return
+
+        query = {"id": author_id, "guild_id": guild_id}
+
+        projection = {'_id': 0, "settings.reputation_notification": 1}
+
+        result = collusers.find_one(query, projection)
+        if result:
+            await user_reaction.send(f'в@m понизили репутацию через сообщение {message.jump_url}')
 
         if await self.check_reaction_limit(user_id, guild_id):
             return
