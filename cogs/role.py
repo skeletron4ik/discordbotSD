@@ -78,7 +78,7 @@ class Role(commands.Cog):
         else:
             raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
-    @tasks.loop(seconds=250)  # Проверка каждые 250 сек
+    @tasks.loop(seconds=35)  # Проверка каждые 250 сек
     async def check_temp_roles(self):
         current_time = int(datetime.now().timestamp())
         expired_roles = collusers.find({"role_ids.expires_at": {"$lte": current_time}})
