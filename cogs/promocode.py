@@ -1,58 +1,138 @@
+import time
+from asyncio import tasks
 import disnake
-from disnake.ext import commands
+from disnake.ext import commands, tasks
+from datetime import datetime, timedelta
+from pymongo import MongoClient
+from main import rules, get_rule_info  # Список правил
+from main import cluster
+from ai.process_role import process_role
 
-# Создаем список промокодов для проверки
-PROMO_CODES = {
-    "ROLE2024": {"type": "role", "role_id": 519925714309349377},
-    "COINS100": {"type": "coins", "amount": 100},
-}
-
-# Словарь для хранения баланса монеток пользователей
-user_balances = {}
+collpromos = cluster.server.promos
+collusers = cluster.server.users
+collservers = cluster.server.servers
 
 
 class Promo(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # Функция для выдачи роли
-    async def give_role(self, inter, role_id):
-        role = disnake.utils.get(inter.guild.roles, id=role_id)
-        if role:
-            await inter.author.add_roles(role)
-            await inter.send(f'Вам была выдана роль: {role.name}')
-        else:
-            await inter.send(f'Роль с ID {role_id} не найдена на сервере.')
+    @commands.slash_command(name='promo')
+    async def promo(self, inter):
+        pass
 
-    # Функция для начисления монеток
-    def add_coins(self, user_id, amount):
-        if user_id in user_balances:
-            user_balances[user_id] += amount
-        else:
-            user_balances[user_id] = amount
+    @promo.sub_command(name='create_role')
+    async def create_role(self, inter, название: str, роль: disnake.Role, количество: int, длительность: int):
+        # First update
+        collpromos.update_one(
+            {'_id': inter.guild.id},
+            {'$set': {f'promos.{название}': {}}},
+            upsert=True
+        )
 
-    @commands.slash_command(name="promo", description="Активирует промокод")
-    async def promo(self, inter: disnake.ApplicationCommandInteraction, code: str):
-        promo_info = PROMO_CODES.get(code.upper())
+        # Second update
+        collpromos.update_one(
+            {'_id': inter.guild.id},
+            {
+                '$set': {
+                    f'promos.{название}.role_id': роль.id,
+                    f'promos.{название}.type': 'role',
+                    f'promos.{название}.activations': количество,
+                    f'promos.{название}.on_time': длительность,
+                    f'promos.{название}.create_id': inter.author.id,
+                    f'promos.{название}.users': []
+                }
+            },
+            upsert=True
+        )
 
-        if promo_info:
-            if promo_info["type"] == "role":
-                role_id = promo_info.get("role_id")
-                if role_id:
-                    await self.give_role(inter, role_id)
-                else:
-                    await inter.send("В промокоде не указан ID роли.")
-            elif promo_info["type"] == "coins":
-                amount = promo_info.get("amount")
-                if amount:
-                    self.add_coins(inter.author.id, amount)
-                    await inter.send(f'Вам было начислено {amount} монеток. Ваш текущий баланс: {user_balances[inter.author.id]} монеток.')
-                else:
-                    await inter.send("В промокоде не указано количество монеток.")
-        else:
-            await inter.send("Промокод недействителен.")
+        await inter.response.send_message('get pupped')
+
+    @promo.sub_command(name='create_money')
+    async def create_money(self, inter, название: str, количество_румбиков: int, количество_активаций: int):
+        # First update
+        collpromos.update_one(
+            {'_id': inter.guild.id},
+            {'$set': {f'promos.{название}': {}}},
+            upsert=True
+        )
+
+        # Second update
+        collpromos.update_one(
+            {'_id': inter.guild.id},
+            {
+                '$set': {
+                    f'promos.{название}.money': количество_румбиков,
+                    f'promos.{название}.type': 'money',
+                    f'promos.{название}.activations': количество_активаций,
+                    f'promos.{название}.create_id': inter.author.id,
+                    f'promos.{название}.users': []
+                }
+            },
+            upsert=True
+        )
+
+        await inter.response.send_message('get pupped')
+
+    @promo.sub_command(name='use')
+    async def use(self, inter, код: str):
+        await inter.response.defer(ephemeral=True)
+        result = collpromos.find_one(
+            {'_id': inter.guild.id, f'promos.{код}': {'$exists': True}}
+        )
+        if not result:
+            await inter.edit_original_response('Кода не существует')
+            return
+
+        exists = collpromos.find_one(
+            {'_id': inter.guild.id, f'promos.{код}.users.id': inter.author.id}
+        )
+
+        if exists:
+            await inter.edit_original_response('Вы уже активировали промик')
+            return
+
+        type = collpromos.find_one({'_id': inter.guild.id})['promos'][код]['type']
+
+        if type == 'money':
+            money = collpromos.find_one({'_id': inter.guild.id})['promos'][код]['money']
+            collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': money}})
+            collpromos.update_one({'_id': inter.guild.id}, {'$push': {f'promos.{код}.users': {'id': inter.author.id}}})
+
+            collpromos.update_one(
+                {'_id': inter.guild.id},
+                {'$inc': {f'promos.{код}.activations': -1}},
+                upsert=True
+            )
+
+            if collpromos.find_one({'_id': inter.guild.id})['promos'][код]['activations'] <= 0:
+                collpromos.update_one(
+                    {'_id': inter.guild.id},  # Фильтр по _id
+                    {'$unset': {f'promos.{код}': 1}}  # Удаление вложенного поля
+                )
+
+            await inter.edit_original_response(f'get pupped + {money}')
+        elif type == 'role':
+            role_id = collpromos.find_one({'_id': inter.guild.id})['promos'][код]['role_id']
+            role = inter.guild.get_role(role_id)
+            on_time = collpromos.find_one({'_id': inter.guild.id})['promos'][код]['on_time']
+            collpromos.update_one({'_id': inter.guild.id}, {'$push': {f'promos.{код}.users': {'id': inter.author.id}}})
+
+            collpromos.update_one(
+                {'_id': inter.guild.id},
+                {'$inc': {f'promos.{код}.activations': -1}},
+                upsert=True
+            )
+
+            if collpromos.find_one({'_id': inter.guild.id})['promos'][код]['activations'] <= 0:
+                collpromos.update_one(
+                    {'_id': inter.guild.id},  # Фильтр по _id
+                    {'$unset': {f'promos.{код}': 1}}  # Удаление вложенного поля
+                )
+
+            await process_role(inter, self.bot, 0, on_time, role_id, ephemeral=True)
+            await inter.edit_original_response(f'get pupped + {role_id}')
 
 def setup(bot):
     bot.add_cog(Promo(bot))
     print("PromoCog is ready")
-
