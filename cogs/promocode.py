@@ -7,74 +7,126 @@ from pymongo import MongoClient
 from main import rules, get_rule_info  # Список правил
 from main import cluster
 from ai.process_role import process_role
+import random
+import string
 
 collpromos = cluster.server.promos
 collusers = cluster.server.users
 collservers = cluster.server.servers
 
+def generate_random_code():
+    """Генерирует случайный промокод в формате SD-XXXX-XXXX-XXXX."""
+    parts = [
+        'SD',  # Первые два символа
+        ''.join(random.choices(string.ascii_uppercase + string.digits, k=4)),
+        ''.join(random.choices(string.ascii_uppercase + string.digits, k=4)),
+        ''.join(random.choices(string.ascii_uppercase + string.digits, k=4)),
+    ]
+    return '-'.join(parts)
 
 class Promo(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name='promo')
+    @commands.slash_command(name='promocode', description='Взаимодействие с промокодами')
     async def promo(self, inter):
         pass
 
-    @promo.sub_command(name='create_role')
-    async def create_role(self, inter, название: str, роль: disnake.Role, количество: int, длительность: int):
-        # First update
-        collpromos.update_one(
-            {'_id': inter.guild.id},
-            {'$set': {f'promos.{название}': {}}},
-            upsert=True
-        )
+    @promo.sub_command(name='create-role', description='Создать промокод на роль')
+    async def create_role(self, inter, роль: disnake.Role, количество: int, длительность: int, код: str = None):
+        код = код or generate_random_code()  # Генерация промокода, если он не задан
 
-        # Second update
+        # Получаем текущий ID и увеличиваем его
+        promo_data = collpromos.find_one_and_update(
+            {'_id': inter.guild.id},
+            {'$inc': {'counter': 1}},
+            upsert=True,
+            return_document=True
+        )
+        promo_id = promo_data.get('counter', 1)
+
+        # Создаем промокод
         collpromos.update_one(
             {'_id': inter.guild.id},
-            {
-                '$set': {
-                    f'promos.{название}.role_id': роль.id,
-                    f'promos.{название}.type': 'role',
-                    f'promos.{название}.activations': количество,
-                    f'promos.{название}.on_time': длительность,
-                    f'promos.{название}.create_id': inter.author.id,
-                    f'promos.{название}.users': []
+            {'$set': {
+                f'promos.{код}': {
+                    'id': promo_id,
+                    'role_id': роль.id,
+                    'type': 'role',
+                    'activations': количество,
+                    'on_time': длительность,
+                    'create_id': inter.author.id,
+                    'users': []
                 }
-            },
+            }},
             upsert=True
         )
 
-        await inter.response.send_message('get pupped')
+        await inter.response.send_message(f'Промокод создан: `{код}` с ID: {promo_id}')
 
-    @promo.sub_command(name='create_money')
-    async def create_money(self, inter, название: str, количество_румбиков: int, количество_активаций: int):
-        # First update
-        collpromos.update_one(
+    @promo.sub_command(name='create-rumbicks', description='Создать промокод на румбики')
+    async def create_rumbicks(self, inter, количество_румбиков: int, количество_активаций: int, код: str = None):
+        код = код or generate_random_code()  # Генерация промокода, если он не задан
+
+        # Получаем текущий ID и увеличиваем его
+        promo_data = collpromos.find_one_and_update(
             {'_id': inter.guild.id},
-            {'$set': {f'promos.{название}': {}}},
-            upsert=True
+            {'$inc': {'counter': 1}},
+            upsert=True,
+            return_document=True
         )
+        promo_id = promo_data.get('counter', 1)
 
-        # Second update
+        # Создаем промокод
         collpromos.update_one(
             {'_id': inter.guild.id},
-            {
-                '$set': {
-                    f'promos.{название}.money': количество_румбиков,
-                    f'promos.{название}.type': 'money',
-                    f'promos.{название}.activations': количество_активаций,
-                    f'promos.{название}.create_id': inter.author.id,
-                    f'promos.{название}.users': []
+            {'$set': {
+                f'promos.{код}': {
+                    'id': promo_id,
+                    'rumbicks': количество_румбиков,
+                    'type': 'rumbicks',
+                    'activations': количество_активаций,
+                    'create_id': inter.author.id,
+                    'users': []
                 }
-            },
+            }},
             upsert=True
         )
 
-        await inter.response.send_message('get pupped')
+        await inter.response.send_message(f'Промокод создан: `{код}` с ID: {promo_id}')
 
-    @promo.sub_command(name='use')
+    @promo.sub_command(name='create-keys', description='Создать промокод на ключи')
+    async def create_keys(self, inter, количество_ключей: int, количество_активаций: int, код: str = None):
+        код = код or generate_random_code()  # Генерация промокода, если он не задан
+
+        # Получаем текущий ID и увеличиваем его
+        promo_data = collpromos.find_one_and_update(
+            {'_id': inter.guild.id},
+            {'$inc': {'counter': 1}},
+            upsert=True,
+            return_document=True
+        )
+        promo_id = promo_data.get('counter', 1)
+
+        # Создаем промокод
+        collpromos.update_one(
+            {'_id': inter.guild.id},
+            {'$set': {
+                f'promos.{код}': {
+                    'id': promo_id,
+                    'keys': количество_ключей,
+                    'type': 'keys',
+                    'activations': количество_активаций,
+                    'create_id': inter.author.id,
+                    'users': []
+                }
+            }},
+            upsert=True
+        )
+
+        await inter.response.send_message(f'Промокод создан: `{код}` с ID: {promo_id}')
+
+    @promo.sub_command(name='use', description='Использовать промокод')
     async def use(self, inter, код: str):
         await inter.response.defer(ephemeral=True)
         result = collpromos.find_one(
@@ -94,9 +146,9 @@ class Promo(commands.Cog):
 
         type = collpromos.find_one({'_id': inter.guild.id})['promos'][код]['type']
 
-        if type == 'money':
-            money = collpromos.find_one({'_id': inter.guild.id})['promos'][код]['money']
-            collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': money}})
+        if type == 'rumbicks':
+            rumbicks = collpromos.find_one({'_id': inter.guild.id})['promos'][код]['rumbicks']
+            collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'balance': rumbicks}})
             collpromos.update_one({'_id': inter.guild.id}, {'$push': {f'promos.{код}.users': {'id': inter.author.id}}})
 
             collpromos.update_one(
@@ -111,7 +163,26 @@ class Promo(commands.Cog):
                     {'$unset': {f'promos.{код}': 1}}  # Удаление вложенного поля
                 )
 
-            await inter.edit_original_response(f'get pupped + {money}')
+            await inter.edit_original_response(f'get pupped + {rumbicks}')
+
+        elif type == 'keys':
+            keys = collpromos.find_one({'_id': inter.guild.id})['promos'][код]['keys']
+            collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'keys': keys}})
+            collpromos.update_one({'_id': inter.guild.id}, {'$push': {f'promos.{код}.users': {'id': inter.author.id}}})
+
+            collpromos.update_one(
+                {'_id': inter.guild.id},
+                {'$inc': {f'promos.{код}.activations': -1}},
+                upsert=True
+            )
+
+            if collpromos.find_one({'_id': inter.guild.id})['promos'][код]['activations'] <= 0:
+                collpromos.update_one(
+                    {'_id': inter.guild.id},  # Фильтр по _id
+                    {'$unset': {f'promos.{код}': 1}}  # Удаление вложенного поля
+                )
+
+            await inter.edit_original_response(f'get pupped + {keys}')
         elif type == 'role':
             role_id = collpromos.find_one({'_id': inter.guild.id})['promos'][код]['role_id']
             role = inter.guild.get_role(role_id)
