@@ -168,6 +168,7 @@ class Promo(commands.Cog):
             f", срок действия истекает <t:{expires_at}:R>" if expires_at else ", бессрочный"
         )
         await inter.response.send_message(f'Промокод создан: ``{код}`` с ID: {promo_id}{expiry_message}')
+        return код
 
     @promo.sub_command(name='use', description='Использовать промокод')
     async def use(self, inter, код: str):

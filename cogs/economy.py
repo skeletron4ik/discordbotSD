@@ -9,6 +9,7 @@ import random
 import math
 import re
 from main import cluster
+from ai.promo import create_rumbicks
 
 collusers = cluster.server.users
 collservers = cluster.server.servers
@@ -602,11 +603,17 @@ class EconomyCog(commands.Cog):
                             colour=0x00ff00,
                             timestamp=datetime.now()
                         )
+
+                        if random.randint(0, 10) > 0:
+                            promo = await create_rumbicks(self, inter, random.randint(5, 50), random.randint(1, 2))
+                            embed.add_field(name='Ваш персональный промокод:', value=promo)
+
                         embed.set_author(name="Срок действия роли продлен!",
                                          icon_url="https://i.imgur.com/vlX2dxG.gif")
                         embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
                         embed.set_footer(text="Продление прошло успешно",
                                          icon_url=interaction.guild.icon.url)
+
                         await interaction.send(embed=embed, ephemeral=ephemeral)
 
                     else:
@@ -622,6 +629,11 @@ class EconomyCog(commands.Cog):
                         embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
                         embed.set_footer(text="Покупка прошла успешно",
                                          icon_url=interaction.guild.icon.url)
+
+                        if random.randint(0, 20) > 10:
+                            promo = await create_rumbicks(self, inter, random.randint(5, 50), random.randint(1, 2))
+                            embed.add_field(name='Ваш персональный промокод:', value=promo)
+
                         await interaction.send(embed=embed, ephemeral=ephemeral)
 
                         # Обновляем базу с новой длительностью роли
