@@ -17,6 +17,7 @@ bot.member_cache_flags = disnake.MemberCacheFlags.all()
 cluster = MongoClient(os.getenv('MONGODB'))
 collusers = cluster.server.users
 collservers = cluster.server.servers
+collpromos = cluster.server.promos
 
 rules = {
     "1.1": "1.1> Обман/попытка обмана Администрации сервера, грубое оспаривание действий Администрации сервера",
@@ -103,7 +104,8 @@ async def on_ready():
                 "balance": 0,
                 "keys": 0,
                 "reputation": 0,  # Новое поле для репутации
-                "reaction_count": 0,  # Поле для отслеживания количества реакций пользователя
+                "reaction_count": 0,
+                "promocodes": 0,
                 "number_of_deal": 0,
                 "message_count": 0,
                 "time_in_voice": 0,
@@ -126,11 +128,18 @@ async def on_ready():
                 "global_booster_activated_by": [],
                 "multiplier": 1
             }
+            promo_values = {
+                "_id": guild.id,
+                "counter": 0,
+                "promos": {}
+            }
 
             if collusers.count_documents({"id": member.id, "guild_id": guild.id}) == 0:
                 collusers.insert_one(values)
             if collservers.count_documents({"_id": guild.id}) == 0:
                 collservers.insert_one(server_values)
+            if collpromos.count_documents({"_id": guild.id}) == 0:
+                collpromos.insert_one(promo_values)
 
 
 @bot.event
@@ -159,6 +168,7 @@ async def on_member_join(member):
         "keys": 0,
         "reputation": 0,
         "reaction_count": 0,
+        "promocodes": 0,
         "number_of_deal": 0,
         "message_count": 0,
         "time_in_voice": 0,

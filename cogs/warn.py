@@ -12,6 +12,62 @@ current_datetime = datetime.today()
 collusers = cluster.server.users
 collservers = cluster.server.servers
 
+def convert_to_seconds(time_str):
+    try:
+        value = int(time_str[:-1])
+    except ValueError:
+        raise ValueError(f"Invalid time format: {time_str}")
+
+    unit = time_str[-1]
+    if unit == 'д' or unit == 'd':
+        return value * 24 * 60 * 60
+    elif unit == 'ч' or unit == 'h':
+        return value * 60 * 60
+    elif unit == 'м' or unit == 'm':
+        return value * 60
+    elif unit == 'с' or unit == 's':
+        return value
+    else:
+        raise ValueError(f"Invalid time unit: {time_str[-1]}")
+
+
+def format_duration(time_str):
+    try:
+        value = int(time_str[:-1])
+    except ValueError:
+        raise ValueError(f"Invalid time format: {time_str}")
+
+    unit = time_str[-1]
+    if unit == 'д' or unit == 'd':
+        if value == 1:
+            return "1 день"
+        elif 2 <= value <= 4:
+            return f"{value} дня"
+        else:
+            return f"{value} дней"
+    elif unit == 'ч' or unit == 'h':
+        if value == 1:
+            return "1 час"
+        elif 2 <= value <= 4:
+            return f"{value} часа"
+        else:
+            return f"{value} часов"
+    elif unit == 'м' or unit == 'm':
+        if value == 1:
+            return "1 минуту"
+        elif 2 <= value <= 4:
+            return f"{value} минуты"
+        else:
+            return f"{value} минут"
+    elif unit == 'с' or unit == 's':
+        if value == 1:
+            return "1 секунду"
+        elif 2 <= value <= 4:
+            return f"{value} секунды"
+        else:
+            return f"{value} секунд"
+    else:
+        raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
 class WarnsCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
