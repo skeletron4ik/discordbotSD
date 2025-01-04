@@ -21,7 +21,7 @@ def check_value(inter, guild):
         {"$set": {}}
     )
     collusers.update_one(
-        {"id": inter, "guild_id": guild},
+        {"id": inter, "guild_id": guild, 'settings.reputation_notification': {"exists": False}},
         {"$set": {"settings.reputation_notification": True}})
 
 
@@ -133,13 +133,12 @@ class ActivityCog(commands.Cog):
         guild = self.bot.get_guild(guild_id)
         author = guild.get_member(author_id)
         user = guild.get_member(user_id)
+
         query = {"id": author_id, "guild_id": guild_id}
 
-        projection = {'_id': 0, "settings.reputation_notification": 1}
-
-        result = collusers.find_one(query, projection)
+        result = collusers.find_one(query)["settings"]["reputation_notification"]
         if result:
-            await author.send(f'вам добавили репутацию через сообщение {message.jump_url}')
+            await author.send(f'Вам добавили репутацию на сообщении: {message.jump_url}\nОтключить уведомление можно через комманду /user-info в всплывающем меню.')
 
         if await self.check_reaction_limit(user_id, guild_id):
             await message.remove_reaction(payload.emoji, payload.member)
@@ -178,11 +177,11 @@ class ActivityCog(commands.Cog):
 
         query = {"id": author_id, "guild_id": guild_id}
 
-        projection = {'_id': 0, "settings.reputation_notification": 1}
+        query = {"id": author_id, "guild_id": guild_id}
 
-        result = collusers.find_one(query, projection)
+        result = collusers.find_one(query)["settings"]["reputation_notification"]
         if result:
-            await user_reaction.send(f'в@m понизили репутацию через сообщение {message.jump_url}')
+            await user_reaction.send(f'Вам понизили репутацию на сообщении: {message.jump_url}\nОтключить уведомление можно через комманду /user-info в всплывающем меню.')
 
         if await self.check_reaction_limit(user_id, guild_id):
             return
