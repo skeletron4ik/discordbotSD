@@ -4,7 +4,7 @@ import disnake
 from disnake.ext import commands, tasks
 from datetime import datetime, timedelta
 from pymongo import MongoClient
-from main import rules  # список правил
+from main import rules, get_rule_info, check_roles, collusers, collservers
 
 
 class MuteCog(commands.Cog):
@@ -78,6 +78,7 @@ class MuteCog(commands.Cog):
 
     @commands.slash_command(name='mute', description='Запрещает писать в чат и подключаться к голосовым каналам участнику', dm_permission=False)
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    @check_roles("moder")
     async def mute(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, время: str, причина='Не указана'):
         if inter.type == disnake.InteractionType.application_command:
             await inter.response.defer()
@@ -93,6 +94,8 @@ class MuteCog(commands.Cog):
             duration = timedelta(seconds=seconds)
             current_timestamp = int(datetime.now().timestamp() + seconds)
             await участник.timeout(duration=duration)
+            collservers.update_one({"_id": inter.guild.id}, {"$inc": {"mutes": 1}},
+                                   upsert=True)
 
             embed = disnake.Embed(
                 description=f"Участнику {участник.mention} запрещенно писать в чат и подключаться к голосовым каналам на ``{formatted_duration}``\n Причина: **{причина}**.",
@@ -143,10 +146,9 @@ class MuteCog(commands.Cog):
             embed.set_footer(text=f"ID участника: {участник.id}")
             await channel.send(embed=embed)
 
-    @commands.slash_command(name='unmute',
-                            description='Снимает запрет писать в чат и подключаться к голосовым каналам у участника',
-                            dm_permission=False)
+    @commands.slash_command(name='unmute', description='Снимает запрет писать в чат и подключаться к голосовым каналам у участника', dm_permission=False)
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    @check_roles("moder")
     async def unmute(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member):
         if inter.type == disnake.InteractionType.application_command:
             await inter.response.defer()
@@ -158,6 +160,8 @@ class MuteCog(commands.Cog):
 
             # Снимаем тайм-аут с участника
             await участник.timeout(duration=None)
+            collservers.update_one({"_id": inter.guild.id}, {"$inc": {"unmutes": 1}},
+                                   upsert=True)
 
             # Создание embed для уведомления о разбане в чате
             embed = disnake.Embed(
@@ -195,9 +199,6 @@ class MuteCog(commands.Cog):
             embed.add_field(name="Канал:", value=f"{inter.channel.mention}", inline=True)
             embed.set_footer(text=f"ID участника: {участник.id}")
             await channel.send(embed=embed)
-
-
-
 
 def setup(bot):
     bot.add_cog(MuteCog(bot))

@@ -3,6 +3,7 @@ from disnake.ext import commands, tasks
 from datetime import datetime, timedelta
 from pymongo import MongoClient
 from main import cluster
+from main import rules, get_rule_info, check_roles
 
 current_datetime = datetime.today()
 
@@ -78,7 +79,7 @@ class Role(commands.Cog):
         else:
             raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
-    @tasks.loop(seconds=35)  # Проверка каждые 250 сек
+    @tasks.loop(seconds=350)  # Проверка каждые 350 сек
     async def check_temp_roles(self):
         current_time = int(datetime.now().timestamp())
         expired_roles = collusers.find({"role_ids.expires_at": {"$lte": current_time}})
@@ -89,29 +90,32 @@ class Role(commands.Cog):
 
             for role_info in user["role_ids"]:
                 if role_info["expires_at"] <= current_time:
-                    member = guild.get_member(user["id"]) or await guild.fetch_member(user["id"])
-                    role = guild.get_role(role_info["role_ids"])
+                    try:
+                        member = guild.get_member(user["id"]) or await guild.fetch_member(user["id"])
+                        role = guild.get_role(role_info["role_ids"])
 
-                    if member and role:
-                        await member.remove_roles(role)
-                        collusers.update_one(
-                            {"id": user["id"], "guild_id": user["guild_id"]},
-                            {"$pull": {"role_ids": {"role_ids": role_info["role_ids"]}}},
-                        )
-                        collusers.update_one(
-                            {"id": user["id"], "guild_id": user["guild_id"]},
-                            {"$inc": {"number_of_roles": -1}}
-                        )
-                        channel = await self.bot.fetch_channel(944562833901899827)
-                        embed = disnake.Embed(title="Роль истекла", description="", color=0x00d5ff,
-                                              timestamp=datetime.now())
-                        embed.add_field(name="",
-                                        value=f"У участника **{member.name}** ({member.mention}) истек срок действия роли ``{role.name}``",
-                                        inline=False)
-                        embed.set_thumbnail(
-                            url="https://media2.giphy.com/media/LOWmk9Vsl3LN3vXhET/giphy.gif")
-                        embed.set_footer(text=f"ID участника: {member.id}")
-                        await channel.send(embed=embed)
+                        if member and role:
+                            await member.remove_roles(role)
+                            collusers.update_one(
+                                {"id": user["id"], "guild_id": user["guild_id"]},
+                                {"$pull": {"role_ids": {"role_ids": role_info["role_ids"]}}},
+                            )
+                            collusers.update_one(
+                                {"id": user["id"], "guild_id": user["guild_id"]},
+                                {"$inc": {"number_of_roles": -1}}
+                            )
+                            channel = await self.bot.fetch_channel(944562833901899827)
+                            embed = disnake.Embed(title="Роль истекла", description="", color=0x00d5ff,
+                                                  timestamp=datetime.now())
+                            embed.add_field(name="",
+                                            value=f"У участника **{member.name}** ({member.mention}) истек срок действия роли ``{role.name}``",
+                                            inline=False)
+                            embed.set_thumbnail(
+                                url="https://media2.giphy.com/media/LOWmk9Vsl3LN3vXhET/giphy.gif")
+                            embed.set_footer(text=f"ID участника: {member.id}")
+                            await channel.send(embed=embed)
+                    except:
+                        pass
 
     @check_temp_roles.before_loop
     async def before_check_temp_roles(self):

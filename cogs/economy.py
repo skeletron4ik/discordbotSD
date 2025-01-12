@@ -9,7 +9,9 @@ import random
 import math
 import re
 from main import cluster
+from main import rules, get_rule_info, check_roles
 from ai.promo import create_rumbicks
+from ai.process_role import process_role
 
 collusers = cluster.server.users
 collservers = cluster.server.servers
@@ -34,9 +36,46 @@ def format_rumbick(value):
 def create_error_embed(message: str) -> disnake.Embed:
     embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
     embed.add_field(name='Произошла ошибка', value=f'Ошибка: {message}')
-    embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+    embed.set_thumbnail(url="https://media2.giphy.com/media/AkGPEj9G5tfKO3QW0r/200.gif")
     embed.set_footer(text='Ошибка')
     return embed
+
+
+def format_time(seconds):
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+
+    time_components = []
+    if days > 0:
+        time_components.append(f'{int(days)} д')
+    if hours > 0:
+        time_components.append(f'{int(hours)} ч')
+    if minutes > 0:
+        time_components.append(f'{int(minutes)} мин')
+    if seconds > 0 or not time_components:
+        time_components.append(f'{int(seconds)} сек')
+
+    return ', '.join(time_components)
+
+def format_duration(self, time_str):
+    """Форматирование длительности в строку."""
+    try:
+        value = int(time_str[:-1])
+    except ValueError:
+        raise ValueError(f"Invalid time format: {time_str}")
+
+    unit = time_str[-1]
+    if unit == 'д' or unit == 'd':
+        return f"{value} дней"
+    elif unit == 'ч' or unit == 'h':
+        return f"{value} часов"
+    elif unit == 'м' or unit == 'm':
+        return f"{value} минут"
+    elif unit == 'с' or unit == 's':
+        return f"{value} секунд"
+    else:
+        raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
 class EconomyCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -48,13 +87,16 @@ class EconomyCog(commands.Cog):
         excluded_channels = {1070322967634006057, 532628352927006737, 944562833901899827, 1270673733178101801}
 
         if message.author.bot:
-            if message.channel.id == 1070322967634006057:
+            if message.channel.id == 1070322967634006057 or message.channel.id == 1235294532409495555:
                 if message.embeds:
                     message_embed = str(message.embeds[0].description)
-                    author_interaction = None  # Ensure author_interaction is defined
+                    author_interaction = None
 
                     if 'Bump done!' in message_embed or 'Время фиксации апа:' in message_embed or 'Ви успішно лайкнули сервер.' in message_embed or 'Вы успешно лайкнули сервер.' in message_embed or 'You successfully liked the server.' in message_embed or 'Успешный Up!' in message_embed:
                         author_interaction = message.interaction.author
+
+                    elif 'Запущенная команда: `/up`' in message_embed:
+                        author_interaction = message.author.guild.get_member_named(message.embeds[0].author.name)
 
                     elif 'Server bumped by' in message_embed:
                         mention_pattern = r"<@!?(\d+)>"
@@ -63,14 +105,26 @@ class EconomyCog(commands.Cog):
                             author_interaction = await message.author.guild.fetch_member(mentions[0])
 
                     if author_interaction:
-                        collusers.find_one_and_update({'id': author_interaction.id}, {'$inc': {'balance': 5}})
-                        embed = disnake.Embed(color=0x4169E1)
-                        embed.add_field(name=f'**Успешный бамп!**',
-                                        value=f'{author_interaction.mention}, Вы успешно бампнули сервер\n'
-                                              f' и за это получаете `5` румбиков.')
-                        embed.set_footer(text=f'Bumped by {author_interaction.display_name}',
+                        multiplier = collservers.find_one({'_id': message.author.guild.id})['multiplier']
+                        money_to_give = random.uniform(5, 10)
+                        money_to_give1 = money_to_give * multiplier
+                        money_to_give2 = round(money_to_give1, 2)
+
+                        collusers.find_one_and_update({'id': author_interaction.id}, {'$inc': {'balance': money_to_give2, 'bumps': 1}})
+                        collservers.update_one({"_id": message.guild.id}, {"$inc": {"bumps": 1, "total_rumbicks": money_to_give2}}, upsert=True)
+                        embed = disnake.Embed(title='Успешный бамп!', colour=0xffbb00, timestamp=datetime.now())
+                        embed.set_thumbnail(url='https://cdn.pixabay.com/animation/2023/06/13/15/13/15-13-13-522_512.gif')
+                        embed.add_field(name=f'',
+                                        value=f'{author_interaction.mention}, Спасибо что помогаете нашему серверу становиться лучше!\n'
+                                              f'В знак благодарности Вы получаете `{money_to_give2}`{emoji}!')
+                        base_chance = 5  # Базовый шанс в процентах
+                        adjusted_chance = base_chance * multiplier  # Увеличенный шанс
+                        if random.randint(1, 100) <= adjusted_chance:  # Проверяем вероятность
+                            embed.add_field(name='', value='Вам так же выпал `1🔑` от MysteryBox!', inline=False)
+                            collusers.find_one_and_update({'id': author_interaction.id}, {'$inc': {'keys': 1}})
+                        embed.set_author(name=f'{author_interaction.display_name}',
                                          icon_url=author_interaction.avatar.url)
-                        embed.set_author(name=message.author.guild.name, icon_url=message.author.guild.icon.url)
+                        embed.set_footer(text=message.author.guild.name, icon_url=message.author.guild.icon.url)
                         channel = self.bot.get_channel(1070322967634006057)
                         await channel.send(embed=embed)
         else:
@@ -79,7 +133,12 @@ class EconomyCog(commands.Cog):
                 collusers.find_one_and_update(
                     {'id': message.author.id, 'guild_id': message.guild.id},
                     {'$inc': {'message_count': 1}},
-                    upsert=True  # Ensure the document is created if it doesn't exist
+                    upsert=True
+                )
+                collservers.update_one(
+                    {"_id": message.guild.id},
+                    {"$inc": {"messages": 1}},
+                    upsert=True
                 )
 
             now = datetime.now()
@@ -93,17 +152,22 @@ class EconomyCog(commands.Cog):
                         return
 
                 multiplier = collservers.find_one({'_id': message.author.guild.id})['multiplier']
-                money_to_give = random.uniform(0.1, 0.5)
+                money_to_give = random.uniform(0.5, 1)
                 money_to_give1 = money_to_give * multiplier
                 money_to_give2 = round(money_to_give1, 2)
                 collusers.find_one_and_update({'id': message.author.id}, {'$inc': {'balance': money_to_give2}})
+                collservers.update_one(
+                    {"_id": message.author.guild.id},
+                    {"$inc": {"chat_rumbicks": money_to_give2, "total_rumbicks": money_to_give2}},
+                    upsert=True
+                )
                 cooldowns[user_id] = now
 
     @commands.slash_command(name='balance', description='Показывает баланс участника', dm_permission=False,
                             aliases=['баланс', 'счет', 'остаток', 'credit', 'amount', 'sum'])
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def balance(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
-        await inter.response.defer()
+        await inter.response.defer(ephemeral=True)
 
         if участник is None:
             участник = inter.author
@@ -122,7 +186,7 @@ class EconomyCog(commands.Cog):
             embed.timestamp = datetime.now()
             await inter.edit_original_response(embed=embed)
         else:
-            await inter.edit_original_response(content="Не удалось найти данные пользователя.", ephemeral=True)
+            await inter.edit_original_response(content="Не удалось найти данные пользователя.")
 
     @commands.slash_command(name='pay', description='Перевод румбиков другому участнику', dm_permission=False,
                             aliases=['перевод', 'give', 'transfer'])
@@ -130,7 +194,7 @@ class EconomyCog(commands.Cog):
     async def pay(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, количество: int):
         # Проверка на минимальную сумму перевода
         if количество < 10:
-            error_message = "Вы не можете перевести меньше 10 румбиков."
+            error_message = f"Вы не можете перевести меньше ``10`` {emoji}"
             embed = create_error_embed(error_message)
             await inter.response.send_message(embed=embed, ephemeral=True)
             return
@@ -181,6 +245,8 @@ class EconomyCog(commands.Cog):
             collusers.find_one_and_update({'id': участник.id}, {"$inc": {"balance": amount_after_commission}})
             collusers.find_one_and_update({'id': участник.id}, {'$inc': {'number_of_deal': 1}})
             collusers.find_one_and_update({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
+            collservers.update_one({"_id": inter.guild.id}, {"$inc": {"deals": 1}}, upsert=True)
+            collservers.update_one({"_id": inter.guild.id}, {"$inc": {"transfers": 1}}, upsert=True)
 
             formatted_amount = format_rumbick(round(количество, 2))
             formatted_amount_after_commission = format_rumbick(round(amount_after_commission, 2))
@@ -212,73 +278,124 @@ class EconomyCog(commands.Cog):
             embed = create_error_embed(error_message)
             await inter.followup.send(embed=embed, ephemeral=True)
 
-    @commands.slash_command(name='change-balance', description="Изменяет баланс участника", dm_permission=False, aliases=['деньги', 'givemoney', 'setmoney'])
+    @commands.slash_command(name="change", description="Изменяет указанное поле участника", dm_permission=False)
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
-    async def money(
-            self,
-            inter: disnake.ApplicationCommandInteraction,
-            участник: disnake.Member,
-            действие: str = commands.Param(choices=["добавить (+)", "отнять (-)", "установить (=)"]),
-            количество: float = 0.0
-    ):
-        # Получение текущего баланса участника
-        user_data = collusers.find_one({'id': участник.id})
-        current_balance = round(user_data.get('balance', 0.0), 2)
+    @check_roles("admin")
+    async def change(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member,
+                     поле: str = commands.Param(
+                         choices=[
+                             "balance",
+                             "keys",
+                             "reputation",
+                             "message_count",
+                             "time_in_voice",
+                             "reaction_count",
+                             "number_of_deal",
+                             "number_of_roles",
+                             "bumps",
+                             "opened_cases",
+                             "promocodes",
+                         ]
+                     ),
+                     действие: str = commands.Param(choices=["добавить (+)", "отнять (-)", "установить (=)"]),
+                     значение: str = None,
+                     ):
+        def format_duration(time_str):
+            """Форматирование длительности в строку."""
+            try:
+                value = int(time_str[:-1])
+            except ValueError:
+                raise ValueError(f"Неверный формат времени: {time_str}")
 
+            unit = time_str[-1]
+            if unit in ['д', 'd']:
+                return value * 86400  # дней в секунды
+            elif unit in ['ч', 'h']:
+                return value * 3600  # часов в секунды
+            elif unit in ['м', 'm']:
+                return value * 60  # минут в секунды
+            elif unit in ['с', 's']:
+                return value  # секунды
+            else:
+                raise ValueError(f"Неверная единица времени: {unit}")
+
+        # Проверка существования пользователя в базе данных
+        user_data = collusers.find_one({"id": участник.id})
+        if not user_data:
+            await inter.response.send_message(
+                f"Участник {участник.mention} не найден в базе данных.", ephemeral=True
+            )
+            return
+
+        # Проверка и преобразование значения
+        if поле != "balance":
+            if поле == "time_in_voice":
+                try:
+                    значение = format_duration(значение)
+                except ValueError as e:
+                    await inter.response.send_message(str(e), ephemeral=True)
+                    return
+            else:
+                if not значение.isdigit():
+                    await inter.response.send_message(
+                        f"Для поля {поле} необходимо указать целое число.", ephemeral=True
+                    )
+                    return
+                значение = int(значение)
+        else:
+            try:
+                значение = float(значение)
+            except ValueError:
+                await inter.response.send_message(
+                    "Для поля balance необходимо указать число.", ephemeral=True
+                )
+                return
+
+        # Получение текущего значения указанного поля
+        current_value = user_data.get(поле, 0.0)
+        new_value = current_value
+
+        # Изменение значения в зависимости от действия
         if действие == "добавить (+)":
-            new_balance = round(current_balance + количество, 2)
-            collusers.find_one_and_update({'id': участник.id}, {'$inc': {'balance': количество}})
-            embed = disnake.Embed(title=f'', color=0x00ff00)
-            embed.set_author(name=f"{inter.user.display_name}", icon_url=inter.user.display_avatar.url)
-            embed.set_thumbnail(
-                url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
-            embed.add_field(name='', value=f'Вы **добавили** {количество}{emoji} к балансу {участник.mention}, теперь его текущий баланс {new_balance}{emoji}', inline=False)
-            embed.set_footer(text=f'Баланс участника {участник.display_name} изменен', icon_url=inter.author.display_avatar.url)
-            embed.timestamp = datetime.now()
-            await inter.response.send_message(embed=embed, ephemeral=True)
-
+            new_value += значение
+            collusers.find_one_and_update({"id": участник.id}, {"$inc": {поле: значение}})
+            action_text = f"**добавили** ``{значение}``"
         elif действие == "отнять (-)":
-            new_balance = round(current_balance - количество, 2)
-            collusers.find_one_and_update({'id': участник.id}, {'$inc': {'balance': -количество}})
-            embed = disnake.Embed(title=f'', color=0x00ff00)
-            embed.set_author(name=f"{inter.user.display_name}", icon_url=inter.user.display_avatar.url)
-            embed.set_thumbnail(
-                url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
-            embed.add_field(name='', value=f'Вы **отняли** {количество}{emoji} от баланса {участник.mention}, теперь его текущий баланс {new_balance}{emoji}',
-                            inline=False)
-            embed.set_footer(text=f'Баланс участника {участник.display_name} изменен', icon_url=участник.display_avatar.url)
-            embed.timestamp = datetime.now()
-            await inter.response.send_message(embed=embed, ephemeral=True)
-
+            new_value -= значение
+            collusers.find_one_and_update({"id": участник.id}, {"$inc": {поле: -значение}})
+            action_text = f"**отняли** ``{значение}``"
         elif действие == "установить (=)":
-            new_balance = round(количество, 2)
-            collusers.find_one_and_update({'id': участник.id}, {'$set': {'balance': количество}})
-            embed = disnake.Embed(title=f'', color=0x00ff00)
-            embed.set_author(name=f"{inter.user.display_name}", icon_url=inter.user.display_avatar.url)
-            embed.set_thumbnail(
-                url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
-            embed.add_field(name='', value=f'Вы **установили** баланс {участник.mention} на {количество}{emoji}  ',
-                            inline=False)
-            embed.set_footer(text=f'Баланс участника {участник.display_name} изменен', icon_url=участник.display_avatar.url)
-            embed.timestamp = datetime.now()
-            await inter.response.send_message(embed=embed, ephemeral=True)
+            new_value = значение
+            collusers.find_one_and_update({"id": участник.id}, {"$set": {поле: значение}})
+            action_text = f"**установили** значение на ``{значение}``"
 
-        channel = await self.bot.fetch_channel(944562833901899827)
-        log_embed = disnake.Embed(title='', color=0x00ff00)
-        log_embed.set_thumbnail(
-            url="https://64.media.tumblr.com/31756ec986051798604d9697fa0e7d99/tumblr_pxuqjiK9Hn1sftgzko1_400.gif")
-        log_embed.add_field(name=f'', value=f'Баланс участника **{участник.display_name}** был изменен', inline=False)
-        log_embed.add_field(name='Администратор:', value=f'{inter.user.mention}', inline=True)
-        log_embed.add_field(name='Участник:', value=f'{участник.mention}', inline=True)
-        log_embed.add_field(name='',value='', inline=False)
-        log_embed.add_field(name='Действие:', value=действие, inline=True)
-        log_embed.add_field(name='Количество:', value=f'{количество}{emoji}', inline=True)
-        log_embed.add_field(name='', value='', inline=False)
-        log_embed.add_field(name='Баланс до изменения:', value=f'{current_balance}{emoji}', inline=True)
-        log_embed.add_field(name='Текущий баланс:', value=f'{new_balance}{emoji}', inline=True)
-        log_embed.set_footer(text=f'ID Участника: {участник.id}', icon_url=участник.display_avatar.url)
+        # Создание Embed для ответа
+        embed = disnake.Embed(color=0x00FF00)
+        embed.set_author(name=inter.user.display_name, icon_url=inter.user.display_avatar.url)
+        embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
+        embed.add_field(name="",
+                        value=f"Вы {action_text} для поля **{поле}** у {участник.mention}. Теперь его значение: {new_value}",
+                        inline=False)
+        embed.set_footer(text=f"Поле {поле} участника {участник.display_name} изменено",
+                         icon_url=участник.display_avatar.url)
+        embed.timestamp = datetime.now()
+        await inter.response.send_message(embed=embed, ephemeral=True)
+
+        # Логирование изменений
+        log_channel = await self.bot.fetch_channel(944562833901899827)
+        log_embed = disnake.Embed(color=0x00FF00)
+        log_embed.set_author(name="Изменение поля", icon_url=inter.user.display_avatar.url)
+        log_embed.add_field(name="Администратор:", value=inter.user.mention, inline=True)
+        log_embed.add_field(name="Участник:", value=участник.mention, inline=True)
+        log_embed.add_field(name="Поле:", value=поле, inline=True)
+        log_embed.add_field(name="Действие:", value=действие, inline=True)
+        log_embed.add_field(name="Значение:", value=f"{значение}", inline=True)
+        log_embed.add_field(name="Старое значение:", value=f"{current_value}", inline=True)
+        log_embed.add_field(name="Новое значение:", value=f"{new_value}", inline=True)
+        log_embed.set_footer(text=f"ID Участника: {участник.id}")
+        log_embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
         log_embed.timestamp = datetime.now()
-        await channel.send(embed=log_embed)
+        await log_channel.send(embed=log_embed)
 
     @commands.slash_command(name='store', description='Магазин ролей и специальных возможностей за Румбики', dm_permission=False,
                             aliases=['shop', 'магазин', 'лавка', 'рынок'])
@@ -302,10 +419,10 @@ class EconomyCog(commands.Cog):
         embed.set_thumbnail(url='https://i.gifer.com/origin/63/6309237109affef229b14c3c5dc7308b_w200.gif')
         embed.add_field(name='Для просмотра дополнительной информации и цен о товаре, выберете его в выпадающем меню выбора товаров!', value=f'', inline=False)
         embed.add_field(name=f'**1. 💎 Diamond**',
-                        value=f'Даёт эксклюзивные возможности (все возможности роли ⭐️ Gold и больше). Подробнее с возможностями можно ознакомиться при выборе товара.\n**Цена покупки:** ``399``{emoji} | ``699``{emoji} | ``949``{emoji}\n **Содержит в себе:** Роль - {diamond.mention}',
+                        value=f'Даёт эксклюзивные возможности (все возможности роли ⭐️ Gold и больше). Подробнее с возможностями можно ознакомиться при выборе товара.\n**Цена покупки:** ``499``{emoji} | ``899``{emoji} | ``1199``{emoji}\n **Содержит в себе:** Роль - {diamond.mention}',
                         inline=False)
         embed.add_field(name=f'**2. ⭐️ Gold**',
-                        value=f'Даёт эксклюзивные возможности. Подробнее с возможностями можно ознакомиться при выборе товара.\n**Цена покупки:** ``199``{emoji} | ``349``{emoji} | ``499``{emoji}\n **Содержит в себе:** Роль - {gold.mention}',
+                        value=f'Даёт эксклюзивные возможности. Подробнее с возможностями можно ознакомиться при выборе товара.\n**Цена покупки:** ``249``{emoji} | ``449``{emoji} | ``599``{emoji}\n **Содержит в себе:** Роль - {gold.mention}',
                         inline=False)
         embed.add_field(name=f'**3. 🙋‍♂️ Смена никнейма**',
                         value=f'Даёт единоразовую возможность сменить свой отображаемый никнейм на сервере.\n**Цена покупки:** ``49``{emoji}\n**Содержит в себе:** Возможность смены __отображаемого__ никнейма на сервере.',
@@ -315,7 +432,7 @@ class EconomyCog(commands.Cog):
                         inline=False)
         embed.add_field(name=f'**5. 🔑 Мистический ключ**',
                         value=f'Покрытый загадочными рунами, этот ключ открывает мистический ящик с редкими сокровищами. Готов ли ты узнать, что внутри?\n**Цена покупки:** от ``49``{emoji} за штуку'
-                              f'\n**Содержит в себе:** Возможность открыть **загадочный ящик** с помощью команды ``/mysterybox``. Кто знает, что скрывается внутри?',
+                              f'\n**Содержит в себе:** Возможность открыть **загадочный ящик** с помощью команды ``/mystery-box open``. Кто знает, что скрывается внутри?',
                         inline=False)
         embed.add_field(name='', value='')
         embed.add_field(name='', value=f'**Ваш текущий баланс:** {balance_formatted}', inline=False)
@@ -367,7 +484,7 @@ class EconomyCog(commands.Cog):
                     ), inline=False)
                 embed1.add_field(name='', value='')
                 embed1.add_field(name='**Стоимость**',
-                                 value=f'* {diamond.mention}\n * {diamond.mention} (на 30 дней) - 399{emoji}\n * {diamond.mention} (на 60 дней) - ~~800~~ 699{emoji} **На 15% выгоднее!**\n * {diamond.mention} (на 90 дней) - ~~1200~~ 949{emoji} **На 20% выгоднее!**',
+                                 value=f'* {diamond.mention}\n * {diamond.mention} (на 30 дней) - 499{emoji}\n * {diamond.mention} (на 60 дней) - ~~1000~~ 899{emoji} **На 10% выгоднее!**\n * {diamond.mention} (на 90 дней) - ~~1500~~ 1199{emoji} **На 20% выгоднее!**',
                                  inline=False)
                 embed1.add_field(name='Обратите внимание:',
                                  value=f'Если у вас уже есть роль {diamond.mention}, при повторной покупке её срок действия будет продлён.',
@@ -384,119 +501,20 @@ class EconomyCog(commands.Cog):
                                       emoji=diamond.emoji, custom_id='90')
                 ]
 
-                # Обрабатываем нажатие кнопки
-                async def process_role(interaction, cost, duration, role_id, ephemeral=False):
-                    user_id = interaction.author.id
-                    guild_id = interaction.author.guild.id
-                    diamond_role_id = 1044314368717897868  # Specific ID for the "Diamond" role
-
-                    # Проверяем баланс
-                    user_data = collusers.find_one({'id': user_id})
-                    if user_data['balance'] < cost:
-                        error_message = "У вас не хватает румбиков для покупки."
-                        embed = create_error_embed(error_message)
-                        await interaction.send(embed=embed, ephemeral=ephemeral)
-                        return
-
-                    # Обновляем баланс и сделки
-                    collusers.update_many({'id': user_id}, {'$inc': {'number_of_deal': 1}})
-                    collusers.find_one_and_update({'id': user_id}, {'$inc': {'balance': -cost}})
-
-                    # Получаем роль по ID (Diamond)
-                    role = disnake.utils.get(interaction.guild.roles, id=role_id)
-                    if role is None:
-                        error_message = "Роль не найдена. Пожалуйста свяжитесь с Администратором."
-                        embed = create_error_embed(error_message)
-                        await inter.response.send_message(embed=embed, ephemeral=True)
-                        return
-
-                    # Получаем пользователя (author of interaction)
-                    member = interaction.author
-
-                    # Вычисляем новый срок длительности роли
-                    new_expiry = int((datetime.now() + timedelta(seconds=duration)).timestamp())
-
-                    # Проверяем наличие роли Diamond у участника
-                    if role.id == diamond_role_id and role in member.roles:
-                        # Retrieve the current expiry time for the role from the database
-                        role_info = collusers.find_one(
-                            {"id": user_id, "guild_id": guild_id, "role_ids.role_ids": role.id},
-                            {"role_ids.$": 1}
-                        )
-                        if role_info and "role_ids" in role_info:
-                            current_expiry = role_info["role_ids"][0]["expires_at"]
-                            remaining_time = max(0, current_expiry - int(datetime.now().timestamp()))
-                            new_expiry = int(datetime.now().timestamp()) + remaining_time + duration
-
-                        # Обновляем срок длительности роли в базе
-                        collusers.update_one(
-                            {"id": user_id, "guild_id": guild_id, "role_ids.role_ids": role.id},
-                            {"$set": {"role_ids.$.expires_at": new_expiry}}
-                        )
-                        embed = disnake.Embed(
-                            description=f"**Срок действия роли {role.name} продлен до:** <t:{new_expiry}:R>.\n ",
-                            colour=0x00ff00,
-                            timestamp=datetime.now()
-                        )
-                        embed.set_author(name="Срок действия роли продлен!",
-                                         icon_url="https://i.imgur.com/vlX2dxG.gif")
-                        embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
-                        embed.set_footer(text="Продление прошло успешно",
-                                         icon_url=interaction.guild.icon.url)
-                        await interaction.send(embed=embed, ephemeral=ephemeral)
-
-                    else:
-                        # Выдаем роль участнику
-                        await interaction.author.add_roles(role)
-                        embed = disnake.Embed(
-                            description=f"**Вы приобрели роль {role.name}, которая заканчивается: <t:{new_expiry}:R>.\n Теперь Вам доступны следующие функции:**\n```🟢 Отдельное отображение от остальных участников\n🟢 Голосовой канал, в который могут заходить только участники с этой ролью\n🟢 Доступ к Журналу аудита\n🟢 Возможность изменять свой никнейм\n🟢 На Вас не работает автомодерация сообщений\n🟢 Отключен кулдаун между использованиям команд\n🟢 При нарушениях длительность Ваших предупреждений уменьшается на 10 дней\n🟢 Комиссия 0% на перевод Румбиков```",
-                            colour=0x00ff00,
-                            timestamp=datetime.now()
-                        )
-                        embed.set_author(name="Вы успешно приобрели роль Diamond!",
-                                         icon_url="https://i.imgur.com/vlX2dxG.gif")
-                        embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
-                        embed.set_footer(text="Покупка прошла успешно",
-                                         icon_url=interaction.guild.icon.url)
-                        await interaction.send(embed=embed, ephemeral=ephemeral)
-
-                        # Обновляем базу с новой длительностью роли
-                        collusers.update_one(
-                            {"id": user_id, "guild_id": guild_id},
-                            {
-                                "$push": {"role_ids": {"role_ids": role.id, "expires_at": new_expiry}},
-                                "$inc": {"number_of_roles": 1}
-                            },
-                            upsert=True
-                        )
-
-                    # Создаем и отправлем embed в логи
-                    channel = await self.bot.fetch_channel(944562833901899827)
-                    log_embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
-                    log_embed.add_field(name="",
-                                        value=f"Участник **{interaction.author.name}** ({interaction.author.mention}) получил роль ``{role.name}``",
-                                        inline=False)
-                    log_embed.set_thumbnail(
-                        url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
-                    log_embed.add_field(name="Модератор:", value=f"**Магазин** ({interaction.author.mention})",
-                                        inline=True)
-                    log_embed.add_field(name="Канал:", value=f"{interaction.channel.mention}", inline=True)
-                    log_embed.add_field(name="Длительность:", value=f"(<t:{new_expiry}:R>)", inline=True)
-                    log_embed.set_footer(text=f'ID Участника: {interaction.author.id}', icon_url=interaction.author.display_avatar.url)
-                    await channel.send(embed=log_embed)
+                # Обрабатываем нажатие кнопк
 
                 async def button_callback(interaction: disnake.MessageInteraction):
                     button_id = interaction.component.custom_id
                     diamond_role_id = 1044314368717897868  # ID роли "Diamond"
 
                     if button_id == '30':
-                        await process_role(interaction, cost=399, duration=2678400, role_id=diamond_role_id,
+                        await process_role(interaction, self.bot, cost=499, duration=2678400, role_id=diamond_role_id,
                                            ephemeral=True)
                     elif button_id == '60':
-                        await process_role(interaction, cost=699, duration=5097600, role_id=diamond_role_id,
+                        await process_role(interaction, self.bot, cost=899, duration=5097600, role_id=diamond_role_id,
                                            ephemeral=True)
                     elif button_id == '90':
-                        await process_role(interaction, cost=949, duration=7776000, role_id=diamond_role_id,
+                        await process_role(interaction, self.bot, cost=1199, duration=7776000, role_id=diamond_role_id,
                                            ephemeral=True)
 
                 for button in components:
@@ -532,7 +550,7 @@ class EconomyCog(commands.Cog):
                         "```"
                     ), inline=False)
                 embed1.add_field(name='**Стоимость**',
-                                 value=f'* {gold.mention}\n * {gold.mention} (на 30 дней) - 199{emoji}\n * {gold.mention} (на 60 дней) - ~~400~~ 349{emoji} **На 15% выгоднее!**\n * {gold.mention} (на 90 дней) - ~~600~~ 499{emoji} **На 20% выгоднее!**',
+                                 value=f'* {gold.mention}\n * {gold.mention} (на 30 дней) - 249{emoji}\n * {gold.mention} (на 60 дней) - ~~500~~ 449{emoji} **На 10% выгоднее!**\n * {gold.mention} (на 90 дней) - ~~750~~ 599{emoji} **На 20% выгоднее!**',
                                  inline=False)
                 embed1.add_field(name='Обратите внимание:',
                                  value=f'Если у вас уже есть роль {gold.mention}, при повторной покупке её срок действия будет продлён.',
@@ -550,129 +568,19 @@ class EconomyCog(commands.Cog):
                 ]
 
                 # Обрабатываем нажатие кнопки
-                async def process_role(interaction, cost, duration, role_id, ephemeral=False):
-                    user_id = interaction.author.id
-                    guild_id = interaction.author.guild.id
-                    gold_role_id = 1303396950481174611  # Specific ID for the "Gold" role
-
-                    # Проверяем баланс
-                    user_data = collusers.find_one({'id': user_id})
-                    if user_data['balance'] < cost:
-                        error_message = "У вас не хватает румбиков для покупки."
-                        embed = create_error_embed(error_message)
-                        await interaction.send(embed=embed, ephemeral=ephemeral)
-                        return
-
-                    # Обновляем баланс и сделки
-                    collusers.update_many({'id': user_id}, {'$inc': {'number_of_deal': 1}})
-                    collusers.find_one_and_update({'id': user_id}, {'$inc': {'balance': -cost}})
-
-                    # Получаем роль по ID (Diamond)
-                    role = disnake.utils.get(interaction.guild.roles, id=role_id)
-                    if role is None:
-                        error_message = "Роль не найдена. Пожалуйста свяжитесь с Администратором."
-                        embed = create_error_embed(error_message)
-                        await inter.response.send_message(embed=embed, ephemeral=True)
-                        return
-
-                    # Получаем пользователя (author of interaction)
-                    member = interaction.author
-
-                    # Вычисляем новый срок длительности роли
-                    new_expiry = int((datetime.now() + timedelta(seconds=duration)).timestamp())
-
-                    # Проверяем наличие роли Diamond у участника
-                    if role.id == gold_role_id and role in member.roles:
-                        # Retrieve the current expiry time for the role from the database
-                        role_info = collusers.find_one(
-                            {"id": user_id, "guild_id": guild_id, "role_ids.role_ids": role.id},
-                            {"role_ids.$": 1}
-                        )
-                        if role_info and "role_ids" in role_info:
-                            current_expiry = role_info["role_ids"][0]["expires_at"]
-                            remaining_time = max(0, current_expiry - int(datetime.now().timestamp()))
-                            new_expiry = int(datetime.now().timestamp()) + remaining_time + duration
-
-                        # Обновляем срок длительности роли в базе
-                        collusers.update_one(
-                            {"id": user_id, "guild_id": guild_id, "role_ids.role_ids": role.id},
-                            {"$set": {"role_ids.$.expires_at": new_expiry}}
-                        )
-                        embed = disnake.Embed(
-                            description=f"**Срок действия роли {role.name} продлен до:** <t:{new_expiry}:R>.\n ",
-                            colour=0x00ff00,
-                            timestamp=datetime.now()
-                        )
-
-                        if random.randint(0, 10) > 0:
-                            promo = await create_rumbicks(self, inter, random.randint(5, 50), random.randint(1, 2))
-                            embed.add_field(name='Ваш персональный промокод:', value=promo)
-
-                        embed.set_author(name="Срок действия роли продлен!",
-                                         icon_url="https://i.imgur.com/vlX2dxG.gif")
-                        embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
-                        embed.set_footer(text="Продление прошло успешно",
-                                         icon_url=interaction.guild.icon.url)
-
-                        await interaction.send(embed=embed, ephemeral=ephemeral)
-
-                    else:
-                        # Выдаем роль участнику
-                        await interaction.author.add_roles(role)
-                        embed = disnake.Embed(
-                            description=f"**Вы приобрели роль {role.name}, которая заканчивается: <t:{new_expiry}:R>.\n Теперь Вам доступны следующие функции:**\n```🟢 Отдельное отображение от остальных участников\n🟢 Голосовой канал, в который могут заходить только участники с этой ролью\n🟢 Доступ к Журналу аудита\n🟢 Возможность изменять свой никнейм\n🟢 На Вас не работает автомодерация сообщений\n🟢 Отключен кулдаун между использованиям команд\n🟢 При нарушениях длительность Ваших предупреждений уменьшается на 10 дней\n🟢 Комиссия 0% на перевод Румбиков```",
-                            colour=0x00ff00,
-                            timestamp=datetime.now()
-                        )
-                        embed.set_author(name="Вы успешно приобрели роль Gold!",
-                                         icon_url="https://i.imgur.com/vlX2dxG.gif")
-                        embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
-                        embed.set_footer(text="Покупка прошла успешно",
-                                         icon_url=interaction.guild.icon.url)
-
-                        if random.randint(0, 20) > 10:
-                            promo = await create_rumbicks(self, inter, random.randint(5, 50), random.randint(1, 2))
-                            embed.add_field(name='Ваш персональный промокод:', value=promo)
-
-                        await interaction.send(embed=embed, ephemeral=ephemeral)
-
-                        # Обновляем базу с новой длительностью роли
-                        collusers.update_one(
-                            {"id": user_id, "guild_id": guild_id},
-                            {
-                                "$push": {"role_ids": {"role_ids": role.id, "expires_at": new_expiry}},
-                                "$inc": {"number_of_roles": 1}
-                            },
-                            upsert=True
-                        )
-
-                    # Создаем и отправлем embed в логи
-                    channel = await self.bot.fetch_channel(944562833901899827)
-                    log_embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
-                    log_embed.add_field(name="",
-                                        value=f"Участник **{interaction.author.name}** ({interaction.author.mention}) получил роль ``{role.name}``",
-                                        inline=False)
-                    log_embed.set_thumbnail(
-                        url="https://media0.giphy.com/media/udvEcwFgNFboJWcHIB/giphy.gif?cid=6c09b952rqyuahrevsqie1hpf23xpwj9wdnqeyturtonwmhn&ep=v1_internal_gif_by_id&rid=giphy.gif&ct=ts")
-                    log_embed.add_field(name="Модератор:", value=f"**Магазин** ({interaction.author.mention})",
-                                        inline=True)
-                    log_embed.add_field(name="Канал:", value=f"{interaction.channel.mention}", inline=True)
-                    log_embed.add_field(name="Длительность:", value=f"(<t:{new_expiry}:R>)", inline=True)
-                    log_embed.set_footer(text=f'ID Участника: {interaction.author.id}', icon_url=interaction.author.display_avatar.url)
-                    await channel.send(embed=log_embed)
 
                 async def button_callback(interaction: disnake.MessageInteraction):
                     button_id = interaction.component.custom_id
                     gold_role_id = 1303396950481174611  # ID роли "Gold"
 
                     if button_id == '30':
-                        await process_role(interaction, cost=199, duration=2678400, role_id=gold_role_id,
+                        await process_role(interaction, self.bot, cost=249, duration=2678400, role_id=gold_role_id,
                                            ephemeral=True)
                     elif button_id == '60':
-                        await process_role(interaction, cost=349, duration=5097600, role_id=gold_role_id,
+                        await process_role(interaction, self.bot, cost=449, duration=5097600, role_id=gold_role_id,
                                            ephemeral=True)
                     elif button_id == '90':
-                        await process_role(interaction, cost=499, duration=7776000, role_id=gold_role_id,
+                        await process_role(interaction, self.bot, cost=599, duration=7776000, role_id=gold_role_id,
                                            ephemeral=True)
 
                 for button in components:
@@ -693,6 +601,8 @@ class EconomyCog(commands.Cog):
                     return
                 collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
                 collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -nikname_price}})
+                collservers.update_one({"_id": inter.guild.id}, {"$inc": {"deals": 1}}, upsert=True)
+                collservers.update_one({"_id": inter.guild.id}, {"$inc": {"wasted_rumbiks": nikname_price}}, upsert=True)
                 components = disnake.ui.TextInput(
                     label=f"Никнейм",
                     custom_id="nickname",
@@ -821,8 +731,10 @@ class EconomyCog(commands.Cog):
                     )
 
                     # Обновление баланса пользователя и количества сделок
-                    collusers.update_many({'id': interaction.author.id}, {'$inc': {'number_of_deal': 1}})
+                    collusers.update_one({'id': interaction.author.id}, {'$inc': {'number_of_deal': 1}})
                     collusers.find_one_and_update({'id': interaction.author.id}, {'$inc': {'balance': -cost}})
+                    collservers.update_one({"_id": inter.guild.id}, {"$inc": {"deals": 1}}, upsert=True)
+                    collservers.update_one({"_id": inter.guild.id}, {"$inc": {"wasted_rumbiks": cost}}, upsert=True)
 
                     # Уведомление в канале сервера
                     channel = interaction.author.guild.get_channel(489867322039992323)
@@ -917,37 +829,66 @@ class EconomyCog(commands.Cog):
                         key_amount = int(interaction.text_values["key_amount"])
                         price = calculate_discounted_price(key_amount)
 
-                        if collusers.find_one({'id': interaction.author.id})['balance'] < price:
+                        user_data = collusers.find_one({'id': interaction.author.id})
+                        if user_data['balance'] < price:
                             error_message = "У вас не хватает румбиков для покупки."
                             embed = create_error_embed(error_message)
                             await interaction.send(embed=embed, ephemeral=True)
                             return
-                        else:
-                            collusers.update_many({'id': inter.author.id}, {'$inc': {'number_of_deal': 1}})
-                            collusers.find_one_and_update({'id': interaction.author.id},
-                                                          {'$inc': {'balance': -price}})
-                            collusers.update_many({'id': inter.author.id}, {'$inc': {'keys': key_amount}})
-                            embed = disnake.Embed(
-                                description=f"Вы приобрели **{key_amount}**🔑 ключей за **{price}**{emoji}\n Используйте команду ``/mysterybox``, чтобы открыть **мистический сундук**.",
-                                colour=0x00ff00,
-                                timestamp=datetime.now()
-                            )
-                            embed.set_author(name="Вы успешно приобрели Ключи!",
-                                             icon_url="https://i.imgur.com/vlX2dxG.gif")
-                            embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
-                            embed.set_footer(text="Покупка прошла успешно",
-                                             icon_url=interaction.guild.icon.url)
 
-                            await interaction.send(embed=embed, ephemeral=True)
+                        # Создаем подтверждающий embed
+                        embed_confirm = disnake.Embed(
+                            title="Подтверждение покупки",
+                            description=f"Вы действительно хотите приобрести **{key_amount}**🔑 ключей за **{price}**{emoji}?",
+                            color=0x00ff00
+                        )
+
+                        # Кнопка подтверждения
+                        class ConfirmView(disnake.ui.View):
+                            def __init__(self):
+                                super().__init__(timeout=300)
+
+                                button_confirm = disnake.ui.Button(
+                                    label="✅ Подтвердить",
+                                    style=disnake.ButtonStyle.green,
+                                    custom_id="confirm_purchase"
+                                )
+                                button_confirm.callback = self.confirm_purchase
+                                self.add_item(button_confirm)
+
+                            async def confirm_purchase(self, button_interaction: disnake.MessageInteraction):
+                                collusers.update_many({'id': interaction.author.id},
+                                                      {'$inc': {'number_of_deal': 1}})
+                                collusers.find_one_and_update({'id': interaction.author.id},
+                                                              {'$inc': {'balance': -price}})
+                                collusers.update_many({'id': interaction.author.id}, {'$inc': {'keys': key_amount}})
+                                collservers.update_one({"_id": interaction.guild.id}, {"$inc": {"deals": 1}},
+                                                       upsert=True)
+                                collservers.update_one({"_id": interaction.guild.id},
+                                                       {"$inc": {"wasted_rumbiks": price}}, upsert=True)
+
+                                embed_success = disnake.Embed(
+                                    description=f"Вы приобрели **{key_amount}**🔑 ключей за **{price}**{emoji}\nИспользуйте команду ``/mystery-box open``, чтобы открыть **мистический ящик**.",
+                                    colour=0x00ff00,
+                                    timestamp=datetime.now()
+                                )
+                                embed_success.set_author(name="Вы успешно приобрели Ключи!",
+                                                         icon_url="https://i.imgur.com/vlX2dxG.gif")
+                                embed_success.set_thumbnail(
+                                    url="https://www.emojiall.com/images/240/telegram/2705.gif")
+                                embed_success.set_footer(text="Покупка прошла успешно",
+                                                         icon_url=interaction.guild.icon.url)
+
+                                await button_interaction.response.edit_message(embed=embed_success, view=None)
+
+                        view_confirm = ConfirmView()
+                        await interaction.send(embed=embed_confirm, view=view_confirm, ephemeral=True)
 
                 async def button_callback(inter: disnake.MessageInteraction):
-                    # Убираем defer
                     await inter.response.send_modal(KeyModal())
 
-                # Присваиваем callback к кнопке
                 components[0].callback = button_callback
 
-                # Отправляем сообщение
                 view = disnake.ui.View()
                 for component in components:
                     view.add_item(component)
@@ -988,22 +929,6 @@ class EconomyCog(commands.Cog):
     async def on_voice_state_update(self, member, before, after):
         global time_in_voice, multiplier
 
-        def format_time(seconds):
-            days, seconds = divmod(seconds, 86400)
-            hours, seconds = divmod(seconds, 3600)
-            minutes, seconds = divmod(seconds, 60)
-
-            time_components = []
-            if days > 0:
-                time_components.append(f'{int(days)} д')
-            if hours > 0:
-                time_components.append(f'{int(hours)} ч')
-            if minutes > 0:
-                time_components.append(f'{int(minutes)} мин')
-            if seconds > 0 or not time_components:
-                time_components.append(f'{int(seconds)} сек')
-
-            return ', '.join(time_components)
 
         if member.bot:
             return
@@ -1018,19 +943,16 @@ class EconomyCog(commands.Cog):
                 mute_timestamps[member.id] = []
             if not mute_timestamps[member.id] or mute_timestamps[member.id][-1][1] is not None:
                 mute_timestamps[member.id].append((now, None))
-            print(f'{member} замутился в {now}')
 
         # Mute status changed
         if before.self_mute != after.self_mute:
             if not after.self_mute:
                 if member.id in mute_timestamps and mute_timestamps[member.id][-1][1] is None:
                     mute_timestamps[member.id][-1] = (mute_timestamps[member.id][-1][0], now)
-                    print(f'{member} размутился в {now}')
 
         # User joined a voice channel
         if before.channel is None and after.channel is not None:
             voice_timestamps[member.id] = now
-            print(f'{member} зашел в войс в {now}')
 
         # User left a voice channel
         elif before.channel is not None and after.channel is None:
@@ -1047,7 +969,6 @@ class EconomyCog(commands.Cog):
                             mute_end = leave_time
                         total_mute_time += mute_end - mute_start
                     duration -= total_mute_time
-                    print(f'{member} вышел из войса в {leave_time}, общее время мьюта {total_mute_time} секунд')
                     mute_timestamps.pop(member.id, None)
 
                 if member.id in total_time:
@@ -1063,6 +984,8 @@ class EconomyCog(commands.Cog):
                     multiplier = collservers.find_one({'_id': member.guild.id})['multiplier']
                     if rumbiks > 0.01:
                         collusers.find_one_and_update({'id': member.id}, {'$inc': {'balance': rumbiks * multiplier}})
+                        collservers.update_one({"_id": member.guild.id}, {"$inc": {"voice_rumbiks": rumbiks * multiplier, "total_rumbicks": rumbiks * multiplier}}, upsert=True)
+
                     if multiplier > 1:
                         rumbikswithboost = rumbiks * multiplier
                     else:
@@ -1070,6 +993,7 @@ class EconomyCog(commands.Cog):
 
                     # Update total voice time in seconds
                     collusers.find_one_and_update({'id': member.id}, {'$inc': {'time_in_voice': total_time[member.id]}})
+                    collservers.update_one({"_id": member.guild.id}, {"$inc": {"time_in_voice": total_time[member.id]}}, upsert=True)
                     time_in_voice = collusers.find_one({'id': member.id})['time_in_voice']
 
                     # Use the helper function to format the duration
@@ -1086,7 +1010,7 @@ class EconomyCog(commands.Cog):
                             f'Время в войсе: с <t:{join_time}:T> до <t:{leave_time}:T>\n'
                             f'Время (без учёта мута): `{formatted_duration}`\n'
                             f'Время (всего): `{formatted_total_time}`\n'
-                            f'{f"**Выданно с учетом бустера:** `{rumbikswithboost}`{emoji}" if multiplier > 1 else f"**Выданно:** `{rumbiks}`{emoji}"}\n'
+                            f'{f"**Выдано с учетом бустера:** `{rumbikswithboost}`{emoji}" if multiplier > 1 else f"**Выдано:** `{rumbiks}`{emoji}"}\n'
                             f'Общее время в войсе: `{formatted_time_in_voice}`'
                         )
                     )
@@ -1111,7 +1035,6 @@ class EconomyCog(commands.Cog):
                             mute_end = leave_time
                         total_mute_time += mute_end - mute_start
                     duration -= total_mute_time
-                    print(f'{member} сменил канал в {leave_time}, общее время мьюта {total_mute_time} секунд')
                     mute_timestamps.pop(member.id, None)
 
                 if member.id in total_time:
@@ -1127,6 +1050,7 @@ class EconomyCog(commands.Cog):
                     multiplier = collservers.find_one({'_id': member.guild.id})['multiplier']
                     if rumbiks > 0.01:
                         collusers.find_one_and_update({'id': member.id}, {'$inc': {'balance': rumbiks * multiplier}})
+                        collservers.update_one({"_id": member.guild.id},{"$inc": {"voice_rumbiks": rumbiks * multiplier}, "total_rumbicks": rumbiks * multiplier}, upsert=True)
                     if multiplier > 1:
                         rumbikswithboost = rumbiks * multiplier
                     else:
@@ -1134,6 +1058,7 @@ class EconomyCog(commands.Cog):
 
                     # Update total voice time in seconds
                     collusers.find_one_and_update({'id': member.id}, {'$inc': {'time_in_voice': total_time[member.id]}})
+                    collservers.update_one({"_id": member.guild.id}, {"$inc": {"time_in_voice": total_time[member.id]}}, upsert=True)
                     time_in_voice = collusers.find_one({'id': member.id})['time_in_voice']
 
                     # Use the helper function to format the duration
@@ -1151,7 +1076,7 @@ class EconomyCog(commands.Cog):
                             f'Время в войсе: с <t:{join_time}:T> до <t:{leave_time}:T>\n'
                             f'Время (без учёта мута): `{formatted_duration}`\n'
                             f'Время (всего): `{formatted_total_time}`\n'
-                            f'{f"**Выданно с учетом бустера:** `{rumbikswithboost}`{emoji}" if multiplier > 1 else f"**Выданно:** `{rumbiks}`{emoji}"}\n'
+                            f'{f"**Выдано с учетом бустера:** `{rumbikswithboost}`{emoji}" if multiplier > 1 else f"**Выдано:** `{rumbiks}`{emoji}"}\n'
                             f'Общее время в войсе: `{formatted_time_in_voice}`'
                         )
                     )
@@ -1180,7 +1105,7 @@ class EconomyCog(commands.Cog):
         else:
             raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
-    @tasks.loop(seconds=200)
+    @tasks.loop(seconds=500)
     async def check_booster(self):
         server_id = 489867322039992320
         server_data = collservers.find_one({'_id': server_id})
@@ -1285,6 +1210,7 @@ class EconomyCog(commands.Cog):
 
     @commands.slash_command(name='booster', description='Включает бустер румбиков', dm_permission=False)
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    @check_roles("admin")
     async def booster(self, inter: disnake.ApplicationCommandInteraction, множитель: int, длительность: str,
                       ивент: str = ''):
         try:
@@ -1314,10 +1240,13 @@ class EconomyCog(commands.Cog):
                 '$set': {
                     'multiplier': новый_множитель,
                     'booster_timestamp': int(timestamp),
-                    'admin_booster_multiplier': int(множитель),
-                    'admin_booster_activated_by': {'$addToSet': inter.author.id}
+                    'admin_booster_multiplier': int(множитель)
                 }
             }
+        )
+        collservers.find_one_and_update(
+            {'_id': inter.author.guild.id},
+            {'$addToSet': {'admin_booster_activated_by': inter.author.id}},
         )
 
         # Форматирование длительности в строку для отображения
@@ -1333,7 +1262,6 @@ class EconomyCog(commands.Cog):
         embed.set_author(name=f"{inter.author.display_name}", icon_url=f"{inter.author.avatar.url}")
         embed.set_thumbnail(url='https://i.imgur.com/vlX2dxG.gif')
         embed.set_footer(text=f'Активация ивентового бустера', icon_url=inter.guild.icon.url)
-        # Если указано название ивента, добавляем его в embed
         if ивент:
             embed.add_field(name='Ивент:', value=ивент, inline=False)
         embed.add_field(name='', value=f'```Текущий общий множитель: x{новый_множитель}```', inline=False)
@@ -1357,24 +1285,7 @@ class EconomyCog(commands.Cog):
 
         await channel.send(embed=log_embed)
 
-    def format_duration(self, time_str):
-        """Форматирование длительности в строку."""
-        try:
-            value = int(time_str[:-1])
-        except ValueError:
-            raise ValueError(f"Invalid time format: {time_str}")
 
-        unit = time_str[-1]
-        if unit == 'д' or unit == 'd':
-            return f"{value} дней"
-        elif unit == 'ч' or unit == 'h':
-            return f"{value} часов"
-        elif unit == 'м' or unit == 'm':
-            return f"{value} минут"
-        elif unit == 'с' or unit == 's':
-            return f"{value} секунд"
-        else:
-            raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
     @commands.slash_command(name="boosters", description="Показывает текущие активные бустеры", dm_permission=False)
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
@@ -1425,7 +1336,7 @@ class EconomyCog(commands.Cog):
             embed.add_field(name='', value='')
 
         # Если нет активных бустеров
-        if len(embed.fields) == 1:  # Only the multiplier field exists
+        if len(embed.fields) == 0:  # Only the multiplier field exists
             embed.description = "На данный момент нет активных бустеров."
             embed.clear_fields()  # Clear the multiplier field if no boosters are active
 
@@ -1436,7 +1347,7 @@ class EconomyCog(commands.Cog):
             inline=False
         )
 
-        await inter.response.send_message(embed=embed)
+        await inter.response.send_message(embed=embed, ephemeral=True)
 
     @commands.Cog.listener()
     async def on_modal_submit(self, inter: disnake.ModalInteraction):
@@ -1450,6 +1361,61 @@ class EconomyCog(commands.Cog):
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def balinuser(self, inter: disnake.ApplicationCommandInteraction, user: disnake.User):
         await self.balance(inter, user)
+
+    @commands.slash_command(name="update_stats", description="Обновить общее количество значений на сервере")
+    async def update_messages(self, inter: disnake.ApplicationCommandInteraction):
+        guild_id = inter.guild.id
+
+        # Получаем всех пользователей сервера
+        users = collusers.find({"guild_id": guild_id})
+
+        # Инициализация сумм для каждого поля
+        total_messages = 0
+        total_opened_cases = 0
+        total_bumps = 0
+        total_time_in_voice = 0
+        total_balance = 0.0
+        total_deals = 0
+
+        # Суммируем значения для каждого пользователя
+        for user in users:
+            total_messages += user.get("message_count", 0)
+            total_opened_cases += user.get("opened_cases", 0)
+            total_bumps += user.get("bumps", 0)
+            total_time_in_voice += user.get("time_in_voice", 0)
+            total_balance += user.get("balance", 0.0)  # Поле баланс как float
+            total_deals += user.get("number_of_deal", 0)
+
+        # Обновляем значения в коллекции collservers
+        collservers.update_one(
+            {"_id": guild_id},
+            {
+                "$set": {
+                    "messages": total_messages,
+                    "opened_cases": total_opened_cases,
+                    "bumps": total_bumps,
+                    "time_in_voice": total_time_in_voice,
+                    "total_rumbicks": total_balance,
+                    "deals": total_deals,
+                }
+            },
+            upsert=True  # Создаёт документ, если его нет
+        )
+
+        # Ответ пользователю
+        await inter.response.send_message(
+            (
+                f"Обновлены данные на сервере:\n"
+                f"- Сообщения: добавлено {total_messages}\n"
+                f"- Открытые кейсы: добавлено {total_opened_cases}\n"
+                f"- Бампы: добавлено {total_bumps}\n"
+                f"- Время в голосе: добавлено {total_time_in_voice} секунд\n"
+                f"- Баланс: добавлено {total_balance}\n"
+                f"- Сделки: добавлено {total_deals}"
+            ),
+            ephemeral=True
+        )
+
 
 def setup(bot):
     bot.add_cog(EconomyCog(bot))

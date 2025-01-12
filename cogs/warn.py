@@ -4,7 +4,7 @@ import disnake
 from disnake.ext import commands, tasks
 from datetime import datetime, timedelta
 from pymongo import MongoClient
-from main import rules, get_rule_info # Список правил
+from main import rules, get_rule_info, check_roles
 from main import cluster
 
 current_datetime = datetime.today()
@@ -93,51 +93,54 @@ class WarnsCog(commands.Cog):
         expired_warns = collusers.find({"reasons.timestamp": {"$lte": current_timestamp}})
 
         for user in expired_warns:
-            guild_id = user["guild_id"]
-            guild = self.bot.get_guild(guild_id) or await self.bot.fetch_guild(guild_id)
+            try:
+                guild_id = user["guild_id"]
+                guild = self.bot.get_guild(guild_id) or await self.bot.fetch_guild(guild_id)
 
-            for reason in user["reasons"]:
-                if reason["timestamp"] <= current_timestamp:
-                    # Удаление истекших предупреждений из списка и обновление базы данных
-                    collusers.update_one(
-                        {"id": user["id"], "guild_id": user["guild_id"]},
-                        {"$pull": {"reasons": {"timestamp": reason["timestamp"]}}},
-                    )
-                    collusers.update_one(
-                        {"id": user["id"], "guild_id": user["guild_id"]},
-                        {"$inc": {"warns": -1}}
-                    )
+                for reason in user["reasons"]:
+                    if reason["timestamp"] <= current_timestamp:
+                        # Удаление истекших предупреждений из списка и обновление базы данных
+                        collusers.update_one(
+                            {"id": user["id"], "guild_id": user["guild_id"]},
+                            {"$pull": {"reasons": {"timestamp": reason["timestamp"]}}},
+                        )
+                        collusers.update_one(
+                            {"id": user["id"], "guild_id": user["guild_id"]},
+                            {"$inc": {"warns": -1}}
+                        )
 
-                    embed = disnake.Embed(
-                        title="ShadowDragons",
-                        url="https://discord.com/invite/KE3psXf",
-                        description="",
-                        color=0x00ff40
-                    )
-                    embed.set_author(name=f'С Вас сняли предупреждение!', icon_url='')
-                    embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
-                    embed.add_field(
-                        name="",
-                        value=f"Срок Вашего предупреждения истёк!",
-                        inline=False
-                    )
-                    embed.set_footer(text="Больше не нарушайте!")
+                        embed = disnake.Embed(
+                            title="ShadowDragons",
+                            url="https://discord.com/invite/KE3psXf",
+                            description="",
+                            color=0x00ff40
+                        )
+                        embed.set_author(name=f'С Вас сняли предупреждение!', icon_url='')
+                        embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
+                        embed.add_field(
+                            name="",
+                            value=f"Срок Вашего предупреждения истёк!",
+                            inline=False
+                        )
+                        embed.set_footer(text="Больше не нарушайте!")
 
-                    member = guild.get_member(user["id"]) or await guild.fetch_member(user["id"])
-                    if member:
-                        await member.send(embed=embed)
+                        member = guild.get_member(user["id"]) or await guild.fetch_member(user["id"])
+                        if member:
+                            await member.send(embed=embed)
 
-                    channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
+                        channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
 
 
-                    embed = disnake.Embed(title="Предупреждение участника было снято!",
-                                          description=f"Срок предупреждения участника **{member.name}** ({member.mention}) истек!",
-                                          colour=0x00ff40,
-                                          timestamp=datetime.now())
-                    embed.set_author(name='', icon_url='')
-                    embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
-                    embed.set_footer(text="Снятие предупреждения")
-                    await channel.send(embed=embed)
+                        embed = disnake.Embed(title="Предупреждение участника было снято!",
+                                            description=f"Срок предупреждения участника **{member.name}** ({member.mention}) истек!",
+                                            colour=0x00ff40,
+                                            timestamp=datetime.now())
+                        embed.set_author(name='', icon_url='')
+                        embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
+                        embed.set_footer(text="Снятие предупреждения")
+                        await channel.send(embed=embed)
+            except:
+                pass
 
     def get_rule_info(self, причина):
         if причина in self.rules:
@@ -153,6 +156,7 @@ class WarnsCog(commands.Cog):
 
     @commands.slash_command(name="warn", description="Выдает предупреждение(-я) участнику", dm_permission=False)
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    @check_roles("moder")
     async def warn(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member, количество: int,
                    причина="Не указана", длительность: str = None):
         if inter.type == disnake.InteractionType.application_command:
@@ -292,6 +296,11 @@ class WarnsCog(commands.Cog):
                     },
                     upsert=True
                 )
+                collservers.update_one(
+                    {"_id": inter.guild.id},
+                    {"$inc": {"warns": 1}},
+                    upsert=True
+                )
 
             warns_count = collusers.find_one({"id": участник.id, "guild_id": inter.guild.id})["warns"]
             server_value = collservers.find_one({"_id": inter.guild.id})["case"]
@@ -301,7 +310,7 @@ class WarnsCog(commands.Cog):
                 colour=0xffff00,
                 timestamp=datetime.now()
             )
-            embed.set_author(name=f"{inter.author.name}",
+            embed.set_author(name=f"{inter.author.display_name}",
                              icon_url=f"{inter.author.display_avatar.url}")
             embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/04/28/18/34/18-34-10-554_512.gif")
             embed.set_footer(text="Предупреждение")
@@ -469,6 +478,7 @@ class WarnsCog(commands.Cog):
 
     @commands.slash_command(name='unwarn', description='Позволяет снять предупреждение с участника', dm_permission=False)
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    @check_roles("moder")
     async def unwarn(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member,
                      предупреждение: int):
         if inter.type == disnake.InteractionType.application_command:
@@ -493,6 +503,7 @@ class WarnsCog(commands.Cog):
                     {"id": участник.id, "guild_id": inter.guild.id},
                     {'$pull': {"reasons": None}})
                 collusers.update_one({"id": участник.id, "guild_id": inter.guild.id}, {'$inc': {'warns': -1}})
+                collservers.update_one({"_id": inter.guild.id}, {"$inc": {"unwarns": 1}}, upsert=True)
                 await участник.timeout(duration=None)
 
                 role = inter.guild.get_role(1229075137374978119)
@@ -501,7 +512,7 @@ class WarnsCog(commands.Cog):
                     collusers.Update_one({"id": участник.id, "guild_id": inter.guild.id}, {"$set": {"ban": "False"}})
 
                 embed = disnake.Embed(description=f"Предупреждение ``#{предупреждение}`` участника {участник.mention} было снято.", colour=0x00ff40, timestamp=datetime.now())
-                embed.set_author(name=f"{inter.author.name}", icon_url=f"{inter.author.display_avatar.url}")
+                embed.set_author(name=f"{inter.author.display_name}", icon_url=f"{inter.author.display_avatar.url}")
                 embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
                 embed.set_footer(text="Анварн")
                 try:
@@ -530,6 +541,7 @@ class WarnsCog(commands.Cog):
                 await channel.send(embed=embed)
 
     @commands.slash_command(name='warns', description='Показывает количество текущих предупреждений участника.')
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def warns(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member = None):
         if inter.type == disnake.InteractionType.application_command:
             try:
@@ -586,7 +598,6 @@ class WarnsCog(commands.Cog):
                 await inter.edit_original_response(embed=embed)
             except:
                 await inter.response.send_message(embed=embed, ephemeral=True)
-
 
 def setup(bot):
     bot.add_cog(WarnsCog(bot))

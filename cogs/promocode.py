@@ -4,7 +4,7 @@ import disnake
 from disnake.ext import commands, tasks
 from datetime import datetime, timedelta
 from pymongo import MongoClient
-from main import rules, get_rule_info  # Список правил
+from main import rules, get_rule_info, check_roles, create_error_embed
 from main import cluster
 from ai.process_role import process_role
 import random
@@ -16,13 +16,29 @@ collpromos = cluster.server.promos
 collusers = cluster.server.users
 collservers = cluster.server.servers
 
+emoji = "<a:rumbick:1271085088142262303>"
+
+def convert_seconds_to_time_string(seconds):
+    if seconds >= 86400:  # дни
+        value = seconds // 86400
+        return f"{value}d"
+    elif seconds >= 3600:  # часы
+        value = seconds // 3600
+        return f"{value}h"
+    elif seconds >= 60:  # минуты
+        value = seconds // 60
+        return f"{value}m"
+    else:  # секунды
+        return f"{seconds}s"
+
+
 def generate_random_code():
-    """Генерирует случайный промокод в формате SD-XXXX-XXXX-XXXX."""
+    """Генерирует случайный промокод в формате SD-XXXXX-XXXXX-XXXXX."""
     parts = [
         'SD',  # Первые два символа
-        ''.join(random.choices(string.ascii_uppercase + string.digits, k=4)),
-        ''.join(random.choices(string.ascii_uppercase + string.digits, k=4)),
-        ''.join(random.choices(string.ascii_uppercase + string.digits, k=4)),
+        ''.join(random.choices(string.ascii_uppercase + string.digits, k=5)),
+        ''.join(random.choices(string.ascii_uppercase + string.digits, k=5)),
+        ''.join(random.choices(string.ascii_uppercase + string.digits, k=5)),
     ]
     return '-'.join(parts)
 
@@ -30,16 +46,25 @@ class Promo(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name='promocode', description='Взаимодействие с промокодами')
+    @commands.slash_command(name='promocode', description='Взаимодействие с промокодами', dm_permission=False)
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def promo(self, inter):
         pass
 
     @promo.sub_command(name='create-role', description='Создать промокод на роль')
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    @check_roles("admin")
     async def create_role(
-            self, inter, роль: disnake.Role, количество: int, длительность: str = None, код: str = None
+            self, inter, роль: disnake.Role, количество_активаций: int = 1, длительность: str = None,
+            длительность_роли: str = None, код: str = None
     ):
+        # Если количество_активаций равно 0, устанавливаем его в 999999 (бесконечно)
+        if количество_активаций == 0:
+            количество_активаций = 'Бесконечно'
+
         код = код or generate_random_code()  # Генерация промокода, если он не задан
         expires_at = None
+        expires_role = None
 
         if длительность:
             try:
@@ -47,6 +72,17 @@ class Promo(commands.Cog):
             except ValueError as e:
                 await inter.response.send_message(f"Ошибка в формате времени: {e}", ephemeral=True)
                 return
+
+        if длительность_роли:
+            try:
+                expires_role = convert_to_seconds(длительность_роли)
+                formatted_duration = format_duration(длительность_роли)  # Преобразование длительности в читаемый формат
+            except ValueError as e:
+                await inter.response.send_message(f"Ошибка в формате времени: {e}", ephemeral=True)
+                return
+        else:
+            expires_role = None
+            formatted_duration = "бесконечная"
 
         # Получаем текущий ID и увеличиваем его
         promo_data = collpromos.find_one_and_update(
@@ -65,9 +101,10 @@ class Promo(commands.Cog):
                     'id': promo_id,
                     'role_id': роль.id,
                     'type': 'role',
-                    'activations': количество,
+                    'activations': количество_активаций,
                     'expires_at': expires_at,
                     'create_id': inter.author.id,
+                    'expires_role': expires_role,
                     'users': []
                 }
             }},
@@ -75,22 +112,44 @@ class Promo(commands.Cog):
         )
 
         expiry_message = (
-            f", срок действия истекает <t:{expires_at}:R>" if expires_at else ", бессрочный"
+            f"срок его действия истекает <t:{expires_at}:R>" if expires_at else "срок его действия **бесконечный**"
         )
-        await inter.response.send_message(f'Промокод создан: ``{код}`` с ID: {promo_id}{expiry_message}')
+        embed = disnake.Embed(title="Промокод успешно создан!", color=0x0000ff)
+        embed.set_thumbnail(url='https://media4.giphy.com/media/V1ItMnx6o84XYrlPmt/giphy.gif')
+        embed.add_field(
+            name="Информация о промокоде",
+            value=(
+                f"Промокод на роль ``{роль}`` с длительностью роли **{formatted_duration}** успешно создан: "
+                f"```{код}``` Его количество активаций: ``{количество_активаций}``\n А {expiry_message}"
+            ),
+            inline=False
+        )
+        embed.set_footer(text=f'Уникальный номер промокода: #{promo_id}', icon_url=inter.guild.icon.url)
+        embed.timestamp = datetime.now()
+        await inter.response.send_message(embed=embed, ephemeral=True)
 
     @promo.sub_command(name='create-rumbicks', description='Создать промокод на румбики')
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    @check_roles("admin")
     async def create_rumbicks(
-            self, inter, количество_румбиков: int, количество_активаций: int, длительность: str = None, код: str = None
+            self, inter, количество_румбиков: int, количество_активаций: int = 1, длительность: str = None,
+            код: str = None
     ):
+        # Если количество_активаций равно 0, устанавливаем его в 999999 (бесконечно)
+        if количество_активаций == 0:
+            количество_активаций = 'Бесконечно'
+
         код = код or generate_random_code()  # Генерация промокода, если он не задан
         expires_at = None
+        expires_role = None
 
         if длительность:
             try:
                 expires_at = int(time.time()) + convert_to_seconds(длительность)
             except ValueError as e:
-                await inter.response.send_message(f"Ошибка в формате времени: {e}", ephemeral=True)
+                error_message = f"Ошибка в формате времени: {e}"
+                embed = create_error_embed(error_message)
+                await inter.response.send_message(embed=embed, ephemeral=True)
                 return
 
         # Получаем текущий ID и увеличиваем его
@@ -120,22 +179,39 @@ class Promo(commands.Cog):
         )
 
         expiry_message = (
-            f", срок действия истекает <t:{expires_at}:R>" if expires_at else ", бессрочный"
+            f"срок его действия истекает <t:{expires_at}:R>" if expires_at else " срок его действия **бесконечный**"
         )
-        await inter.response.send_message(f'Промокод создан: ``{код}`` с ID: {promo_id}{expiry_message}')
+        embed = disnake.Embed(title="Промокод успешно создан!", color=0x0000ff)
+        embed.set_thumbnail(url='https://media4.giphy.com/media/V1ItMnx6o84XYrlPmt/giphy.gif')
+        embed.add_field(name='',
+                        value=f"Промокод на ``{количество_румбиков}``{emoji} успешно создан: ```{код}``` Его количество активаций: ``{количество_активаций}``\n А {expiry_message}",
+                        inline=False)
+        embed.set_footer(text=f'Уникальный номер промокода: #{promo_id}', icon_url=inter.guild.icon.url)
+        embed.timestamp = datetime.now()
+        await inter.response.send_message(embed=embed, ephemeral=True)
 
     @promo.sub_command(name='create-keys', description='Создать промокод на ключи')
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    @check_roles("admin")
     async def create_keys(
-            self, inter, количество_ключей: int, количество_активаций: int, длительность: str = None, код: str = None
+            self, inter, количество_ключей: int, количество_активаций: int = 1, длительность: str = None,
+            код: str = None
     ):
+        # Если количество_активаций равно 0, устанавливаем его в 999999 (бесконечно)
+        if количество_активаций == 0:
+            количество_активаций = 'Бесконечно'
+
         код = код or generate_random_code()  # Генерация промокода, если он не задан
         expires_at = None
+        expires_role = None
 
         if длительность:
             try:
                 expires_at = int(time.time()) + convert_to_seconds(длительность)
             except ValueError as e:
-                await inter.response.send_message(f"Ошибка в формате времени: {e}", ephemeral=True)
+                error_message = f"Ошибка в формате времени: {e}"
+                embed = create_error_embed(error_message)
+                await inter.response.send_message(embed=embed, ephemeral=True)
                 return
 
         # Получаем текущий ID и увеличиваем его
@@ -165,12 +241,20 @@ class Promo(commands.Cog):
         )
 
         expiry_message = (
-            f", срок действия истекает <t:{expires_at}:R>" if expires_at else ", бессрочный"
+            f"срок его действия истекает <t:{expires_at}:R>" if expires_at else " срок его действия **бесконечный**"
         )
-        await inter.response.send_message(f'Промокод создан: ``{код}`` с ID: {promo_id}{expiry_message}')
+        embed = disnake.Embed(title="Промокод успешно создан!", color=0x0000ff)
+        embed.set_thumbnail(url='https://media4.giphy.com/media/V1ItMnx6o84XYrlPmt/giphy.gif')
+        embed.add_field(name='',
+                        value=f"Промокод на ``{количество_ключей}``🔑 успешно создан: ```{код}``` Его количество активаций: ``{количество_активаций}``\n А {expiry_message}",
+                        inline=False)
+        embed.set_footer(text=f'Уникальный номер промокода: #{promo_id}', icon_url=inter.guild.icon.url)
+        embed.timestamp = datetime.now()
+        await inter.response.send_message(embed=embed, ephemeral=True)
         return код
 
     @promo.sub_command(name='use', description='Использовать промокод')
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def use(self, inter, код: str):
         await inter.response.defer(ephemeral=True)
         promo_data = collpromos.find_one(
@@ -178,7 +262,9 @@ class Promo(commands.Cog):
         )
 
         if not promo_data:
-            await inter.edit_original_response('Кода не существует')
+            error_message = "Такого промокода не существует, либо истёк его срок действия."
+            embed = create_error_embed(error_message)
+            await inter.edit_original_response(embed=embed)
             return
 
         promo = promo_data['promos'][код]
@@ -189,12 +275,16 @@ class Promo(commands.Cog):
                 {'_id': inter.guild.id},
                 {'$unset': {f'promos.{код}': 1}}
             )
-            await inter.edit_original_response('Срок действия промокода истёк, он удалён.')
+            error_message = "Срок действия промокода истёк."
+            embed = create_error_embed(error_message)
+            await inter.edit_original_response(embed=embed)
             return
 
         # Проверяем, активирован ли промокод пользователем
         if inter.author.id in [user['id'] for user in promo['users']]:
-            await inter.edit_original_response('Вы уже активировали этот промокод.')
+            error_message = "Вы уже активировали этот промокод."
+            embed = create_error_embed(error_message)
+            await inter.edit_original_response(embed=embed)
             return
 
         # Обработка по типу промокода
@@ -203,39 +293,101 @@ class Promo(commands.Cog):
                 {'id': inter.author.id},
                 {'$inc': {'balance': promo['rumbicks']}}
             )
-            response = f'Вы получили {promo["rumbicks"]} румбиков.'
+            embed = disnake.Embed(title="Вы успешно активировали промокод!", color=0x0000ff, timestamp=datetime.now())
+            embed.set_thumbnail(url='https://media4.giphy.com/media/V1ItMnx6o84XYrlPmt/giphy.gif')
+            embed.add_field(name='Награда:', value=f'Вы получили ``{promo["rumbicks"]}``{emoji}.')
+            embed.set_footer(text=f'Промокод', icon_url=inter.guild.icon.url)
+
         elif promo['type'] == 'keys':
             collusers.update_one(
                 {'id': inter.author.id},
                 {'$inc': {'keys': promo['keys']}}
             )
-            response = f'Вы получили {promo["keys"]} ключей.'
+            embed = disnake.Embed(title="Вы успешно активировали промокод!", color=0x0000ff, timestamp=datetime.now())
+            embed.set_thumbnail(url='https://media4.giphy.com/media/V1ItMnx6o84XYrlPmt/giphy.gif')
+            embed.add_field(name='Награда:', value=f'Вы получили ``{promo["keys"]}``🔑.')
+            embed.set_footer(text=f'Промокод', icon_url=inter.guild.icon.url)
+
         elif promo['type'] == 'role':
             role = inter.guild.get_role(promo['role_id'])
-            await inter.author.add_roles(role)
-            response = f'Вам выдана роль {role.name}.'
+            role_id = collpromos.find_one({'_id': inter.guild.id})['promos'][код]['role_id']
+            role = inter.guild.get_role(role_id)
+            on_time = collpromos.find_one({'_id': inter.guild.id})['promos'][код]['expires_role']
+
+            if on_time is None:
+                formatted_duration = "бесконечная"
+            else:
+                try:
+                    # Преобразуем секунды в строку с единицей измерения
+                    time_str = convert_seconds_to_time_string(on_time)
+                    # Форматируем строку в человеко-читаемый формат
+                    formatted_duration = format_duration(time_str)
+                except ValueError:
+                    formatted_duration = "Некорректная длительность"
+
+            await process_role(inter, self.bot, 0, on_time, role_id, ephemeral=True)
+
+            user_data = collusers.find_one({'id': inter.author.id}, {'role_ids': 1})
+            role_info = next(
+                (r for r in user_data.get('role_ids', []) if r['role_ids'] == role_id),
+                None
+            )
+
+            if role_info:
+                expires_at = (
+                    "бесконечно" if not role_info.get('expires_at')
+                    else f"<t:{role_info['expires_at']}:R>"
+                )
+            else:
+                expires_at = "**бесконечно**"
+
+
+            embed = disnake.Embed(title="Вы успешно активировали промокод!", color=0x0000ff, timestamp=datetime.now())
+            embed.set_thumbnail(url='https://media4.giphy.com/media/V1ItMnx6o84XYrlPmt/giphy.gif')
+            embed.add_field(name='Награда:', value=f'Вам выдана роль ``{role.name}`` на ``{formatted_duration}``.\n Роль истекает через: {expires_at}.')
+            embed.set_footer(text=f'Промокод', icon_url=inter.guild.icon.url)
         else:
-            response = 'Неизвестный тип промокода.'
+            error_message = "Неизвестный тип промокода."
+            embed = create_error_embed(error_message)
+
+        collusers.update_one(
+            {'id': inter.author.id, 'guild_id': inter.author.guild.id},
+            {'$inc': {'promocodes': 1}},
+            upsert=True
+        )
+        collservers.update_one({"_id": inter.guild.id}, {"$inc": {"activation_promos": 1}},
+                               upsert=True)
+
+        # Проверяем, ограничено ли количество активаций
+        update_query = {
+            '$push': {f'promos.{код}.users': {'id': inter.author.id}}
+        }
+
+        # Если активации не бесконечны, уменьшаем их количество
+        if promo['activations'] != 'Бесконечно':
+            update_query['$inc'] = {f'promos.{код}.activations': -1}
 
         # Обновляем данные промокода
         collpromos.update_one(
             {'_id': inter.guild.id},
-            {
-                '$push': {f'promos.{код}.users': {'id': inter.author.id}},
-                '$inc': {f'promos.{код}.activations': -1}
-            }
+            update_query
         )
 
         # Удаляем промокод, если активации закончились
-        if promo['activations'] - 1 <= 0:
-            collpromos.update_one(
-                {'_id': inter.guild.id},
-                {'$unset': {f'promos.{код}': 1}}
-            )
+        if promo['activations'] != 'Бесконечно':
+            # Преобразуем активации в число, если это возможно
+            activations = int(promo['activations'])
+            if activations - 1 <= 0:
+                collpromos.update_one(
+                    {'_id': inter.guild.id},
+                    {'$unset': {f'promos.{код}': 1}}
+                )
 
-        await inter.edit_original_response(response)
+        await inter.edit_original_response(embed=embed)
 
     @promo.sub_command(name="list", description="Список промокодов")
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    @check_roles("admin")
     async def list_promos(self, inter):
         # Получаем все промокоды
         result = collpromos.find_one({'_id': inter.guild.id})
@@ -270,17 +422,23 @@ class Promo(commands.Cog):
             # Перевод типа на русский
             if promo_type == 'rumbicks':
                 promo_type_ru = "Румбики"
-                capacity = f"{данные.get('rumbicks', 0)} румбиков"
+                capacity = f"``{данные.get('rumbicks', 0)}``{emoji}"
             elif promo_type == 'keys':
                 promo_type_ru = "Ключи"
-                capacity = f"{данные.get('keys', 0)} ключей"
+                capacity = f"``{данные.get('keys', 0)}``🔑"
             elif promo_type == 'role':
                 promo_type_ru = "Роль"
                 role_id = данные.get('role_id')
                 role = inter.guild.get_role(role_id)
                 role_name = role.name if role else 'Неизвестная роль'
-                duration = данные.get('on_time', 0)
-                capacity = f"Роль: {role_name} на {duration} минут"
+                duration_seconds = данные.get('expires_role', 0)
+
+                if duration_seconds:
+                    time_str = convert_seconds_to_time_string(duration_seconds)
+                    formatted_duration = format_duration(time_str)
+                    capacity = f"Роль: ``{role_name}`` на **{formatted_duration}**"
+                else:
+                    capacity = f"Роль: ``{role_name}`` на **Бессрочно**"
             else:
                 promo_type_ru = "Неизвестный тип"
                 capacity = "Неизвестно"
@@ -310,15 +468,22 @@ class Promo(commands.Cog):
 
         # Если нет активных промокодов
         if not promo_list:
-            await inter.response.send_message("Нет активных промокодов.")
+            embed = disnake.Embed(title="Список промокодов", color=0x0000ff, timestamp=datetime.now())
+            embed.set_thumbnail(url='https://media4.giphy.com/media/V1ItMnx6o84XYrlPmt/giphy.gif')
+            embed.set_footer(text=inter.guild.name, icon_url=inter.guild.icon.url)
+            embed.add_field(name='Список промокодов пуст:', value='На данный момент нет активных промокодов.')
+            await inter.response.send_message(embed=embed)
             return
 
         # Формируем вывод в одном эмбеде
-        embed = disnake.Embed(title="Список промокодов")
+        embed = disnake.Embed(title="Список промокодов", color=0x0000ff, timestamp=datetime.now())
+        embed.set_thumbnail(url='https://media4.giphy.com/media/V1ItMnx6o84XYrlPmt/giphy.gif')
+        embed.set_footer(text=inter.guild.name, icon_url=inter.guild.icon.url)
         for promo in promo_list[:5]:  # Выводим первые 5 промокодов
             embed.add_field(
-                name=f"Промокод: {promo['код']} (ID: {promo['promo_id']})",
-                value=f"**Тип:** {promo['promo_type']}\n"
+                name=f"ID: {promo['promo_id']}\n",
+                value=f"**Промокод:** ``{promo['код']}``\n"
+                      f"**Тип:** {promo['promo_type']}\n"
                       f"**Вместимость:** {promo['capacity']}\n"
                       f"**Создатель:** {promo['creator_mention']}\n"
                       f"**Активирован:** {promo['activated_by']}\n"
@@ -326,6 +491,7 @@ class Promo(commands.Cog):
                       f"**Оставшиеся активации:** {promo['activations']}",
                 inline=False
             )
+            embed.add_field(name="", value="", inline=False)
 
         # Если промокодов больше 5, добавляем кнопки для переключения страниц
         if len(promo_list) > 5:
@@ -343,13 +509,16 @@ class Promo(commands.Cog):
                 elif interaction.component.custom_id == "prev_page" and current_page > 1:
                     current_page -= 1
 
-                embed = disnake.Embed(title="Список промокодов")
+                embed = disnake.Embed(title="Список промокодов", color=0x0000ff, timestamp=datetime.now())
+                embed.set_thumbnail(url='https://media4.giphy.com/media/V1ItMnx6o84XYrlPmt/giphy.gif')
+                embed.set_footer(text=f"Страница {current_page}/{total_pages}", icon_url=interaction.guild.icon.url)
                 start_index = (current_page - 1) * 5
                 end_index = start_index + 5
                 for promo in promo_list[start_index:end_index]:
                     embed.add_field(
-                        name=f"Промокод: {promo['код']} (ID: {promo['promo_id']})",
-                        value=f"**Тип:** {promo['promo_type']}\n"
+                        name=f"ID: {promo['promo_id']}",
+                        value=f"Промокод: ``{promo['код']}``\n"
+                              f"**Тип:** {promo['promo_type']}\n"
                               f"**Вместимость:** {promo['capacity']}\n"
                               f"**Создатель:** {promo['creator_mention']}\n"
                               f"**Активирован:** {promo['activated_by']}\n"
@@ -357,6 +526,7 @@ class Promo(commands.Cog):
                               f"**Оставшиеся активации:** {promo['activations']}",
                         inline=False
                     )
+                    embed.add_field(name="", value="", inline=False)
 
                 await interaction.response.edit_message(embed=embed, view=view)
 
@@ -369,19 +539,25 @@ class Promo(commands.Cog):
             view.add_item(prev_button)
             view.add_item(next_button)
 
-            await inter.response.send_message(embed=embed, view=view)
+            await inter.response.send_message(embed=embed, view=view, ephemeral=True)
         else:
-            await inter.response.send_message(embed=embed)
+            await inter.response.send_message(embed=embed, ephemeral=True)
 
     @promo.sub_command(name="delete", description="Удалить промокод по ID или коду")
+    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    @check_roles("admin")
     async def delete_promocode(self, inter, promo_id: str = None, promo_code: str = None):
         if not promo_id and not promo_code:
-            await inter.response.send_message("Укажите ID или код промокода для удаления.")
+            error_message = "Укажите ID или код промокода для удаления."
+            embed = create_error_embed(error_message)
+            await inter.response.send_message(embed=embed, ephemeral=True)
             return
 
         result = collpromos.find_one({'_id': inter.guild.id})
         if not result:
-            await inter.response.send_message("Нет активных промокодов.")
+            error_message = "Нет активных промокодов."
+            embed = create_error_embed(error_message)
+            await inter.response.send_message(embed=embed, ephemeral=True)
             return
 
         promos = result.get('promos', {})
@@ -405,9 +581,15 @@ class Promo(commands.Cog):
                 {'_id': inter.guild.id},
                 {'$unset': {f'promos.{promo_to_delete}': 1}}
             )
-            await inter.response.send_message(f"Промокод с кодом `{promo_to_delete}` был удален.")
+            embed = disnake.Embed(title="Промокод успешно удалён!", color=0x0000ff, timestamp=datetime.now())
+            embed.set_thumbnail(url='https://www.emojiall.com/images/240/telegram/2705.gif')
+            embed.set_footer(text=inter.guild.name, icon_url=inter.guild.icon.url)
+            embed.add_field(name="", value=f"Промокод с кодом `{promo_to_delete}` был удален.", inline=False)
+            await inter.response.send_message(embed=embed, ephemeral=True)
         else:
-            await inter.response.send_message("Промокод с таким ID или кодом не найден.")
+            error_message = "Промокод с таким ID или кодом не найден."
+            embed = create_error_embed(error_message)
+            await inter.response.send_message(embed=embed, ephemeral=True)
 def setup(bot):
     bot.add_cog(Promo(bot))
     print("PromoCog is ready")

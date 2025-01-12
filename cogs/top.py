@@ -2,6 +2,7 @@ import disnake
 from disnake.ext import commands
 from datetime import datetime
 from main import cluster
+from .userinfo import omegabox_emoji, ticket_emoji
 
 collusers = cluster.server.users
 collservers = cluster.server.servers
@@ -13,6 +14,10 @@ class TopEnum(disnake.enums.Enum):
     Сообщения = 'Сообщения'
     Сделки = 'Сделки'
     Репутация = 'Репутация'
+    Бампы = 'Бампы'
+    Ключи = 'Ключи'
+    MysteryBox = 'MysteryBox'
+    Промокоды = 'Промокоды'
 
 
 class TopCog(commands.Cog):
@@ -36,8 +41,25 @@ class TopCog(commands.Cog):
         return [(record['id'], record['number_of_deal']) for record in top_records]
 
     def get_top_users_reputation(self, skip=0, limit=10):
-        top_records = collusers.find().sort('reputation', -1).skip(skip).limit(limit)
+        top_records = collusers.find({"reputation": {"$ne": 0}}).sort('reputation', -1).skip(skip).limit(limit)
         return [(record['id'], record['reputation']) for record in top_records]
+
+    def get_top_users_bumps(self, skip=0, limit=10):
+        top_records = collusers.find().sort('bumps', -1).skip(skip).limit(limit)
+        return [(record['id'], record['bumps']) for record in top_records]
+
+    def get_top_users_keys(self, skip=0, limit=10):
+        top_records = collusers.find().sort('keys', -1).skip(skip).limit(limit)
+        return [(record['id'], record['keys']) for record in top_records]
+
+    def get_top_users_opened_cases(self, skip=0, limit=10):
+        top_records = collusers.find().sort('opened_cases', -1).skip(skip).limit(limit)
+        return [(record['id'], record['opened_cases']) for record in top_records]
+
+    def get_top_users_promocodes(self, skip=0, limit=10):
+        top_records = collusers.find().sort('promocodes', -1).skip(skip).limit(limit)
+        return [(record['id'], record['promocodes']) for record in top_records]
+
 
     def seconds_to_dhm(self, seconds):
         days = seconds // 86400  # 86400 секунд в одном дне
@@ -129,7 +151,7 @@ class TopCog(commands.Cog):
                     for idx, (user_id, balance) in enumerate(top_users, start=skip + 1):
                         member = interaction.guild.get_member(user_id)
                         position_emoji = self.cog.position_emoji(idx)
-                        emoji = "<a:rumbick_gif:1276856664842047518>"
+                        emoji = "<a:rumbick:1271085088142262303>"
                         if balance == 0:
                             for child in self.children:
                                 if isinstance(child, disnake.ui.Button) and child.custom_id == "next":
@@ -223,28 +245,109 @@ class TopCog(commands.Cog):
                 embed.set_thumbnail(url='https://i.imgur.com/64ibjZo.gif')
                 if top_users:
                     for idx, (user_id, reputation) in enumerate(top_users, start=skip + 1):
-                        print(reputation)
                         member = interaction.guild.get_member(user_id)
                         position_emoji = self.cog.position_emoji(idx)
-                        if reputation >= 0:
-                            emoji = "<:rep_up:1278690709855010856>"
+                        if reputation > 0:
+                            emoji = "<:rep_up:1234218072433365102>"
                         else:
-                            emoji = "<:rep_down:1278690717652357201>"
+                            emoji = "<:rep_down:1234218095116288154>"
 
-                        if reputation == 0:
+                        title = self.cog.get_reputation_title(reputation)
+                        if member:
+                            embed.add_field(name=f"{position_emoji} ``#{idx}``. {member.display_name}",
+                                            value=f"Репутация: **{reputation}** {emoji} - ``{title}``", inline=False)
+                        else:
+                            embed.add_field(name=f"``#{idx}``. ~~Неизвестный участник (ID: {user_id})~~",
+                                            value=f"Репутация: **{reputation}** {emoji} - ``{title}``", inline=False)
+
+
+            elif self.top_type == 'Бампы':
+                top_users = self.cog.get_top_users_bumps(skip, self.items_per_page)
+                embed = disnake.Embed(title="🏆 Топ участников по бампам", color=0xffff00, timestamp=datetime.now())
+                embed.set_thumbnail(url='https://i.imgur.com/64ibjZo.gif')
+                if top_users:
+                    for idx, (user_id, bumps) in enumerate(top_users, start=skip + 1):
+                        member = interaction.guild.get_member(user_id)
+                        position_emoji = self.cog.position_emoji(idx)
+                        emoji = "🆙"
+                        if bumps < 1:
                             for child in self.children:
                                 if isinstance(child, disnake.ui.Button) and child.custom_id == "next":
                                     child.disabled = True
                             await interaction.edit_original_message(view=self)
 
-                        if member and not reputation == 0:
-                            title = self.cog.get_reputation_title(reputation)
+                        if member and not bumps == 0:
                             embed.add_field(name=f"{position_emoji} ``#{idx}``. {member.display_name}",
-                                            value=f"Репутация: **{reputation}** {emoji} - ``{title}``", inline=False)
-                        elif not reputation == 0:
-                            title = self.cog.get_reputation_title(reputation)
+                                            value=f"Бампов: **{bumps}** {emoji}", inline=False)
+                        elif not bumps == 0:
                             embed.add_field(name=f"``#{idx}``. ~~Неизвестный участник (ID: {user_id})~~",
-                                            value=f"Репутация: **{reputation}** {emoji} - ``{title}``", inline=False)
+                                            value=f"Бампов: **{bumps}** {emoji}", inline=False)
+
+            elif self.top_type == 'Ключи':
+                top_users = self.cog.get_top_users_keys(skip, self.items_per_page)
+                embed = disnake.Embed(title="🏆 Топ участников по ключам", color=0xffff00, timestamp=datetime.now())
+                embed.set_thumbnail(url='https://i.imgur.com/64ibjZo.gif')
+                if top_users:
+                    for idx, (user_id, keys) in enumerate(top_users, start=skip + 1):
+                        member = interaction.guild.get_member(user_id)
+                        position_emoji = self.cog.position_emoji(idx)
+                        emoji = "🔑️"
+                        if keys < 1:
+                            for child in self.children:
+                                if isinstance(child, disnake.ui.Button) and child.custom_id == "next":
+                                    child.disabled = True
+                            await interaction.edit_original_message(view=self)
+
+                        if member and not keys == 0:
+                            embed.add_field(name=f"{position_emoji} ``#{idx}``. {member.display_name}",
+                                            value=f"Ключи: **{keys}** {emoji}", inline=False)
+                        elif not keys == 0:
+                            embed.add_field(name=f"``#{idx}``. ~~Неизвестный участник (ID: {user_id})~~",
+                                            value=f"Ключи: **{keys}** {emoji}", inline=False)
+
+            elif self.top_type == 'MysteryBox':
+                top_users = self.cog.get_top_users_opened_cases(skip, self.items_per_page)
+                embed = disnake.Embed(title="🏆 Топ участников по открытым MysteryBox", color=0xffff00, timestamp=datetime.now())
+                embed.set_thumbnail(url='https://i.imgur.com/64ibjZo.gif')
+                if top_users:
+                    for idx, (user_id, opened_cases) in enumerate(top_users, start=skip + 1):
+                        member = interaction.guild.get_member(user_id)
+                        position_emoji = self.cog.position_emoji(idx)
+                        emoji = "🎁"
+                        if opened_cases < 1:
+                            for child in self.children:
+                                if isinstance(child, disnake.ui.Button) and child.custom_id == "next":
+                                    child.disabled = True
+                            await interaction.edit_original_message(view=self)
+
+                        if member and not opened_cases == 0:
+                            embed.add_field(name=f"{position_emoji} ``#{idx}``. {member.display_name}",
+                                            value=f"MysteryBox: **{opened_cases}** {omegabox_emoji}", inline=False)
+                        elif not opened_cases == 0:
+                            embed.add_field(name=f"``#{idx}``. ~~Неизвестный участник (ID: {user_id})~~",
+                                            value=f"MysteryBox: **{opened_cases}** {omegabox_emoji}", inline=False)
+
+            elif self.top_type == 'Промокоды':
+                top_users = self.cog.get_top_users_promocodes(skip, self.items_per_page)
+                embed = disnake.Embed(title="🏆 Топ участников по промокодам", color=0xffff00, timestamp=datetime.now())
+                embed.set_thumbnail(url='https://i.imgur.com/64ibjZo.gif')
+                if top_users:
+                    for idx, (user_id, promocodes) in enumerate(top_users, start=skip + 1):
+                        member = interaction.guild.get_member(user_id)
+                        position_emoji = self.cog.position_emoji(idx)
+                        emoji = "🎟️"
+                        if promocodes < 1:
+                            for child in self.children:
+                                if isinstance(child, disnake.ui.Button) and child.custom_id == "next":
+                                    child.disabled = True
+                            await interaction.edit_original_message(view=self)
+
+                        if member and not promocodes == 0:
+                            embed.add_field(name=f"{position_emoji} ``#{idx}``. {member.display_name}",
+                                            value=f"Промокоды: **{promocodes}** {ticket_emoji}", inline=False)
+                        elif not promocodes == 0:
+                            embed.add_field(name=f"``#{idx}``. ~~Неизвестный участник (ID: {user_id})~~",
+                                            value=f"Промокоды: **{promocodes}** {ticket_emoji}", inline=False)
 
             await interaction.edit_original_message(embed=embed, view=self)
 
@@ -275,6 +378,30 @@ class TopCog(commands.Cog):
         view = self.TopView(self, тип)
         await view.update_embed(inter)
 
+    @commands.slash_command(name="update_fields",
+                            description="Добавить недостающие поля 'promocodes' и 'opened_cases' всем пользователям")
+    @commands.has_permissions(administrator=True)  # Ограничение для администраторов
+    async def update_fields(self, inter: disnake.ApplicationCommandInteraction):
+        missing_fields = {"promocodes": 0, "opened_cases": 0}
+        updated_count = 0
+
+        # Деффер сообщение, чтобы показать пользователю, что команда в процессе выполнения
+        await inter.response.defer(ephemeral=True)
+
+        # Процесс обновления
+        for user in collusers.find():
+            update_data = {}
+            for field, default_value in missing_fields.items():
+                if field not in user:
+                    update_data[field] = default_value
+            if update_data:
+                collusers.update_one({"_id": user["_id"]}, {"$set": update_data})
+                updated_count += 1
+
+        # Ответ пользователю о выполнении
+        await inter.edit_original_message(
+            content=f"Обновлено {updated_count} пользователей. Добавлены поля: {', '.join(missing_fields.keys())}."
+        )
 
 def setup(bot):
     bot.add_cog(TopCog(bot))

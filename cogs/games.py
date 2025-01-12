@@ -9,6 +9,7 @@ import random
 import math
 import re
 from main import cluster
+from main import rules, get_rule_info, check_roles
 
 collusers = cluster.server.users
 collservers = cluster.server.servers
