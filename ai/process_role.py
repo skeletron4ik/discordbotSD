@@ -13,16 +13,18 @@ from main import cluster
 collusers = cluster.server.users
 collservers = cluster.server.servers
 
+
 cooldowns = {}
 voice_timestamps = {}
 mute_timestamps = {}
 total_time = {}
 emoji = "<a:rumbick:1271085088142262303>"
 
+
 def create_error_embed(message: str) -> disnake.Embed:
     embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
     embed.add_field(name='Произошла ошибка', value=f'Ошибка: {message}')
-    embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+    embed.set_thumbnail(url="https://media2.giphy.com/media/AkGPEj9G5tfKO3QW0r/200.gif")
     embed.set_footer(text='Ошибка')
     return embed
 
@@ -54,65 +56,82 @@ async def process_role(interaction, bot, cost, duration, role_id, ephemeral=Fals
     # Получаем пользователя (author of interaction)
     member = interaction.author
 
-    # Вычисляем новый срок длительности роли
-    new_expiry = int((datetime.now() + timedelta(seconds=duration)).timestamp())
-
-    # Проверяем наличие роли Diamond у участника
-    if role.id == diamond_role_id and role in member.roles:
-        # Retrieve the current expiry time for the role from the database
-        role_info = collusers.find_one(
-            {"id": user_id, "guild_id": guild_id, "role_ids.role_ids": role.id},
-            {"role_ids.$": 1}
-        )
-        if role_info and "role_ids" in role_info:
-            current_expiry = role_info["role_ids"][0]["expires_at"]
-            remaining_time = max(0, current_expiry - int(datetime.now().timestamp()))
-            new_expiry = int(datetime.now().timestamp()) + remaining_time + duration
-
-        # Обновляем срок длительности роли в базе
-        collusers.update_one(
-            {"id": user_id, "guild_id": guild_id, "role_ids.role_ids": role.id},
-            {"$set": {"role_ids.$.expires_at": new_expiry}}
-        )
+    if duration is None:
+        new_expiry = "бесконечно"
         embed = disnake.Embed(
-            description=f"**Срок действия роли {role.name} продлен до:** <t:{new_expiry}:R>.\n ",
+            description=f"Вы получили роль {role.name}, которая длится **бесконечно**.",
             colour=0x00ff00,
             timestamp=datetime.now()
         )
-        embed.set_author(name="Срок действия роли продлен!",
-                         icon_url="https://i.imgur.com/vlX2dxG.gif")
+        embed.set_author(name=f"Вы успешно получили рoль {role.name}!",
+                         icon_url=interaction.author.avatar.url)
         embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
-        embed.set_footer(text="Продление прошло успешно",
+        embed.set_footer(text="Роль успешно получена",
                          icon_url=interaction.guild.icon.url)
         await interaction.send(embed=embed, ephemeral=ephemeral)
-
-    else:
-        # Выдаем роль участнику
         await interaction.author.add_roles(role)
-        embed = disnake.Embed(
-            description=f"**Вы приобрели роль {role.name}, которая заканчивается: <t:{new_expiry}:R>.",
-            colour=0x00ff00,
-            timestamp=datetime.now()
-        )
-        embed.set_author(name=f"Вы успешно приобрели рoль {role.name}!",
-                         icon_url="https://i.imgur.com/vlX2dxG.gif")
-        embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
-        embed.set_footer(text="Покупка прошла успешно",
-                         icon_url=interaction.guild.icon.url)
-        await interaction.send(embed=embed, ephemeral=ephemeral)
+    else:
+        # Вычисляем новый срок длительности роли
+        new_expiry = int((datetime.now() + timedelta(seconds=duration)).timestamp())
 
-        # Обновляем базу с новой длительностью роли
-        collusers.update_one(
-            {"id": user_id, "guild_id": guild_id},
-            {
-                "$push": {"role_ids": {"role_ids": role.id, "expires_at": new_expiry}},
-                "$inc": {"number_of_roles": 1}
-            },
-            upsert=True
-        )
+        # Проверяем наличие роли у участника
+        if role.id == role_id and role in member.roles:
+            # Retrieve the current expiry time for the role from the database
+            role_info = collusers.find_one(
+                {"id": user_id, "guild_id": guild_id, "role_ids.role_ids": role.id},
+                {"role_ids.$": 1}
+            )
+            if role_info and "role_ids" in role_info:
+                current_expiry = role_info["role_ids"][0]["expires_at"]
+                remaining_time = max(0, current_expiry - int(datetime.now().timestamp()))
+                new_expiry = int(datetime.now().timestamp()) + remaining_time + duration
+
+            # Обновляем срок длительности роли в базе
+            collusers.update_one(
+                {"id": user_id, "guild_id": guild_id, "role_ids.role_ids": role.id},
+                {"$set": {"role_ids.$.expires_at": new_expiry}}
+            )
+            embed = disnake.Embed(
+                description=f"**Срок действия роли {role.name} продлен до:** <t:{new_expiry}:R>.\n ",
+                colour=0x00ff00,
+                timestamp=datetime.now()
+            )
+            embed.set_author(name="Срок действия роли продлен!",
+                             icon_url=interaction.author.avatar.url)
+            embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
+            embed.set_footer(text="Продление прошло успешно",
+                             icon_url=interaction.guild.icon.url)
+            await interaction.send(embed=embed, ephemeral=ephemeral)
+
+        else:
+            # Выдаем роль участнику
+            await interaction.author.add_roles(role)
+            embed = disnake.Embed(
+                description=f"**Вы получили роль {role.name}, которая заканчивается: <t:{new_expiry}:R>.**",
+                colour=0x00ff00,
+                timestamp=datetime.now()
+            )
+            embed.set_author(name=f"Вы успешно получиили рoль {role.name}!",
+                             icon_url=interaction.author.avatar.url)
+            embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
+            embed.set_footer(text="Роль успешно получена",
+                             icon_url=interaction.guild.icon.url)
+            await interaction.send(embed=embed, ephemeral=ephemeral)
+
+            # Обновляем базу с новой длительностью роли
+            collusers.update_one(
+                {"id": user_id, "guild_id": guild_id},
+                {
+                    "$push": {"role_ids": {"role_ids": role.id, "expires_at": new_expiry}},
+                    "$inc": {"number_of_roles": 1}
+                },
+                upsert=True
+            )
 
     # Создаем и отправлем embed в логи
     channel = await bot.fetch_channel(944562833901899827)
+    if new_expiry != "бесконечно":
+        new_expiry = f"<t:{new_expiry}:R>"
     log_embed = disnake.Embed(color=0x00d5ff, timestamp=datetime.now())
     log_embed.add_field(name="",
                         value=f"Участник **{interaction.author.name}** ({interaction.author.mention}) получил роль ``{role.name}``",
@@ -122,6 +141,7 @@ async def process_role(interaction, bot, cost, duration, role_id, ephemeral=Fals
     log_embed.add_field(name="Модератор:", value=f"**Магазин** ({interaction.author.mention})",
                         inline=True)
     log_embed.add_field(name="Канал:", value=f"{interaction.channel.mention}", inline=True)
-    log_embed.add_field(name="Длительность:", value=f"(<t:{new_expiry}:R>)", inline=True)
+    log_embed.add_field(name="Длительность:", value=f"({new_expiry})", inline=True)
     log_embed.set_footer(text=f'ID Участника: {interaction.author.id}', icon_url=interaction.author.display_avatar.url)
     await channel.send(embed=log_embed)
+
