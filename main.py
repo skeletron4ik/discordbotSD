@@ -19,6 +19,13 @@ collusers = cluster.server.users
 collservers = cluster.server.servers
 collpromos = cluster.server.promos
 
+ROLE_CATEGORIES = {
+    "admin": [518505773022838797, 580790278697254913],  # ID ролей администраторов: admin, chief
+    "moder": [518505773022838797, 580790278697254913, 702593498901381184],  # ID ролей модераторов: admin, chief, moder
+    "staff": [518505773022838797, 580790278697254913, 702593498901381184, 1229337640839413813],  # ID ролей стаффа: admin, chief, moder, dev
+    "premium": [518505773022838797, 580790278697254913, 702593498901381184, 1229337640839413813, 757930494301044737, 1044314368717897868, 1303396950481174611],  # ID премиум-ролей: admin, chief, moder, dev booster, diamond, gold
+}
+
 rules = {
     "1.1": "1.1> Обман/попытка обмана Администрации сервера, грубое оспаривание действий Администрации сервера",
     "1.2": "1.2> Распространение личной информации без согласия",
@@ -36,6 +43,29 @@ rules = {
     "3.3": "3.3> AFK-фарм Румбиков ◊"
 }
 
+class RoleCheckFailure(commands.CheckFailure):
+    """Исключение для ошибок проверки ролей."""
+    def __init__(self, message: str):
+        super().__init__(message)
+        self.message = message
+def check_roles(*categories):
+    """Декоратор для проверки наличия роли из одной из указанных категорий."""
+    async def predicate(interaction: disnake.ApplicationCommandInteraction):
+        user_roles = [role.id for role in interaction.author.roles]
+        allowed_roles = []
+        for category in categories:
+            allowed_roles.extend(ROLE_CATEGORIES.get(category, []))
+
+        if any(role in user_roles for role in allowed_roles):
+            return True
+
+        # Получение упоминаний ролей, которых не хватает
+        missing_roles_mentions = [f"<@&{role_id}>" for role_id in allowed_roles]
+        role_list = ", ".join(missing_roles_mentions)
+
+        raise RoleCheckFailure(f"У вас нет прав для использования этой команды. Необходимо иметь одну из этих ролей:\n {role_list}.")
+    return commands.check(predicate)
+
 
 def get_rule_info(rule_code):
     return rules.get(rule_code, rule_code)
@@ -50,44 +80,56 @@ async def safe_api_call(api_function, *args, **kwargs):
             return await safe_api_call(api_function, *args, **kwargs)
         else:
             raise
-
+def create_error_embed(message: str) -> disnake.Embed:
+    embed = disnake.Embed(color=0xff0000, timestamp=datetime.now())
+    embed.add_field(name='Произошла ошибка', value=f'Ошибка: {message}')
+    embed.set_thumbnail(url="https://media2.giphy.com/media/AkGPEj9G5tfKO3QW0r/200.gif")
+    embed.set_footer(text='Ошибка')
+    return embed
 
 @bot.event
 async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, error):
     if isinstance(error, commands.CommandOnCooldown):
         seconds_remaining = round(error.retry_after)
-        # Создаем Embed сообщение для кулдауна
         embed = disnake.Embed(
             title="Подождите немного!",
             description=f"Эта команда находится в кулдауне. Попробуйте снова через **{seconds_remaining} секунд.**",
             color=0xff0000,
             timestamp=datetime.now()
         )
-        embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
+        embed.set_thumbnail(url="https://media2.giphy.com/media/AkGPEj9G5tfKO3QW0r/200.gif")
+        if inter.response.is_done():
+            await inter.edit_original_response(embed=embed)
+        else:
+            await inter.response.send_message(embed=embed, ephemeral=True)
 
-        # Проверяем, был ли ответ уже отправлен
+    elif isinstance(error, RoleCheckFailure):
+        # Обработка ошибки проверки ролей
+        embed = disnake.Embed(
+            title="Доступ запрещён!",
+            description=error.message,
+            color=0xff0000,
+            timestamp=datetime.now()
+        )
+        embed.set_thumbnail(url="https://media2.giphy.com/media/AkGPEj9G5tfKO3QW0r/200.gif")
         if inter.response.is_done():
             await inter.edit_original_response(embed=embed)
         else:
             await inter.response.send_message(embed=embed, ephemeral=True)
 
     else:
-        # Обработка других ошибок
+        # Общая обработка ошибок
         embed = disnake.Embed(
             title="Ошибка!",
             description="Произошла ошибка при выполнении команды. Попробуйте снова.",
             color=0xff0000,
             timestamp=datetime.now()
         )
-        embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
-
-        # Проверяем, был ли ответ уже отправлен
+        embed.set_thumbnail(url="https://media2.giphy.com/media/AkGPEj9G5tfKO3QW0r/200.gif")
         if inter.response.is_done():
             await inter.edit_original_response(embed=embed)
         else:
             await inter.response.send_message(embed=embed, ephemeral=True)
-
-        # Логирование ошибки в консоль
         raise error
 
 
@@ -99,13 +141,15 @@ async def on_ready():
             values = {
                 "id": member.id,
                 "guild_id": guild.id,
-                "nickname": member.display_name,  # Store initial nickname
-                "user_name": member.name,  # Store actual username
+                "nickname": member.display_name,
+                "user_name": member.name,
                 "balance": 0,
                 "keys": 0,
-                "reputation": 0,  # Новое поле для репутации
+                "opened_cases": 0,
+                "reputation": 0,
                 "reaction_count": 0,
                 "promocodes": 0,
+                "bumps": 0,
                 "number_of_deal": 0,
                 "message_count": 0,
                 "time_in_voice": 0,
@@ -126,7 +170,8 @@ async def on_ready():
                 "global_booster_timestamp": 0,
                 "global_booster_multiplier": 0,
                 "global_booster_activated_by": [],
-                "multiplier": 1
+                "multiplier": 1,
+                "opened_cases": 0
             }
             promo_values = {
                 "_id": guild.id,
@@ -169,6 +214,7 @@ async def on_member_join(member):
         "reputation": 0,
         "reaction_count": 0,
         "promocodes": 0,
+        "bumps": 0,
         "number_of_deal": 0,
         "message_count": 0,
         "time_in_voice": 0,
@@ -200,6 +246,7 @@ async def on_member_join(member):
             inline=False
         )
         await channel.send(embed=embed)
+        collservers.update_one({"_id": member.guild.id}, {"$inc": {"members_join": 1}}, upsert=True)
 
 @bot.event
 async def on_member_remove(member):
@@ -218,6 +265,16 @@ async def on_member_remove(member):
             inline=False
         )
         await channel.send(embed=embed)
+        collservers.update_one({"_id": member.guild.id}, {"$inc": {"members_leave": 1}}, upsert=True)
+
+@bot.event
+async def on_interaction(interaction: disnake.ApplicationCommandInteraction):
+    # Проверяем, является ли взаимодействие командой /slash
+    if isinstance(interaction, disnake.ApplicationCommandInteraction):
+        command_name = interaction.data.name
+        user_display_name = interaction.author.display_name  # Получаем display_name пользователя
+        print(f"Команда /{command_name} была вызвана пользователем {user_display_name}.")
+        collservers.update_one({"_id": interaction.guild.id}, {"$inc": {"commands_use": 1}}, upsert=True)
 
 
 @bot.event
