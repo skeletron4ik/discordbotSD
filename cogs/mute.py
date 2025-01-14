@@ -76,7 +76,7 @@ class MuteCog(commands.Cog):
         else:
             raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
-    @commands.slash_command(name='mute', description='Запрещает писать в чат и подключаться к голосовым каналам участнику', dm_permission=False)
+    @commands.slash_command(name='mute', description='Запрещает писать в чат и подключаться к голосовым каналам участнику', contexts=disnake.InteractionContextTypes(guild=True, bot_dm=False, private_channel=False))
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     @check_roles("moder")
     async def mute(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, время: str, причина='Не указана'):
