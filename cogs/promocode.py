@@ -46,7 +46,7 @@ class Promo(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.slash_command(name='promocode', description='Взаимодействие с промокодами', dm_permission=False)
+    @commands.slash_command(name='promocode', description='Взаимодействие с промокодами')
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def promo(self, inter):
         pass
