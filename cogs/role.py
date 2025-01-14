@@ -125,7 +125,7 @@ class Role(commands.Cog):
         # Проверяем, является ли пользователь администратором или модератором
         return any(role.permissions.administrator or role.id == self.moderator_role_id for role in user.roles)
 
-    @commands.slash_command(name="role-give", description="Выдает роль участнику", dm_permission=False)
+    @commands.slash_command(name="role-give", description="Выдает роль участнику")
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def rolegive(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member,
                        роль: disnake.Role, время: str = None,
