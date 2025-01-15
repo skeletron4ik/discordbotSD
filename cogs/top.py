@@ -25,41 +25,109 @@ class TopCog(commands.Cog):
         self.bot = bot
 
     def get_top_users(self, skip=0, limit=10):
-        top_records = collusers.find().sort('balance', -1).skip(skip).limit(limit)
+        guild_id = 489867322039992320
+        query_filter = {}
+        if guild_id:
+            query_filter['guild_id'] = guild_id
+
+        # Выполняем запрос с фильтрацией по guild_id и сортировкой по полю 'keys'
+        top_records = collusers.find(query_filter).sort('balance', -1).skip(skip).limit(limit)
+
+        # Возвращаем список из кортежей (id, keys)
         return [(record['id'], record['balance']) for record in top_records]
 
     def get_top_users_voice(self, skip=0, limit=10):
-        top_records = collusers.find().sort('time_in_voice', -1).skip(skip).limit(limit)
+        guild_id = 489867322039992320
+        query_filter = {}
+        if guild_id:
+            query_filter['guild_id'] = guild_id
+
+        # Выполняем запрос с фильтрацией по guild_id и сортировкой по полю 'keys'
+        top_records = collusers.find(query_filter).sort('time_in_voice', -1).skip(skip).limit(limit)
+
+        # Возвращаем список из кортежей (id, keys)
         return [(record['id'], record['time_in_voice']) for record in top_records]
 
     def get_top_users_message_count(self, skip=0, limit=10):
-        top_records = collusers.find().sort('message_count', -1).skip(skip).limit(limit)
+        guild_id = 489867322039992320
+        query_filter = {}
+        if guild_id:
+            query_filter['guild_id'] = guild_id
+
+        # Выполняем запрос с фильтрацией по guild_id и сортировкой по полю 'keys'
+        top_records = collusers.find(query_filter).sort('message_count', -1).skip(skip).limit(limit)
+
+        # Возвращаем список из кортежей (id, keys)
         return [(record['id'], record['message_count']) for record in top_records]
 
     def get_top_users_deals(self, skip=0, limit=10):
-        top_records = collusers.find().sort('number_of_deal', -1).skip(skip).limit(limit)
+        guild_id = 489867322039992320
+        query_filter = {}
+        if guild_id:
+            query_filter['guild_id'] = guild_id
+
+        # Выполняем запрос с фильтрацией по guild_id и сортировкой по полю 'keys'
+        top_records = collusers.find(query_filter).sort('number_of_deal', -1).skip(skip).limit(limit)
+
+        # Возвращаем список из кортежей (id, keys)
         return [(record['id'], record['number_of_deal']) for record in top_records]
 
     def get_top_users_reputation(self, skip=0, limit=10):
-        top_records = collusers.find({"reputation": {"$ne": 0}}).sort('reputation', -1).skip(skip).limit(limit)
+        guild_id = 489867322039992320
+        query_filter = {}
+        if guild_id:
+            query_filter['guild_id'] = guild_id
+        top_records = collusers.find({"reputation": {"$ne": 0}}, query_filter).sort('reputation', -1).skip(skip).limit(limit)
         return [(record['id'], record['reputation']) for record in top_records]
 
     def get_top_users_bumps(self, skip=0, limit=10):
-        top_records = collusers.find().sort('bumps', -1).skip(skip).limit(limit)
+        guild_id = 489867322039992320
+        query_filter = {}
+        if guild_id:
+            query_filter['guild_id'] = guild_id
+
+        # Выполняем запрос с фильтрацией по guild_id и сортировкой по полю 'keys'
+        top_records = collusers.find(query_filter).sort('bumps', -1).skip(skip).limit(limit)
+
+        # Возвращаем список из кортежей (id, keys)
         return [(record['id'], record['bumps']) for record in top_records]
 
-    def get_top_users_keys(self, skip=0, limit=10):
-        top_records = collusers.find().sort('keys', -1).skip(skip).limit(limit)
+    def get_top_users_keys(self, guild_id=None, skip=0, limit=10):
+        # Формируем фильтр. Если guild_id передан, добавляем его в фильтр.
+        guild_id = 489867322039992320
+        query_filter = {}
+        if guild_id:
+            query_filter['guild_id'] = guild_id
+
+        # Выполняем запрос с фильтрацией по guild_id и сортировкой по полю 'keys'
+        top_records = collusers.find(query_filter).sort('keys', -1).skip(skip).limit(limit)
+
+        # Возвращаем список из кортежей (id, keys)
         return [(record['id'], record['keys']) for record in top_records]
 
     def get_top_users_opened_cases(self, skip=0, limit=10):
-        top_records = collusers.find().sort('opened_cases', -1).skip(skip).limit(limit)
+        guild_id = 489867322039992320
+        query_filter = {}
+        if guild_id:
+            query_filter['guild_id'] = guild_id
+
+        # Выполняем запрос с фильтрацией по guild_id и сортировкой по полю 'keys'
+        top_records = collusers.find(query_filter).sort('opened_cases', -1).skip(skip).limit(limit)
+
+        # Возвращаем список из кортежей (id, keys)
         return [(record['id'], record['opened_cases']) for record in top_records]
 
     def get_top_users_promocodes(self, skip=0, limit=10):
-        top_records = collusers.find().sort('promocodes', -1).skip(skip).limit(limit)
-        return [(record['id'], record['promocodes']) for record in top_records]
+        guild_id = 489867322039992320
+        query_filter = {}
+        if guild_id:
+            query_filter['guild_id'] = guild_id
 
+        # Выполняем запрос с фильтрацией по guild_id и сортировкой по полю 'keys'
+        top_records = collusers.find(query_filter).sort('message_count', -1).skip(skip).limit(limit)
+
+        # Возвращаем список из кортежей (id, keys)
+        return [(record['id'], record['message_count']) for record in top_records]
 
     def seconds_to_dhm(self, seconds):
         days = seconds // 86400  # 86400 секунд в одном дне
@@ -284,7 +352,7 @@ class TopCog(commands.Cog):
                                             value=f"Бампов: **{bumps}** {emoji}", inline=False)
 
             elif self.top_type == 'Ключи':
-                top_users = self.cog.get_top_users_keys(skip, self.items_per_page)
+                top_users = self.cog.get_top_users_keys(489867322039992320,skip, self.items_per_page)
                 embed = disnake.Embed(title="🏆 Топ участников по ключам", color=0xffff00, timestamp=datetime.now())
                 embed.set_thumbnail(url='https://i.imgur.com/64ibjZo.gif')
                 if top_users:
@@ -307,7 +375,8 @@ class TopCog(commands.Cog):
 
             elif self.top_type == 'MysteryBox':
                 top_users = self.cog.get_top_users_opened_cases(skip, self.items_per_page)
-                embed = disnake.Embed(title="🏆 Топ участников по открытым MysteryBox", color=0xffff00, timestamp=datetime.now())
+                embed = disnake.Embed(title="🏆 Топ участников по открытым MysteryBox", color=0xffff00,
+                                      timestamp=datetime.now())
                 embed.set_thumbnail(url='https://i.imgur.com/64ibjZo.gif')
                 if top_users:
                     for idx, (user_id, opened_cases) in enumerate(top_users, start=skip + 1):
@@ -377,6 +446,7 @@ class TopCog(commands.Cog):
             await inter.response.defer(ephemeral=True)
         view = self.TopView(self, тип)
         await view.update_embed(inter)
+
 
 def setup(bot):
     bot.add_cog(TopCog(bot))
