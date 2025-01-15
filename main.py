@@ -163,7 +163,6 @@ async def on_ready():
             }
             server_values = {
                 "_id": guild.id,
-                "case": 0,
                 "booster_timestamp": 0,
                 "admin_booster_multiplier": 0,
                 "admin_booster_activated_by": [],
@@ -171,7 +170,30 @@ async def on_ready():
                 "global_booster_multiplier": 0,
                 "global_booster_activated_by": [],
                 "multiplier": 1,
-                "opened_cases": 0
+                "messages": 0,
+                "time_in_voice": 0,
+                "voice_rumbiks": 0,
+                "chat_rumbicks": 0,
+                "total_rumbicks": 0,
+                "wasted_rumbiks": 0,
+                "opened_cases": 0,
+                "bumps": 0,
+                "mutes": 0,
+                "unmutes": 0,
+                "case": 0,
+                "warns": 0,
+                "unwarns": 0,
+                "bans": 0,
+                "unbans": 0,
+                "deals": 0,
+                "commands_use": 0,
+                "transfers": 0,
+                "members_leave": 0,
+                "members_join": 0,
+                "activation_promos": 0,
+                "rep_up": 0,
+                "rep_down": 0,
+                "reputation_count": 0
             }
             promo_values = {
                 "_id": guild.id,
@@ -281,14 +303,37 @@ async def on_interaction(interaction: disnake.ApplicationCommandInteraction):
 async def on_guild_join(guild):
     server_values = {
         "_id": guild.id,
-        "case": 0,
         "booster_timestamp": 0,
         "admin_booster_multiplier": 0,
         "admin_booster_activated_by": [],
         "global_booster_timestamp": 0,
         "global_booster_multiplier": 0,
         "global_booster_activated_by": [],
-        "multiplier": 1
+        "multiplier": 1,
+        "messages": 0,
+        "time_in_voice": 0,
+        "voice_rumbiks": 0,
+        "chat_rumbicks": 0,
+        "total_rumbicks": 0,
+        "wasted_rumbiks": 0,
+        "opened_cases": 0,
+        "bumps": 0,
+        "mutes": 0,
+        "unmutes": 0,
+        "case": 0,
+        "warns": 0,
+        "unwarns": 0,
+        "bans": 0,
+        "unbans": 0,
+        "deals": 0,
+        "commands_use": 0,
+        "transfers": 0,
+        "members_leave": 0,
+        "members_join": 0,
+        "activation_promos": 0,
+        "rep_up": 0,
+        "rep_down": 0,
+        "reputation_count": 0
     }
 
     if collservers.count_documents({"_id": guild.id}) == 0:
