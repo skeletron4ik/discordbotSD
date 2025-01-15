@@ -472,7 +472,7 @@ class Promo(commands.Cog):
             embed.set_thumbnail(url='https://media4.giphy.com/media/V1ItMnx6o84XYrlPmt/giphy.gif')
             embed.set_footer(text=inter.guild.name, icon_url=inter.guild.icon.url)
             embed.add_field(name='Список промокодов пуст:', value='На данный момент нет активных промокодов.')
-            await inter.response.send_message(embed=embed)
+            await inter.response.send_message(embed=embed, ephemeral=True)
             return
 
         # Формируем вывод в одном эмбеде

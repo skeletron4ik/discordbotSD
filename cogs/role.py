@@ -304,7 +304,7 @@ class Role(commands.Cog):
                 embed.set_footer(text="Ошибка")
                 await inter.edit_original_response(embed=embed)
 
-    @commands.slash_command(name="role-remove", description="Снимает роль у участника", dm_permission=False)
+    @commands.slash_command(name="role-remove", description="Снимает роль у участника")
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def roleremove(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member,
                          роль: disnake.Role, причина: str = "Не указана"):
@@ -399,6 +399,16 @@ class Role(commands.Cog):
                 embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2022/12/26/19/45/19-45-56-484__480.png")
                 embed.set_footer(text="Ошибка")
                 await inter.edit_original_response(embed=embed)
+
+    @commands.slash_command(name="temproles-list", description="Выводит список пользователей с временными ролями")
+    async def temporary_roles(self, inter: disnake.ApplicationCommandInteraction):
+        if inter.type == disnake.InteractionType.application_command:
+            await inter.response.defer(ephemeral=True)
+
+            guild_id = inter.guild.id
+            temporary_roles = collusers.find({"guild_id": guild_id, "role_ids.expires_at": {"$exists": True}})
+
+            1069201052303380511
 
 
 def setup(bot):

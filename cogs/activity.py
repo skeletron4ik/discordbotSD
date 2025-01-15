@@ -57,8 +57,7 @@ class ActivityCog(commands.Cog):
             embed.add_field(name='', value=f'<t:{tstamp - 3600}:t> - <t:{tstamp}:t>', inline=False)
             await channel.send(embed=embed)
 
-    @commands.slash_command(name='topuser', description='Показывает самого активного участника за последний час',
-                            dm_permission=False)
+    @commands.slash_command(name='topuser', description='Показывает самого активного участника за последний час',)
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def topuser(self, inter: disnake.ApplicationCommandInteraction):
         if inter.type == disnake.InteractionType.application_command:
@@ -202,7 +201,7 @@ class ActivityCog(commands.Cog):
             )
             print("Сброс 'Reaction counts' в 00:00 по Киеву")
 
-    @commands.slash_command(name='reputation', description='Выводит репутацию участника', dm_permission=False)
+    @commands.slash_command(name='reputation', description='Выводит репутацию участника')
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def reputation(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
         if disnake.InteractionResponse:

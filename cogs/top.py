@@ -369,7 +369,7 @@ class TopCog(commands.Cog):
             self.page += 1
             await self.update_embed(interaction)
 
-    @commands.slash_command(name='top', description='Топ пользователи', dm_permission=False)
+    @commands.slash_command(name='top', description='Топ пользователи')
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def top(self, inter: disnake.ApplicationCommandInteraction,
                   тип: TopEnum = commands.Param(description="Выберите тип топа")):
@@ -377,31 +377,6 @@ class TopCog(commands.Cog):
             await inter.response.defer(ephemeral=True)
         view = self.TopView(self, тип)
         await view.update_embed(inter)
-
-    @commands.slash_command(name="update_fields",
-                            description="Добавить недостающие поля 'promocodes' и 'opened_cases' всем пользователям")
-    @commands.has_permissions(administrator=True)  # Ограничение для администраторов
-    async def update_fields(self, inter: disnake.ApplicationCommandInteraction):
-        missing_fields = {"promocodes": 0, "opened_cases": 0}
-        updated_count = 0
-
-        # Деффер сообщение, чтобы показать пользователю, что команда в процессе выполнения
-        await inter.response.defer(ephemeral=True)
-
-        # Процесс обновления
-        for user in collusers.find():
-            update_data = {}
-            for field, default_value in missing_fields.items():
-                if field not in user:
-                    update_data[field] = default_value
-            if update_data:
-                collusers.update_one({"_id": user["_id"]}, {"$set": update_data})
-                updated_count += 1
-
-        # Ответ пользователю о выполнении
-        await inter.edit_original_message(
-            content=f"Обновлено {updated_count} пользователей. Добавлены поля: {', '.join(missing_fields.keys())}."
-        )
 
 def setup(bot):
     bot.add_cog(TopCog(bot))

@@ -154,7 +154,7 @@ class WarnsCog(commands.Cog):
     async def before_check_warns(self):
         await self.bot.wait_until_ready()  # Ожидание готовности бота перед запуском цикла
 
-    @commands.slash_command(name="warn", description="Выдает предупреждение(-я) участнику", dm_permission=False)
+    @commands.slash_command(name="warn", description="Выдает предупреждение(-я) участнику")
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     @check_roles("moder")
     async def warn(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member, количество: int,
@@ -476,7 +476,7 @@ class WarnsCog(commands.Cog):
 
                 return
 
-    @commands.slash_command(name='unwarn', description='Позволяет снять предупреждение с участника', dm_permission=False)
+    @commands.slash_command(name='unwarn', description='Позволяет снять предупреждение с участника')
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     @check_roles("moder")
     async def unwarn(self, inter: disnake.GuildCommandInteraction, участник: disnake.Member,

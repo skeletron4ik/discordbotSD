@@ -163,7 +163,7 @@ class EconomyCog(commands.Cog):
                 )
                 cooldowns[user_id] = now
 
-    @commands.slash_command(name='balance', description='Показывает баланс участника', dm_permission=False,
+    @commands.slash_command(name='balance', description='Показывает баланс участника',
                             aliases=['баланс', 'счет', 'остаток', 'credit', 'amount', 'sum'])
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def balance(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
@@ -188,7 +188,7 @@ class EconomyCog(commands.Cog):
         else:
             await inter.edit_original_response(content="Не удалось найти данные пользователя.")
 
-    @commands.slash_command(name='pay', description='Перевод румбиков другому участнику', dm_permission=False,
+    @commands.slash_command(name='pay', description='Перевод румбиков другому участнику',
                             aliases=['перевод', 'give', 'transfer'])
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def pay(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, количество: int):
@@ -278,7 +278,7 @@ class EconomyCog(commands.Cog):
             embed = create_error_embed(error_message)
             await inter.followup.send(embed=embed, ephemeral=True)
 
-    @commands.slash_command(name="change", description="Изменяет указанное поле участника", dm_permission=False)
+    @commands.slash_command(name="change", description="Изменяет указанное поле участника")
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     @check_roles("admin")
     async def change(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member,
@@ -397,7 +397,7 @@ class EconomyCog(commands.Cog):
         log_embed.timestamp = datetime.now()
         await log_channel.send(embed=log_embed)
 
-    @commands.slash_command(name='store', description='Магазин ролей и специальных возможностей за Румбики', dm_permission=False,
+    @commands.slash_command(name='store', description='Магазин ролей и специальных возможностей за Румбики',
                             aliases=['shop', 'магазин', 'лавка', 'рынок'])
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def store(self, inter: disnake.ApplicationCommandInteraction):
@@ -795,8 +795,12 @@ class EconomyCog(commands.Cog):
                                  value=f'Мистический ключ - этот таинственный ключ покрыт древними рунами, мерцающими в полумраке. Никто не знает, откуда он появился, но говорят, что он способен открыть **мистический ящик**, хранящий в себе невероятные секреты и редкие сокровища. Отважишься ли ты узнать, что скрывается внутри?',
                                  inline=False)
                 embed1.add_field(name='Что можеть выпасть?',
-                                 value='```🟢 Румбики\n 🟢 Diamond\n 🟢 Gold\n```')
-                embed1.add_field(name='', value='')
+                                 value='```🔑 Ключи для открытия новых ящиков.\n'
+                                       '💎 Роли уровня Diamond и Gold от 1 до 180 дней.\n'
+                                       '💰 Различные суммы Румбиков от 1 до 5000.\n'
+                                       '🔇 Забавный "приз" в виде временного мьюта от 1 до 40 минут.\n'
+                                       '😔 И, конечно, шанс на то, что ящик окажется пустым.```')
+                embed1.add_field(name='', value='Подробнее о шансах: ``/mystery-box list``', inline=False)
                 embed1.add_field(name='**Стоимость:**',
                                  value=f'* 🔑️ Ключ\n * от **1🔑️+** = 49{emoji}\n * от **5🔑️+** = ~~250~~ 236{emoji} **На 5% выгоднее!**\n * от **10🔑️+** = ~~500~~ 449{emoji} **На 10% выгоднее!**\n * от **50🔑️+** = ~~2500~~ 2125{emoji} **На 15% выгоднее!**\n * от **100🔑️+** = ~~5000~~ 3999{emoji} **На 20% выгоднее!**\n * от **200🔑️+** = ~~10000~~ 6999{emoji} **На 30% выгоднее!**',
                                  inline=False)
@@ -1208,7 +1212,7 @@ class EconomyCog(commands.Cog):
             await send_message_on_booster_end("Глобальный", current_multiplier)  # передаем текущий множитель
             return
 
-    @commands.slash_command(name='booster', description='Включает бустер румбиков', dm_permission=False)
+    @commands.slash_command(name='booster', description='Включает бустер румбиков')
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     @check_roles("admin")
     async def booster(self, inter: disnake.ApplicationCommandInteraction, множитель: int, длительность: str,
@@ -1286,8 +1290,7 @@ class EconomyCog(commands.Cog):
         await channel.send(embed=log_embed)
 
 
-
-    @commands.slash_command(name="boosters", description="Показывает текущие активные бустеры", dm_permission=False)
+    @commands.slash_command(name="boosters", description="Показывает текущие активные бустеры")
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def boosters(self, inter: disnake.ApplicationCommandInteraction):
         server_id = inter.guild_id
@@ -1357,64 +1360,10 @@ class EconomyCog(commands.Cog):
             await inter.response.send_message('Никнейм успешно изменён.', ephemeral=True)
 
 
-    @commands.user_command(name='balance', dm_permission=False, nsfw=True)
+    @commands.user_command(name='balance')
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def balinuser(self, inter: disnake.ApplicationCommandInteraction, user: disnake.User):
         await self.balance(inter, user)
-
-    @commands.slash_command(name="update_stats", description="Обновить общее количество значений на сервере")
-    async def update_messages(self, inter: disnake.ApplicationCommandInteraction):
-        guild_id = inter.guild.id
-
-        # Получаем всех пользователей сервера
-        users = collusers.find({"guild_id": guild_id})
-
-        # Инициализация сумм для каждого поля
-        total_messages = 0
-        total_opened_cases = 0
-        total_bumps = 0
-        total_time_in_voice = 0
-        total_balance = 0.0
-        total_deals = 0
-
-        # Суммируем значения для каждого пользователя
-        for user in users:
-            total_messages += user.get("message_count", 0)
-            total_opened_cases += user.get("opened_cases", 0)
-            total_bumps += user.get("bumps", 0)
-            total_time_in_voice += user.get("time_in_voice", 0)
-            total_balance += user.get("balance", 0.0)  # Поле баланс как float
-            total_deals += user.get("number_of_deal", 0)
-
-        # Обновляем значения в коллекции collservers
-        collservers.update_one(
-            {"_id": guild_id},
-            {
-                "$set": {
-                    "messages": total_messages,
-                    "opened_cases": total_opened_cases,
-                    "bumps": total_bumps,
-                    "time_in_voice": total_time_in_voice,
-                    "total_rumbicks": total_balance,
-                    "deals": total_deals,
-                }
-            },
-            upsert=True  # Создаёт документ, если его нет
-        )
-
-        # Ответ пользователю
-        await inter.response.send_message(
-            (
-                f"Обновлены данные на сервере:\n"
-                f"- Сообщения: добавлено {total_messages}\n"
-                f"- Открытые кейсы: добавлено {total_opened_cases}\n"
-                f"- Бампы: добавлено {total_bumps}\n"
-                f"- Время в голосе: добавлено {total_time_in_voice} секунд\n"
-                f"- Баланс: добавлено {total_balance}\n"
-                f"- Сделки: добавлено {total_deals}"
-            ),
-            ephemeral=True
-        )
 
 
 def setup(bot):

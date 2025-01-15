@@ -224,7 +224,7 @@ class GamesCog(commands.Cog):
                 embed = create_error_embed(error_message)
                 await inter.response.send_message(embed=embed, ephemeral=True)
 
-    @commands.slash_command(name='rps', description='Игра: Камень-Ножницы-Бумага', aliases=['rps', 'rpc', 'кнб', 'Камень Ножницы Бумага'], dm_permission=False)
+    @commands.slash_command(name='rps', description='Игра: Камень-Ножницы-Бумага', aliases=['rps', 'rpc', 'кнб', 'Камень Ножницы Бумага'])
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def rps(self, inter: disnake.ApplicationCommandInteraction):
         components = disnake.ui.TextInput(
@@ -264,7 +264,7 @@ class GamesCog(commands.Cog):
         )
         await inter.response.send_modal(modal=modal)
 
-    @commands.slash_command(name='cf', description='Игра: Орел или Решка', dm_permission=False, aliases=['cf', 'Орел или Решка', 'Орел и Решка', 'коинфлип', 'кф'])
+    @commands.slash_command(name='cf', description='Игра: Орел или Решка', aliases=['cf', 'Орел или Решка', 'Орел и Решка', 'коинфлип', 'кф'])
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def coinflip(self, inter: disnake.ApplicationCommandInteraction, ставка: int,
                        участник: disnake.Member = None):

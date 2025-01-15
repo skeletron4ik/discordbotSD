@@ -146,7 +146,7 @@ class MuteCog(commands.Cog):
             embed.set_footer(text=f"ID участника: {участник.id}")
             await channel.send(embed=embed)
 
-    @commands.slash_command(name='unmute', description='Снимает запрет писать в чат и подключаться к голосовым каналам у участника', dm_permission=False)
+    @commands.slash_command(name='unmute', description='Снимает запрет писать в чат и подключаться к голосовым каналам у участника')
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     @check_roles("moder")
     async def unmute(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member):
