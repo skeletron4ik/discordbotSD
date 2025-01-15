@@ -164,7 +164,7 @@ class EconomyCog(commands.Cog):
                 cooldowns[user_id] = now
 
     @commands.slash_command(name='balance', description='Показывает баланс участника',
-                            aliases=['баланс', 'счет', 'остаток', 'credit', 'amount', 'sum'])
+                            aliases=['баланс', 'счет', 'остаток', 'credit', 'amount', 'sum'], contexts=disnake.InteractionContextTypes(guild=True, bot_dm=False, private_channel=False))
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def balance(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member = None):
         await inter.response.defer(ephemeral=True)
@@ -189,7 +189,7 @@ class EconomyCog(commands.Cog):
             await inter.edit_original_response(content="Не удалось найти данные пользователя.")
 
     @commands.slash_command(name='pay', description='Перевод румбиков другому участнику',
-                            aliases=['перевод', 'give', 'transfer'])
+                            aliases=['перевод', 'give', 'transfer'], contexts=disnake.InteractionContextTypes(guild=True, bot_dm=False, private_channel=False))
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def pay(self, inter: disnake.ApplicationCommandInteraction, участник: disnake.Member, количество: int):
         # Проверка на минимальную сумму перевода
@@ -398,7 +398,7 @@ class EconomyCog(commands.Cog):
         await log_channel.send(embed=log_embed)
 
     @commands.slash_command(name='store', description='Магазин ролей и специальных возможностей за Румбики',
-                            aliases=['shop', 'магазин', 'лавка', 'рынок'])
+                            aliases=['shop', 'магазин', 'лавка', 'рынок'], contexts=disnake.InteractionContextTypes(guild=True, bot_dm=False, private_channel=False))
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def store(self, inter: disnake.ApplicationCommandInteraction):
         if inter.type == disnake.InteractionType.application_command:
@@ -1212,7 +1212,7 @@ class EconomyCog(commands.Cog):
             await send_message_on_booster_end("Глобальный", current_multiplier)  # передаем текущий множитель
             return
 
-    @commands.slash_command(name='booster', description='Включает бустер румбиков')
+    @commands.slash_command(name='booster', description='Включает бустер румбиков', contexts=disnake.InteractionContextTypes(guild=True, bot_dm=False, private_channel=False))
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     @check_roles("admin")
     async def booster(self, inter: disnake.ApplicationCommandInteraction, множитель: int, длительность: str,
@@ -1290,7 +1290,7 @@ class EconomyCog(commands.Cog):
         await channel.send(embed=log_embed)
 
 
-    @commands.slash_command(name="boosters", description="Показывает текущие активные бустеры")
+    @commands.slash_command(name="boosters", description="Показывает текущие активные бустеры", contexts=disnake.InteractionContextTypes(guild=True, bot_dm=False, private_channel=False))
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def boosters(self, inter: disnake.ApplicationCommandInteraction):
         server_id = inter.guild_id
