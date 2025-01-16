@@ -77,7 +77,7 @@ class TopCog(commands.Cog):
         query_filter = {}
         if guild_id:
             query_filter['guild_id'] = guild_id
-        top_records = collusers.find({"reputation": {"$ne": 0}}, query_filter).sort('reputation', -1).skip(skip).limit(limit)
+        top_records = collusers.find({"reputation": {"$ne": 0}, "guild_id": 489867322039992320}).sort('reputation', -1).skip(skip).limit(limit)
         return [(record['id'], record['reputation']) for record in top_records]
 
     def get_top_users_bumps(self, skip=0, limit=10):
