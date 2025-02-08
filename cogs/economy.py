@@ -81,10 +81,33 @@ class EconomyCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.check_booster.start()
+        self.excluded_channels = {1070322967634006057, 532628352927006737, 944562833901899827, 1270673733178101801}
+        self.excluded_roles = {
+            518505773022838797,  # Администратор
+            580790278697254913,  # Гл. Модератор
+            702593498901381184,  # Модератор
+            1044314368717897868,  # Diamond
+            757930494301044737,  # Server Booster
+        }
+        self.options = [
+            disnake.SelectOption(label=f"💎 Diamond", description="Даёт эксклюзивные возможности", value="1"),
+            disnake.SelectOption(label=f"⭐️ Gold", description="Даёт эксклюзивные возможности", value="2"),
+            disnake.SelectOption(label="🙋‍♂️ Возможность сменить никнейм",
+                                 description="Вы получаете возможность один раз сменить никнейм",
+                                 value="3"),
+            disnake.SelectOption(label="🚀 Глобальный бустер румбиков x2",
+                                 description="Увеличивает зароботок Румбиков вдвое", value="4"),
+            disnake.SelectOption(label=f"🔑 Мистический ключ", description="Даёт возможность открыть загадочный ящик", value="5")
+        ]
+        self.options_2 = [
+                    disnake.ui.Button(label="🚀 Активировать на 1 день", style=disnake.ButtonStyle.secondary,
+                                      custom_id='1_day'),
+                    disnake.ui.Button(label="🚀 Активировать на 3 дня", style=disnake.ButtonStyle.primary, custom_id='3_days'),
+                    disnake.ui.Button(label="🚀 Активировать на 7 дней", style=disnake.ButtonStyle.success, custom_id='7_days')
+                ]
 
     @commands.Cog.listener()
     async def on_message(self, message: disnake.Message):
-        excluded_channels = {1070322967634006057, 532628352927006737, 944562833901899827, 1270673733178101801}
 
         if message.author.bot:
             if message.channel.id == 1070322967634006057 or message.channel.id == 1235294532409495555:
@@ -110,18 +133,18 @@ class EconomyCog(commands.Cog):
                         money_to_give1 = money_to_give * multiplier
                         money_to_give2 = round(money_to_give1, 2)
 
-                        collusers.find_one_and_update({'id': author_interaction.id}, {'$inc': {'balance': money_to_give2, 'bumps': 1}})
+                        collusers.find_one_and_update({'id': author_interaction.id, 'guild_id': message.guild.id}, {'$inc': {'balance': money_to_give2, 'bumps': 1}}, upsert=True)
                         collservers.update_one({"_id": message.guild.id}, {"$inc": {"bumps": 1, "total_rumbicks": money_to_give2}}, upsert=True)
                         embed = disnake.Embed(title='Успешный бамп!', colour=0xffbb00, timestamp=datetime.now())
                         embed.set_thumbnail(url='https://cdn.pixabay.com/animation/2023/06/13/15/13/15-13-13-522_512.gif')
-                        embed.add_field(name=f'',
-                                        value=f'{author_interaction.mention}, Спасибо что помогаете нашему серверу становиться лучше!\n'
+                        embed.add_field(name=f'', value=f'{author_interaction.mention}, Спасибо что помогаете нашему серверу становиться лучше!\n'
                                               f'В знак благодарности Вы получаете `{money_to_give2}`{emoji}!')
-                        base_chance = 5  # Базовый шанс в процентах
+                        base_chance = 5  # Базовый шанс %
                         adjusted_chance = base_chance * multiplier  # Увеличенный шанс
                         if random.randint(1, 100) <= adjusted_chance:  # Проверяем вероятность
                             embed.add_field(name='', value='Вам так же выпал `1🔑` от MysteryBox!', inline=False)
-                            collusers.find_one_and_update({'id': author_interaction.id}, {'$inc': {'keys': 1}})
+                            collusers.find_one_and_update(
+                                {'id': author_interaction.id, 'guild_id': message.guild.id}, {'$inc': {'keys': 1}}, upsert=True)
                         embed.set_author(name=f'{author_interaction.display_name}',
                                          icon_url=author_interaction.avatar.url)
                         embed.set_footer(text=message.author.guild.name, icon_url=message.author.guild.icon.url)
@@ -129,7 +152,7 @@ class EconomyCog(commands.Cog):
                         await channel.send(embed=embed)
         else:
             # Update message count
-            if message.channel.id not in excluded_channels:
+            if message.channel.id not in self.excluded_channels:
                 collusers.find_one_and_update(
                     {'id': message.author.id, 'guild_id': message.guild.id},
                     {'$inc': {'message_count': 1}},
@@ -210,19 +233,12 @@ class EconomyCog(commands.Cog):
         await inter.response.defer()
 
         # Определение исключительных ролей на комиссию
-        excluded_roles = {
-            518505773022838797,  # Администратор
-            580790278697254913,  # Гл. Модератор
-            702593498901381184,  # Модератор
-            1044314368717897868,  # Diamond
-            757930494301044737,  # Server Booster
-        }
         role_gold = 1303396950481174611  # Gold
 
         balance = collusers.find_one({"id": inter.author.id})['balance']
 
         # Проверка на наличие роли-исключения у отправителя
-        is_sender_excluded = any(role.id in excluded_roles for role in inter.author.roles)
+        is_sender_excluded = any(role.id in self.excluded_roles for role in inter.author.roles)
 
         if balance >= количество:
             # Вычисление комиссии (если отправитель не исключен)
@@ -438,23 +454,13 @@ class EconomyCog(commands.Cog):
         embed.add_field(name='', value=f'**Ваш текущий баланс:** {balance_formatted}', inline=False)
 
 
-        options = [
-            disnake.SelectOption(label=f"💎 Diamond", description="Даёт эксклюзивные возможности", value="1"),
-            disnake.SelectOption(label=f"⭐️ Gold", description="Даёт эксклюзивные возможности", value="2"),
-            disnake.SelectOption(label="🙋‍♂️ Возможность сменить никнейм",
-                                 description="Вы получаете возможность один раз сменить никнейм",
-                                 value="3"),
-            disnake.SelectOption(label="🚀 Глобальный бустер румбиков x2",
-                                 description="Увеличивает зароботок Румбиков вдвое", value="4"),
-            disnake.SelectOption(label=f"🔑 Мистический ключ", description="Даёт возможность открыть загадочный ящик", value="5")
-        ]
 
         # Создаем select menu
         select_menu = disnake.ui.Select(
             placeholder="Выбрать предмет для покупки...",
             min_values=1,
             max_values=1,
-            options=options,
+            options=self.options,
         )
 
         async def select_callback(interaction: disnake.MessageInteraction):
@@ -628,12 +634,6 @@ class EconomyCog(commands.Cog):
                     '7_days': 999
                 }
 
-                options = [
-                    disnake.ui.Button(label="🚀 Активировать на 1 день", style=disnake.ButtonStyle.secondary,
-                                      custom_id='1_day'),
-                    disnake.ui.Button(label="🚀 Активировать на 3 дня", style=disnake.ButtonStyle.primary, custom_id='3_days'),
-                    disnake.ui.Button(label="🚀 Активировать на 7 дней", style=disnake.ButtonStyle.success, custom_id='7_days')
-                ]
 
                 def get_day_word(day_count):
                     if day_count == 1:
@@ -762,11 +762,11 @@ class EconomyCog(commands.Cog):
                         server_embed.set_footer(text=f'Активация глобального бустера', icon_url=inter.guild.icon.url)
                     await channel.send(embed=server_embed)
 
-                for button in options:
+                for button in self.options_2:
                     button.callback = button_callback
 
                 view = disnake.ui.View(timeout=None)
-                for button in options:
+                for button in self.options_2:
                     view.add_item(button)
 
                 embed = disnake.Embed(color=0x4169E1)
