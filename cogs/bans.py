@@ -48,7 +48,10 @@ class BansCog(commands.Cog):
                         embed.set_footer(text="Больше не нарушайте!")
 
                         if member:
-                            await member.send(embed=embed)
+                            try:
+                                await member.send(embed=embed)
+                            except:
+                                pass
 
                         channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
                         участник = await self.bot.fetch_user(member_id)
@@ -183,7 +186,10 @@ class BansCog(commands.Cog):
         embed.add_field(name="Истекает через:", value=f"<t:{current_timestamp}:R>", inline=False)
         embed.add_field(name="Подать апелляцию:", value=f"<#1044571685900259389>", inline=False)
         embed.set_footer(text="Пожалуйста, будьте внимательны!")
-        await участник.send(embed=embed)
+        try:
+            await участник.send(embed=embed)
+        except:
+            pass
 
         channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
 
@@ -245,8 +251,10 @@ class BansCog(commands.Cog):
                         inline=False)
         embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
         embed.set_footer(text="Приносим извинения за предоствленые неудобства!")
-
-        await участник.send(embed=embed)
+        try:
+            await участник.send(embed=embed)
+        except:
+            pass
 
         channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
 

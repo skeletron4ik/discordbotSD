@@ -126,7 +126,10 @@ class WarnsCog(commands.Cog):
 
                         member = guild.get_member(user["id"]) or await guild.fetch_member(user["id"])
                         if member:
-                            await member.send(embed=embed)
+                            try:
+                                await member.send(embed=embed)
+                            except:
+                                pass
 
                         channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
 
@@ -319,7 +322,7 @@ class WarnsCog(commands.Cog):
             except:
                 await inter.response.send_message(embed=embed)
 
-        channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
+        channel = await self.bot.fetch_channel(944562833901899827)
 
         embed = disnake.Embed(title="", url="",
                               description="", color=0xffff00, timestamp=datetime.now())
@@ -350,7 +353,10 @@ class WarnsCog(commands.Cog):
         embed.add_field(name="Подать апелляцию:", value=f"<#1044571685900259389>", inline=False)
         embed.set_footer(
             text="Пожалуйста, будьте внимательны! Последующие предупреждения могут привести к более строгим наказаниям.")
-        message = await участник.send(embed=embed)
+        try:
+            message = await участник.send(embed=embed)
+        except:
+            pass
 
         def create_embed(dur, timestamp_mute):
             embed = disnake.Embed(title="ShadowDragons", url="https://discord.com/invite/KE3psXf",
@@ -525,7 +531,10 @@ class WarnsCog(commands.Cog):
                 embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
                 embed.add_field(name="",value=f"Предупреждение ``#{предупреждение}`` на сервере **{inter.guild.name}** было снято\n **Модератором**: {inter.author.mention}!",inline=False)
                 embed.set_footer(text="Приносим извинения за предоствленые неудобства!")
-                await участник.send(embed=embed)
+                try:
+                    await участник.send(embed=embed)
+                except:
+                    pass
 
                 channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
 

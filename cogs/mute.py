@@ -128,7 +128,10 @@ class MuteCog(commands.Cog):
             embed.add_field(name="Истекает через:", value=f"{formatted_duration} (<t:{current_timestamp}:R>)", inline=False)
             embed.add_field(name="Подать апелляцию:", value=f"<#1044571685900259389>", inline=False)
             embed.set_footer(text="Пожалуйста, будьте внимательны!")
-            await участник.send(embed=embed)
+            try:
+                await участник.send(embed=embed)
+            except:
+                pass
 
             channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
 
@@ -186,7 +189,10 @@ class MuteCog(commands.Cog):
             embed.add_field(name="", value=f"Вам снова разрешено писать в чат и подключаться к голосовым каналам на сервере **{inter.guild.name}**!", inline=False)
             embed.add_field(name="Модератор:", value=f"{inter.author.mention}", inline=False)
             embed.set_footer(text="Пожалуйста, соблюдайте правила сервера!")
-            await участник.send(embed=embed)
+            try:
+                await участник.send(embed=embed)
+            except:
+                pass
 
             # Логирование действия размута в канал логов
             channel = await self.bot.fetch_channel(944562833901899827)  # Канал для логов
