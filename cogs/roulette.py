@@ -68,13 +68,14 @@ class RouletteCog(commands.Cog):
 
     def get_roulette_options(self):
         return [
-            {'name': '😔 Пусто', 'chance': 7, 'field': 'none', 'value': None},
-            {'name': '🔇 Мут от 1 до 10 минут', 'chance': 3.7, 'field': 'mute', 'value': (1, 10)},
-            {'name': '🔇 Мут от 10 до 20 минут', 'chance': 2.5, 'field': 'mute', 'value': (10, 20)},
-            {'name': '🔇 Мут от 20 до 40 минут', 'chance': 0.7, 'field': 'mute', 'value': (20, 40)},
-            {'name': f'{emoji} От 1 до 25', 'chance': 16.4, 'field': 'currency', 'value': (1, 25)},
-            {'name': f'{emoji} От 25 до 50', 'chance': 12.7, 'field': 'currency', 'value': (25, 50)},
-            {'name': f'{emoji} От 50 до 100', 'chance': 5.3, 'field': 'currency', 'value': (50, 100)},
+            {'name': '😔 Пусто', 'chance': 15, 'field': 'none', 'value': None},
+            {'name': '🔇 Мут от 1 до 5 минут', 'chance': 5, 'field': 'mute', 'value': (1, 5)},
+            {'name': '🔇 Мут от 5 до 10 минут', 'chance': 3, 'field': 'mute', 'value': (5, 10)},
+            {'name': '🔇 Мут от 10 до 20 минут', 'chance': 1, 'field': 'mute', 'value': (10, 20)},
+            {'name': '🔇 Мут от 20 до 40 минут', 'chance': 0.5, 'field': 'mute', 'value': (20, 40)},
+            {'name': f'{emoji} От 1 до 25', 'chance': 26.4, 'field': 'currency', 'value': (1, 25)},
+            {'name': f'{emoji} От 25 до 50', 'chance': 17.7, 'field': 'currency', 'value': (25, 50)},
+            {'name': f'{emoji} От 50 до 100', 'chance': 6.4, 'field': 'currency', 'value': (50, 100)},
             {'name': f'{emoji} От 100 до 200', 'chance': 2.5, 'field': 'currency', 'value': (100, 200)},
             {'name': f'{emoji} От 200 до 500', 'chance': 0.75, 'field': 'currency', 'value': (200, 500)},
             {'name': f'{emoji} От 500 до 1000', 'chance': 0.3, 'field': 'currency', 'value': (500, 1000)},
@@ -82,26 +83,26 @@ class RouletteCog(commands.Cog):
             {'name': f'{emoji} От 2000 до 3000', 'chance': 0.01, 'field': 'currency', 'value': (2000, 3000)},
             {'name': f'{emoji} От 3000 до 4000', 'chance': 0.005, 'field': 'currency', 'value': (3000, 4000)},
             {'name': f'{emoji} От 4000 до 5000', 'chance': 0.001, 'field': 'currency', 'value': (4000, 5000)},
-            {'name': '⭐️ Gold на 1-3 дня', 'chance': 12, 'field': 'gold', 'value': (1, 3)},
-            {'name': '⭐️ Gold на 3-7 дней', 'chance': 9, 'field': 'gold', 'value': (3, 7)},
-            {'name': '⭐️ Gold на 7-14 дней', 'chance': 5, 'field': 'gold', 'value': (7, 14)},
-            {'name': '⭐️ Gold на 14-30 дней', 'chance': 2, 'field': 'gold', 'value': (14, 30)},
-            {'name': '⭐️ Gold на 30-60 дней', 'chance': 0.7, 'field': 'gold', 'value': (30, 60)},
-            {'name': '⭐️ Gold на 60-90 дней', 'chance': 0.2, 'field': 'gold', 'value': (60, 90)},
-            {'name': '⭐️ Gold на 90-180 дней', 'chance': 0.05, 'field': 'gold', 'value': (90, 180)},
-            {'name': '💎 Diamond на 1-3 дня', 'chance': 6, 'field': 'diamond', 'value': (1, 3)},
-            {'name': '💎 Diamond на 3-7 дней', 'chance': 4.5, 'field': 'diamond', 'value': (3, 7)},
-            {'name': '💎 Diamond на 7-14 дней', 'chance': 2.5, 'field': 'diamond', 'value': (7, 14)},
-            {'name': '💎 Diamond на 14-30 дней', 'chance': 1, 'field': 'diamond', 'value': (14, 30)},
-            {'name': '💎 Diamond на 30-60 дней', 'chance': 0.35, 'field': 'diamond', 'value': (30, 60)},
-            {'name': '💎 Diamond на 60-90 дней', 'chance': 0.06, 'field': 'diamond', 'value': (60, 90)},
-            {'name': '💎 Diamond на 90-180 дней', 'chance': 0.01, 'field': 'diamond', 'value': (90, 180)},
-            {'name': '🔑 От 1 до 3', 'chance': 2.2, 'field': 'keys', 'value': (1, 3)},
-            {'name': '🔑 От 3 до 5', 'chance': 1.5, 'field': 'keys', 'value': (3, 5)},
-            {'name': '🔑 От 5 до 10', 'chance': 0.8, 'field': 'keys', 'value': (5, 10)},
-            {'name': '🔑 От 10 до 30', 'chance': 0.07, 'field': 'keys', 'value': (10, 30)},
-            {'name': '🔑 От 30 до 60', 'chance': 0.02, 'field': 'keys', 'value': (30, 60)},
-            {'name': '🔑 От 60 до 100', 'chance': 0.007, 'field': 'keys', 'value': (60, 100)}
+            {'name': '⭐️ Gold на 1-3 дня', 'chance': 7, 'field': 'gold', 'value': (1, 3)},
+            {'name': '⭐️ Gold на 3-7 дней', 'chance': 4.5, 'field': 'gold', 'value': (3, 7)},
+            {'name': '⭐️ Gold на 7-14 дней', 'chance': 2.5, 'field': 'gold', 'value': (7, 14)},
+            {'name': '⭐️ Gold на 14-30 дней', 'chance': 1, 'field': 'gold', 'value': (14, 30)},
+            {'name': '⭐️ Gold на 30-60 дней', 'chance': 0.35, 'field': 'gold', 'value': (30, 60)},
+            {'name': '⭐️ Gold на 60-90 дней', 'chance': 0.1, 'field': 'gold', 'value': (60, 90)},
+            {'name': '⭐️ Gold на 90-180 дней', 'chance': 0.025, 'field': 'gold', 'value': (90, 180)},
+            {'name': '💎 Diamond на 1-3 дня', 'chance': 4, 'field': 'diamond', 'value': (1, 3)},
+            {'name': '💎 Diamond на 3-7 дней', 'chance': 2.25, 'field': 'diamond', 'value': (3, 7)},
+            {'name': '💎 Diamond на 7-14 дней', 'chance': 1.25, 'field': 'diamond', 'value': (7, 14)},
+            {'name': '💎 Diamond на 14-30 дней', 'chance': 0.5, 'field': 'diamond', 'value': (14, 30)},
+            {'name': '💎 Diamond на 30-60 дней', 'chance': 0.175, 'field': 'diamond', 'value': (30, 60)},
+            {'name': '💎 Diamond на 60-90 дней', 'chance': 0.04, 'field': 'diamond', 'value': (60, 90)},
+            {'name': '💎 Diamond на 90-180 дней', 'chance': 0.005, 'field': 'diamond', 'value': (90, 180)},
+            {'name': '🔑 От 1 до 3', 'chance': 1.5, 'field': 'keys', 'value': (1, 3)},
+            {'name': '🔑 От 3 до 5', 'chance': 0.75, 'field': 'keys', 'value': (3, 5)},
+            {'name': '🔑 От 5 до 10', 'chance': 0.4, 'field': 'keys', 'value': (5, 10)},
+            {'name': '🔑 От 10 до 30', 'chance': 0.035, 'field': 'keys', 'value': (10, 30)},
+            {'name': '🔑 От 30 до 60', 'chance': 0.01, 'field': 'keys', 'value': (30, 60)},
+            {'name': '🔑 От 60 до 100', 'chance': 0.0035, 'field': 'keys', 'value': (60, 100)}
         ]
 
     def format_rewards_list(self, options):
@@ -118,6 +119,7 @@ class RouletteCog(commands.Cog):
     @mystery_box.sub_command(name='open', description='Открыть загадочный ящик')
     @commands.cooldown(rate=1, per=5, type=commands.BucketType.user)
     async def open_box(self, inter: disnake.ApplicationCommandInteraction):
+        await inter.response.defer(ephemeral=True)
         check_value(inter)
 
         if collusers.find_one({'id': inter.author.id, 'guild_id': inter.author.guild.id})['keys'] <= 0:
@@ -172,7 +174,7 @@ class RouletteCog(commands.Cog):
 
         embed_loading = disnake.Embed(title="Открываем Mystery Box...", color=0x00ff00, timestamp=datetime.now())
         embed_loading.set_image(url='https://media.tenor.com/6BWKxLc307kAAAAj/gift-box.gif')
-        await inter.send(embed=embed_loading, ephemeral=True)
+        await inter.edit_original_message(embed=embed_loading)
 
         await asyncio.sleep(4.5)  # Задержка в 4.5 секунды
 
