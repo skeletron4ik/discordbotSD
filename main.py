@@ -18,6 +18,7 @@ cluster = MongoClient(os.getenv('MONGODB'))
 collusers = cluster.server.users
 collservers = cluster.server.servers
 collpromos = cluster.server.promos
+collreports = cluster.server.reports
 
 ROLE_CATEGORIES = {
     "admin": [518505773022838797, 580790278697254913],  # ID ролей администраторов: admin, chief
@@ -86,6 +87,62 @@ def create_error_embed(message: str) -> disnake.Embed:
     embed.set_thumbnail(url="https://media2.giphy.com/media/AkGPEj9G5tfKO3QW0r/200.gif")
     embed.set_footer(text='Ошибка')
     return embed
+
+def convert_to_seconds(time_str):
+    try:
+        value = int(time_str[:-1])
+    except ValueError:
+        raise ValueError(f"Invalid time format: {time_str}")
+
+    unit = time_str[-1]
+    if unit == 'д' or unit == 'd':
+        return value * 24 * 60 * 60
+    elif unit == 'ч' or unit == 'h':
+        return value * 60 * 60
+    elif unit == 'м' or unit == 'm':
+        return value * 60
+    elif unit == 'с' or unit == 's':
+        return value
+    else:
+        raise ValueError(f"Invalid time unit: {time_str[-1]}")
+
+def format_duration(time_str):
+    try:
+        value = int(time_str[:-1])
+    except ValueError:
+        raise ValueError(f"Invalid time format: {time_str}")
+
+    unit = time_str[-1]
+    if unit == 'д' or unit == 'd':
+        if value == 1:
+            return "1 день"
+        elif 2 <= value <= 4:
+            return f"{value} дня"
+        else:
+            return f"{value} дней"
+    elif unit == 'ч' or unit == 'h':
+        if value == 1:
+            return "1 час"
+        elif 2 <= value <= 4:
+            return f"{value} часа"
+        else:
+            return f"{value} часов"
+    elif unit == 'м' or unit == 'm':
+        if value == 1:
+            return "1 минуту"
+        elif 2 <= value <= 4:
+            return f"{value} минуты"
+        else:
+            return f"{value} минут"
+    elif unit == 'с' or unit == 's':
+        if value == 1:
+            return "1 секунду"
+        elif 2 <= value <= 4:
+            return f"{value} секунды"
+        else:
+            return f"{value} секунд"
+    else:
+        raise ValueError(f"Invalid time unit: {time_str[-1]}")
 
 @bot.event
 async def on_slash_command_error(inter: disnake.ApplicationCommandInteraction, error):
@@ -200,6 +257,11 @@ async def on_ready():
                 "counter": 0,
                 "promos": {}
             }
+            report_values = {
+                "_id": guild.id,
+                "counter": 0,
+                "reports": {}
+            }
 
             if collusers.count_documents({"id": member.id, "guild_id": guild.id}) == 0:
                 collusers.insert_one(values)
@@ -207,6 +269,8 @@ async def on_ready():
                 collservers.insert_one(server_values)
             if collpromos.count_documents({"_id": guild.id}) == 0:
                 collpromos.insert_one(promo_values)
+            if collreports.count_documents({"_id": guild.id}) == 0:
+                collreports.insert_one(report_values)
 
 
 @bot.event
