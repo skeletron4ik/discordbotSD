@@ -4,9 +4,12 @@ import disnake
 from disnake.ext import commands, tasks
 from datetime import datetime, timedelta
 from pymongo import MongoClient
-from main import cluster, check_roles
+from main import cluster, check_roles, format_duration, convert_to_seconds
 from .economy import format_time
 from disnake import Interaction
+import asyncio
+import aiohttp
+from googletrans import Translator
 
 current_datetime = datetime.today()
 
@@ -52,6 +55,48 @@ ticket_emoji = "<:MegaPig_Ticket:1328819119273021520>"
 rep_up_emoji = "<:rep_up:1234218072433365102>"
 rep_down_emoji = "<:rep_down:1234218095116288154>"
 
+async def get_joke():
+    url = "https://official-joke-api.appspot.com/random_joke"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status == 200:
+                joke_data = await response.json()
+                joke = f"{joke_data['setup']} {joke_data['punchline']}"
+
+                # Перевод с помощью Google Translate (с использованием await)
+                translator = Translator()
+                joke_translated = await translator.translate(joke, src='en', dest='ru')  # Используем await
+
+                return joke_translated.text  # Доступ к переведенному тексту
+            return "Не удалось получить шутку. Попробуйте позже."
+
+class ReplyView(disnake.ui.View):
+    def __init__(self, sender: disnake.User):
+        super().__init__(timeout=None)
+        self.sender = sender  # Пользователь, которому пересылаем ответ
+
+    @disnake.ui.button(label="Ответить", style=disnake.ButtonStyle.primary)
+    async def reply_button(self, button: disnake.ui.Button, interaction: disnake.MessageInteraction):
+        await interaction.response.send_modal(ReplyModal(self.sender))
+
+class ReplyModal(disnake.ui.Modal):
+    def __init__(self, sender: disnake.User):
+        components = [disnake.ui.TextInput(label="Введите ответ", custom_id="reply_text",
+                                           style=disnake.TextInputStyle.paragraph)]
+        super().__init__(title="Ответ", custom_id="reply_modal", components=components)
+        self.sender = sender
+
+    async def callback(self, interaction: disnake.ModalInteraction):
+        text = interaction.text_values["reply_text"]
+        embed = disnake.Embed(description=text, color=disnake.Color.blue())
+        embed.set_author(name=interaction.user.name, icon_url=interaction.user.display_avatar.url)
+
+        try:
+            await self.sender.send(embed=embed, view=ReplyView(interaction.user))
+            await interaction.response.send_message("✅ Ответ отправлен!", ephemeral=True)
+        except disnake.Forbidden:
+            await interaction.response.send_message(
+                "❌ Не удалось отправить сообщение. Возможно, у пользователя закрыты ЛС.", ephemeral=True)
 class ServerCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -103,86 +148,156 @@ class ServerCog(commands.Cog):
         except Exception as e:
             print(f"Ошибка при удалении данных для сервера {guild_id}: {e}")
 
-    @commands.slash_command(name="update_stats", description="Обновить общее количество значений на сервере")
-    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    @commands.slash_command(name="channel", description="Управление каналом")
     @check_roles("admin")
-    async def update_messages(self, inter: disnake.ApplicationCommandInteraction):
-        guild_id = inter.guild.id
+    async def channel(self, inter: disnake.ApplicationCommandInteraction):
+        pass  # Заглушка для основной команды
 
-        # Получаем всех пользователей сервера
-        users = collusers.find({"guild_id": guild_id})
-
-        # Инициализация сумм для каждого поля
-        total_messages = 0
-        total_opened_cases = 0
-        total_bumps = 0
-        total_time_in_voice = 0
-        total_balance = 0.0
-        total_deals = 0
-
-        # Суммируем значения для каждого пользователя
-        for user in users:
-            total_messages += user.get("message_count", 0)
-            total_opened_cases += user.get("opened_cases", 0)
-            total_bumps += user.get("bumps", 0)
-            total_time_in_voice += user.get("time_in_voice", 0)
-            total_balance += user.get("balance", 0.0)  # Поле баланс как float
-            total_deals += user.get("number_of_deal", 0)
-
-        # Обновляем значения в коллекции collservers
-        collservers.update_one(
-            {"_id": guild_id},
-            {
-                "$set": {
-                    "messages": total_messages,
-                    "opened_cases": total_opened_cases,
-                    "bumps": total_bumps,
-                    "time_in_voice": total_time_in_voice,
-                    "total_rumbicks": total_balance,
-                    "deals": total_deals,
-                }
-            },
-            upsert=True  # Создаёт документ, если его нет
-        )
-
-        # Ответ пользователю
-        await inter.response.send_message(
-            (
-                f"Обновлены данные на сервере:\n"
-                f"- Сообщения: добавлено {total_messages}\n"
-                f"- Открытые кейсы: добавлено {total_opened_cases}\n"
-                f"- Бампы: добавлено {total_bumps}\n"
-                f"- Время в голосе: добавлено {total_time_in_voice} секунд\n"
-                f"- Баланс: добавлено {total_balance}\n"
-                f"- Сделки: добавлено {total_deals}"
-            ),
-            ephemeral=True
-        )
-
-    @commands.slash_command(name="update_fields", description="Добавить недостающие поля promocodes, keys, bumps и opened_cases всем пользователям")
-    @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
+    @channel.sub_command(name="lock", description="Закрыть канал от отправки сообщений")
     @check_roles("admin")
-    async def update_fields(self, inter: disnake.ApplicationCommandInteraction):
-        missing_fields = {"promocodes": 0, "opened_cases": 0, "keys": 0, "bumps": 0}
-        updated_count = 0
+    async def lock(self, inter: disnake.ApplicationCommandInteraction, канал: disnake.TextChannel = None):
+        канал = канал or inter.channel
+        overwrite = канал.overwrites_for(inter.guild.default_role)
+        overwrite.send_messages = False
+        await канал.set_permissions(inter.guild.default_role, overwrite=overwrite)
+        await inter.response.send_message(f"Канал {канал.mention} закрыт от отправки сообщений.", ephemeral=True)
 
-        # Деффер сообщение, чтобы показать пользователю, что команда в процессе выполнения
-        await inter.response.defer(ephemeral=True)
+    @channel.sub_command(name="unlock", description="Открыть канал для отправки сообщений")
+    @check_roles("admin")
+    async def unlock(self, inter: disnake.ApplicationCommandInteraction, канал: disnake.TextChannel = None):
+        канал = канал or inter.channel
+        overwrite = канал.overwrites_for(inter.guild.default_role)
+        overwrite.send_messages = True
+        await канал.set_permissions(inter.guild.default_role, overwrite=overwrite)
+        await inter.response.send_message(f"Канал {канал.mention} открыт для отправки сообщений.", ephemeral=True)
 
-        # Процесс обновления
-        for user in collusers.find():
-            update_data = {}
-            for field, default_value in missing_fields.items():
-                if field not in user:
-                    update_data[field] = default_value
-            if update_data:
-                collusers.update_one({"_id": user["_id"]}, {"$set": update_data})
-                updated_count += 1
+    @channel.sub_command(name="slowmode", description="Установить слоумод в канале")
+    @check_roles("admin")
+    async def slowmode(self, inter: disnake.ApplicationCommandInteraction, канал: disnake.TextChannel = None,
+                       время: int = None):
+        канал = канал or inter.channel
+        await канал.edit(slowmode_delay=время or 0)
+        if время:
+            await inter.response.send_message(f"Слоумод {время} секунд установлен в канале {канал.mention}.",
+                                              ephemeral=True)
+        else:
+            await inter.response.send_message(f"Слоумод отключён в канале {канал.mention}.", ephemeral=True)
 
-        # Ответ пользователю о выполнении
-        await inter.edit_original_message(
-            content=f"Обновлено {updated_count} пользователей. Добавлены поля: {', '.join(missing_fields.keys())}."
-        )
+    @channel.sub_command(name="clear", description="Очистить сообщения в канале")
+    @check_roles("admin")
+    async def clear(self, inter: disnake.ApplicationCommandInteraction, количество: int, длительность: str = None,
+                    канал: disnake.TextChannel = None, участник: disnake.Member = None):
+        канал = канал or inter.channel
+        after_time = None
+        if длительность:
+            after_time = disnake.utils.utcnow() - timedelta(seconds=convert_to_seconds(длительность))
+
+        def check(msg):
+            return (участник is None or msg.author == участник)
+
+        удаленные = await канал.purge(limit=количество, after=after_time, check=check)
+        await inter.response.send_message(f"Удалено {len(удаленные)} сообщений в канале {канал.mention}.",
+                                          ephemeral=True)
+
+    @commands.slash_command(name="nikname", description="Управление никнеймом пользователя")
+    @check_roles("moder")
+    async def nikname(self, inter: disnake.ApplicationCommandInteraction):
+        pass
+
+    @nikname.sub_command(name="change", description="Изменить никнейм пользователя")
+    @check_roles("moder")
+    async def change(self, inter: disnake.ApplicationCommandInteraction, member: disnake.Member, new_nickname: str):
+        try:
+            await member.edit(nick=new_nickname)
+            await inter.response.send_message(f"Никнейм пользователя {member.mention} изменён на `{new_nickname}`.", ephemeral=True)
+        except disnake.Forbidden:
+            await inter.response.send_message("У меня недостаточно прав для изменения никнейма!", ephemeral=True)
+        except Exception as e:
+            await inter.response.send_message(f"Ошибка: {e}", ephemeral=True)
+
+    @nikname.sub_command(name="reset", description="Сбросить никнейм пользователя")
+    @check_roles("moder")
+    async def reset(self, inter: disnake.ApplicationCommandInteraction, member: disnake.Member):
+        try:
+            await member.edit(nick=None)
+            await inter.response.send_message(f"Никнейм пользователя {member.mention} сброшен.", ephemeral=True)
+        except disnake.Forbidden:
+            await inter.response.send_message("У меня недостаточно прав для изменения никнейма!", ephemeral=True)
+        except Exception as e:
+            await inter.response.send_message(f"Ошибка: {e}", ephemeral=True)
+
+    @commands.slash_command(name="joke", description="Получить случайную шутку")
+    async def joke(self, inter: disnake.ApplicationCommandInteraction):
+        joke = await get_joke()
+        await inter.response.send_message(f"Шутка: {joke}", ephemeral=True)
+
+    import disnake
+    from disnake.ext import commands
+
+
+    @commands.slash_command(name='embed', description="Создать embed и отправить его участнику в ЛС с возможностью ответов")
+    @check_roles("moder")
+    async def embed(
+            self,
+            inter: disnake.ApplicationCommandInteraction,
+            участник: disnake.Member,
+            title: str = None,
+            description: str = None,
+            color: str = "blue",
+            image: str = None,
+            thumbnail: str = None,
+            footer: str = None,
+            button_label: str = None,
+            button_url: str = None,
+            reply_button: bool = True
+    ):
+        # Определяем цвет
+        color_dict = {
+            "red": disnake.Color.red(),
+            "green": disnake.Color.green(),
+            "blue": disnake.Color.blue(),
+            "yellow": disnake.Color.yellow(),
+            "purple": disnake.Color.purple(),
+            "orange": disnake.Color.orange(),
+        }
+
+        if color.startswith("#"):  # Если передан HEX цвет
+            try:
+                embed_color = disnake.Color(int(color[1:], 16))
+            except ValueError:
+                await inter.response.send_message("❌ Неверный формат цвета. Используйте #RRGGBB или стандартные цвета.")
+                return
+        else:
+            embed_color = color_dict.get(color.lower(), disnake.Color.blue())
+
+            # Создаем Embed
+        embed = disnake.Embed(title=title, description=description, color=embed_color)
+
+        if image:
+            embed.set_image(url=image)
+
+        if thumbnail:
+            embed.set_thumbnail(url=thumbnail)
+
+        if footer:
+            embed.set_footer(text=footer)
+
+        # Создаем кнопки
+        view = disnake.ui.View()
+
+        if reply_button:
+            view.add_item(disnake.ui.Button(label="Ответить", style=disnake.ButtonStyle.primary, custom_id="reply"))
+
+        if button_label and button_url:
+            view.add_item(disnake.ui.Button(label=button_label, url=button_url))
+
+        # Отправляем сообщение в ЛС
+        try:
+            await участник.send(embed=embed, view=view if view.children else None)
+            await inter.response.send_message(f"✅ Embed успешно отправлен {участник.mention}!", ephemeral=True)
+        except disnake.Forbidden:
+            await inter.response.send_message(
+                f"❌ Не удалось отправить сообщение {участник.mention}, возможно, у него закрыты ЛС.", ephemeral=True)
 
     @commands.slash_command(name='server-info', description="Показать информацию о сервере")
     async def server_info(self, inter: disnake.ApplicationCommandInteraction):

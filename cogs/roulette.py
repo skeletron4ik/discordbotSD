@@ -119,7 +119,6 @@ class RouletteCog(commands.Cog):
     @mystery_box.sub_command(name='open', description='Открыть загадочный ящик')
     @commands.cooldown(rate=1, per=5, type=commands.BucketType.user)
     async def open_box(self, inter: disnake.ApplicationCommandInteraction):
-        await inter.response.defer(ephemeral=True)
         check_value(inter)
 
         if collusers.find_one({'id': inter.author.id, 'guild_id': inter.author.guild.id})['keys'] <= 0:
@@ -174,7 +173,7 @@ class RouletteCog(commands.Cog):
 
         embed_loading = disnake.Embed(title="Открываем Mystery Box...", color=0x00ff00, timestamp=datetime.now())
         embed_loading.set_image(url='https://media.tenor.com/6BWKxLc307kAAAAj/gift-box.gif')
-        await inter.edit_original_message(embed=embed_loading)
+        await inter.send(embed=embed_loading, ephemeral=True)
 
         await asyncio.sleep(4.5)  # Задержка в 4.5 секунды
 

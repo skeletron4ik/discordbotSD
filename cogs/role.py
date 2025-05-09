@@ -408,7 +408,6 @@ class Role(commands.Cog):
             guild_id = inter.guild.id
             temporary_roles = collusers.find({"guild_id": guild_id, "role_ids.expires_at": {"$exists": True}})
 
-            1069201052303380511
 
 
 def setup(bot):

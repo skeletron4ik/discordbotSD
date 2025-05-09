@@ -85,18 +85,18 @@ class ReportCog(commands.Cog):
                     timestamp=datetime.now()
                 )
                 embed.set_thumbnail(url='https://www.emojiall.com/images/240/telegram/2705.gif')
-                embed.set_footer(text=f"Репорт: #{self.report_id}")
+                embed.set_footer(text=f"Репорт: #{self.report_id}", icon_url=inter.guild.icon.url)
                 await self.sender.send(embed=embed)
             except disnake.Forbidden:
                 embed = disnake.Embed(title='Вы успешно приняли жалобу!', description=f'Вы успешно обработали жалобу, однако уведомление отправителю не было доставлено из-за настроек конфиденциальности, которые запрещают получение таких сообщений.\n Не забудьте выдать наказание нарушителю!', color=0x00ffff)
-                embed.set_footer(text=f'Репорт: #{self.report_id}')
+                embed.set_footer(text=f"Репорт: #{self.report_id}", icon_url=inter.guild.icon.url)
                 embed.set_thumbnail(url='https://www.emojiall.com/images/240/telegram/2705.gif')
                 await inter.response.send_message(embed=embed, ephemeral=True)
                 return
             embed = disnake.Embed(title='Вы успешно приняли жалобу!',
                                   description=f'Вы успешно обработали жалобу, отправитель был уведомлён об этом.\n Не забудьте выдать наказание нарушителю!',
                                   color=0x00ff00)
-            embed.set_footer(text=f'Репорт: #{self.report_id}')
+            embed.set_footer(text=f"Репорт: #{self.report_id}", icon_url=inter.guild.icon.url)
             embed.set_thumbnail(url='https://www.emojiall.com/images/240/telegram/2705.gif')
             await inter.response.send_message(embed=embed, ephemeral=True)
 
@@ -105,18 +105,26 @@ class ReportCog(commands.Cog):
             await message.edit(view=None)  # Удаляем View (с кнопками)
             # Обновление сообщения с репортом в модераторском канале
             report_message = await inter.channel.fetch_message(inter.message.id)
-            embed = report_message.embeds[0]
-            embed.title = "Жалоба принята!"
-            embed.add_field(name='', value='-=-=-=-=-=-=-=-=-=-=-=-=-=-')
-            embed.add_field(name="", value=f"Жалоба была принята модератором {inter.author.mention},\n **Вердикт:**```{verdict}```", inline=False)
+            embed = disnake.Embed(title='Жалоба принята!', color=0x00ff00)
+            embed.set_author(name=f"{inter.author.display_name}", icon_url=inter.author.display_avatar.url)
+            embed.add_field(
+                name="",
+                value=f"Жалоба была **принята** модератором {inter.author.mention},\n **Вердикт:**```{verdict}```",
+                inline=False
+            )
             embed.set_thumbnail(url='https://www.emojiall.com/images/240/telegram/2705.gif')
-            embed.color = 0x00ff00  # Изменение цвета на зелёный
-            await report_message.channel.send(embed=embed)
+            embed.set_footer(text=f"Репорт: #{self.report_id}", icon_url=inter.guild.icon.url)
+            await inter.followup.send(embed=embed)
+
             thread = inter.message.thread
             forum = inter.guild.get_channel(1336377188173484052)
             opened = forum.get_tag(1336380883917213791)
             closed = forum.get_tag(1336380395113152583)
-            await thread.edit(applied_tags=[closed], locked=True)
+            current_tags = thread.applied_tags
+            filtered_tags = [tag for tag in current_tags if tag.id != 1336380883917213791]
+            new_tags = filtered_tags + [closed]
+            report_name = f"🟢 Репорт #{self.report_id} | {self.suspect.display_name}"
+            await thread.edit(name=report_name,applied_tags=new_tags, locked=True, archived=True)
 
     class RejectVerdictModal(disnake.ui.Modal):
         def __init__(self, report_id: int, suspect: disnake.Member, sender: disnake.Member, cog):
@@ -166,20 +174,20 @@ class ReportCog(commands.Cog):
                     timestamp=datetime.now()
                 )
                 embed.set_thumbnail(url='https://media2.giphy.com/media/AkGPEj9G5tfKO3QW0r/200.gif')
-                embed.set_footer(text=f"Репорт: #{self.report_id}")
+                embed.set_footer(text=f"Репорт: #{self.report_id}", icon_url=inter.guild.icon.url)
                 await self.sender.send(embed=embed)
             except disnake.Forbidden:
                 embed = disnake.Embed(title='Вы успешно отклонили жалобу!',
                                       description=f'Вы успешно обработали жалобу, однако уведомление отправителю не было доставлено из-за настроек конфиденциальности, которые запрещают получение таких сообщений.',
                                       color=0x00ffff)
-                embed.set_footer(text=f'Репорт: #{self.report_id}')
+                embed.set_footer(text=f"Репорт: #{self.report_id}", icon_url=inter.guild.icon.url)
                 embed.set_thumbnail(url='https://media2.giphy.com/media/AkGPEj9G5tfKO3QW0r/200.gif')
                 await inter.response.send_message(embed=embed, ephemeral=True)
                 return
             embed = disnake.Embed(title='Вы успешно отклонили жалобу!',
                                   description=f'Вы успешно обработали жалобу, отправитель был уведомлён об этом.\n',
                                   color=0x00ff00)
-            embed.set_footer(text=f'Репорт: #{self.report_id}')
+            embed.set_footer(text=f"Репорт: #{self.report_id}", icon_url=inter.guild.icon.url)
             embed.set_thumbnail(url='https://www.emojiall.com/images/240/telegram/2705.gif')
             await inter.response.send_message(embed=embed, ephemeral=True)
 
@@ -188,17 +196,26 @@ class ReportCog(commands.Cog):
             await message.edit(view=None)  # Удаляем View (с кнопками)
             # Обновление сообщения с репортом в модераторском канале
             report_message = await inter.channel.fetch_message(inter.message.id)
-            embed = report_message.embeds[0]
-            embed.title = "Жалоба принята!"
-            embed.add_field(name="Вердикт", value=verdict, inline=False)
-            embed.add_field(name="Модератор", value=inter.author.mention, inline=False)
-            embed.color = disnake.Color.red()  # Изменение цвета на красный
-            await report_message.channel.send(embed=embed)
+            embed = disnake.Embed(title='Жалоба отклонена!', color=0xff0000, timestamp=datetime.now())
+            embed.set_author(name=f"{inter.author.display_name}", icon_url=inter.author.display_avatar.url)
+            embed.add_field(
+                name="",
+                value=f"Жалоба была **отклонена** модератором {inter.author.mention},\n **Вердикт:**```{verdict}```",
+                inline=False
+            )
+            embed.set_thumbnail(url='https://media2.giphy.com/media/AkGPEj9G5tfKO3QW0r/200.gif')
+            embed.set_footer(text=f"Репорт: #{self.report_id}", icon_url=inter.guild.icon.url)
+            await inter.followup.send(embed=embed)
+
             thread = inter.message.thread
             forum = inter.guild.get_channel(1336377188173484052)
             opened = forum.get_tag(1336380883917213791)
             closed = forum.get_tag(1336380395113152583)
-            await thread.edit(applied_tags=[closed], locked=True)
+            current_tags = thread.applied_tags
+            filtered_tags = [tag for tag in current_tags if tag.id != 1336380883917213791]
+            new_tags = filtered_tags + [closed]
+            report_name = f"🔴 Репорт #{self.report_id} | {self.suspect.display_name}"
+            await thread.edit(name=report_name,applied_tags=new_tags, locked=True, archived=True)
 
     class ReportView(disnake.ui.View):
         def __init__(self, cog, report_id: int, suspect: disnake.Member, sender: disnake.Member):
@@ -371,10 +388,10 @@ class ReportCog(commands.Cog):
             else:
                 type = forum.get_tag(1336380451954102432)
             if is_staff:
-                thread = await forum.create_thread(name=f'Репорт №: {report_id}', applied_tags=[tag, type], view=view, reason=f'Репорт №: {report_id}', embed=embed, content=moder_role.mention)
+                thread = await forum.create_thread(name=f'🔘 Репорт #{report_id} | {self.suspect.display_name}', applied_tags=[tag, type], view=view, reason=f'Репорт #{report_id}', embed=embed, content=moder_role.mention)
             else:
-                thread = await forum.create_thread(name=f'Репорт №: {report_id}', applied_tags=[tag, type], view=view,
-                                          reason=f'Репорт №: {report_id}', embed=embed, content=f'{moder_role.mention}, {moder_role2.mention}')
+                thread = await forum.create_thread(name=f'🔘 Репорт #{report_id} | {self.suspect.display_name}', applied_tags=[tag, type], view=view,
+                                          reason=f'Репорт #{report_id}', embed=embed, content=f'{moder_role.mention}, {moder_role2.mention}')
     @commands.slash_command(name='report', description='Взаимодействие с репортами', contexts=disnake.InteractionContextTypes(guild=True, bot_dm=False, private_channel=False))
     @commands.cooldown(rate=1, per=15, type=commands.BucketType.user)
     async def report(self, inter):
@@ -436,7 +453,7 @@ class ReportCog(commands.Cog):
                     emoji = "🔴"
                 else:
                     status_text = "Открыт"
-                    emoji = "🟦"
+                    emoji = "🔘"
 
                 # Добавляем в список
                 filtered_reports.append({
@@ -485,7 +502,7 @@ class ReportCog(commands.Cog):
             placeholder="Выберите тип репортов",
             options=[
                 disnake.SelectOption(label="Все", value="all", emoji="📋"),
-                disnake.SelectOption(label="Открытые", value="open", emoji="🟦"),
+                disnake.SelectOption(label="Открытые", value="open", emoji="🔘"),
                 disnake.SelectOption(label="Принятые", value="accepted", emoji="🟢"),
                 disnake.SelectOption(label="Отклонённые", value="rejected", emoji="🔴"),
             ]
@@ -534,6 +551,87 @@ class ReportCog(commands.Cog):
         # Отправляем сообщение
         embed = create_embed(report_list, current_page, total_pages)
         await inter.response.send_message(embed=embed, view=view, ephemeral=True)
+
+    @commands.slash_command(name="check-messages", description="Показывает последние сообщения пользователя")
+    async def fetch_messages(
+            self,
+            inter: disnake.ApplicationCommandInteraction,
+            участник: disnake.Member,
+            выгрузить: int = 20,
+            канал: disnake.TextChannel = None,
+            загружать: int = 100
+    ):
+        loading_embed = disnake.Embed(
+            title="Загрузка...",
+            description=f"Ищу и загружаю сообщения **{участник.display_name}**...",
+            color=disnake.Color.blurple()
+        )
+        loading_embed.set_thumbnail(
+            url="https://discuss.wxpython.org/uploads/default/original/2X/6/6d0ec30d8b8f77ab999f765edd8866e8a97d59a3.gif")
+
+        # Отправляем эмбед "Загружаю..."
+        try:
+            await inter.response.send_message(embed=loading_embed, ephemeral=True)
+        except Exception as e:
+            print(f"Ошибка при отправке сообщения: {e}")
+            return
+
+        messages = []
+        channels = [канал] if канал else inter.guild.text_channels
+
+        for ch in channels:
+            async for msg in ch.history(limit=загружать):
+                if msg.author.id == участник.id:
+                    messages.append({
+                        'content': msg.content or "(Вложение)",
+                        'jump_url': msg.jump_url,
+                        'timestamp': msg.created_at.timestamp()
+                    })
+                if len(messages) >= выгрузить:
+                    break
+            if len(messages) >= выгрузить:
+                break
+
+        if not messages:
+            not_found_embed = disnake.Embed(
+                title="Сообщения не найдены",
+                description=f"Сообщения участника {участник.mention} не найдены.",
+                color=disnake.Color.red()
+            )
+            # Отправляем новый ответ, если сообщений не найдено
+            return await inter.send(embed=not_found_embed, ephemeral=True)
+
+        messages.reverse()
+        embeds = []
+        embed = disnake.Embed(title=f"Последние сообщения {участник.display_name}", color=disnake.Color.blurple())
+        embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/06/13/15/13/15-13-25-972_512.gif")
+        current_field_content = ""
+        total_embed_length = 0
+
+        for msg in messages:
+            msg_text = f"[<t:{int(msg['timestamp'])}:T>] [{участник.display_name}]({msg['jump_url']}): {msg['content']}\n"
+
+            if len(current_field_content) + len(msg_text) > 1024:
+                embed.add_field(name="", value=current_field_content, inline=False)
+                total_embed_length += len(current_field_content)
+                current_field_content = msg_text
+
+                if total_embed_length > 5000:  # Лимит символов в эмбеде (6000), но оставляем запас
+                    embeds.append(embed)
+                    embed = disnake.Embed(title=f"Последние сообщения {участник.display_name}",
+                                          color=disnake.Color.blurple())
+                    embed.set_thumbnail(url="https://cdn.pixabay.com/animation/2023/06/13/15/13/15-13-25-972_512.gif")
+                    total_embed_length = 0
+            else:
+                current_field_content += msg_text
+
+        if current_field_content:
+            embed.add_field(name="", value=current_field_content, inline=False)
+            embeds.append(embed)
+
+        # Отправляем все эмбеды, начиная с первого
+        for e in embeds:
+            await inter.send(embed=e, ephemeral=True)
 
 
 def setup(bot):
