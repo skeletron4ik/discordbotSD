@@ -84,7 +84,7 @@ class EconomyCog(commands.Cog):
         self.excluded_channels = {1070322967634006057, 532628352927006737, 944562833901899827, 1270673733178101801}
         self.excluded_roles = {
             518505773022838797,  # Администратор
-            580790278697254913,  # Ст. Модератор
+            580790278697254913,  # Гл. Модератор
             702593498901381184,  # Модератор
             1044314368717897868,  # Diamond
             757930494301044737,  # Server Booster
@@ -1123,8 +1123,9 @@ class EconomyCog(commands.Cog):
 
         async def send_message_on_booster_end(booster_type, multiplier):
             channel = self.bot.get_channel(489867322039992323)
+            server_id = 489867322039992320
             guild = self.bot.get_guild(server_id)  # Получаем объект сервера
-            icon_url = guild.icon.url if guild.icon else None  # Получаем URL иконки, если она установлена
+            icon_url = guild.icon.url if guild.icon else None
 
             embed = disnake.Embed(
                 title=f"{booster_type} бустер закончился.",
