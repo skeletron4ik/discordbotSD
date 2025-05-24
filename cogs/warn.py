@@ -126,10 +126,7 @@ class WarnsCog(commands.Cog):
 
                         member = guild.get_member(user["id"]) or await guild.fetch_member(user["id"])
                         if member:
-                            try:
-                                await member.send(embed=embed)
-                            except:
-                                pass
+                            await member.send(embed=embed)
 
                         channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
 
@@ -322,7 +319,7 @@ class WarnsCog(commands.Cog):
             except:
                 await inter.response.send_message(embed=embed)
 
-        channel = await self.bot.fetch_channel(944562833901899827)
+        channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
 
         embed = disnake.Embed(title="", url="",
                               description="", color=0xffff00, timestamp=datetime.now())
@@ -354,7 +351,8 @@ class WarnsCog(commands.Cog):
         embed.set_footer(
             text="Пожалуйста, будьте внимательны! Последующие предупреждения могут привести к более строгим наказаниям.")
         try:
-            message = await участник.send(embed=embed)
+            print('354 str. warn.py')
+        	message = await участник.send(embed=embed)
         except:
             pass
 
@@ -531,10 +529,7 @@ class WarnsCog(commands.Cog):
                 embed.set_thumbnail(url="https://www.emojiall.com/images/240/telegram/2705.gif")
                 embed.add_field(name="",value=f"Предупреждение ``#{предупреждение}`` на сервере **{inter.guild.name}** было снято\n **Модератором**: {inter.author.mention}!",inline=False)
                 embed.set_footer(text="Приносим извинения за предоствленые неудобства!")
-                try:
-                    await участник.send(embed=embed)
-                except:
-                    pass
+                await участник.send(embed=embed)
 
                 channel = await self.bot.fetch_channel(944562833901899827)  # Ищем канал по id #логи
 
