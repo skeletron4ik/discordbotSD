@@ -352,7 +352,7 @@ class WarnsCog(commands.Cog):
             text="Пожалуйста, будьте внимательны! Последующие предупреждения могут привести к более строгим наказаниям.")
         try:
             print('354 str. warn.py')
-        	message = await участник.send(embed=embed)
+            message = await участник.send(embed=embed)
         except:
             pass
 
